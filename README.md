@@ -550,6 +550,21 @@ Nothing in `src/` outside your own area file needs to change. Tiles, entities, i
 trials, backdrops and themes each register themselves in one place and are then addressable
 from level data by glyph or by name.
 
+### Striking a record off
+
+Records live in this browser's `localStorage` and nothing in the game deletes them, but a
+time set under a bug should not sit at the top of a board forever. From the browser console:
+
+```js
+PL.Store.dropRun('shantytown', 'shantytown-1', 1)   // the top row on that level
+
+PL.Store.dropRuns('shantytown', 'shantytown-1',     // or anything matching
+                  function (r) { return r.speedrun && r.timeMs < 20000; })
+```
+
+Both return how many rows went, and both recompute the level's best time and grog totals
+from what is left, so the board stays consistent. Reload to see it.
+
 ## Leaderboard and save data
 
 Local only. No network calls anywhere in the codebase.

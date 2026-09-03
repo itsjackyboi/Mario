@@ -110,6 +110,51 @@
 
     clearBoard: function () { write(LB_KEY, { version: VERSION, towns: {} }); },
 
+    /**
+     * Take rows off a level's board by hand. Nothing in the game calls these —
+     * they exist so a time set under a bug can be struck off from the browser
+     * console without hand-editing the stored JSON:
+     *
+     *   PL.Store.dropRun('shantytown', 'shantytown-1', 1)
+     *   PL.Store.dropRuns('shantytown', 'shantytown-1',
+     *                     function (r) { return r.speedrun && r.timeMs < 20000; })
+     *
+     * Both return how many rows went, and both leave the board consistent: the
+     * best time and the grog totals are recomputed from what is left rather
+     * than carrying the deleted row's numbers forward.
+     */
+    dropRuns: function (townId, levelId, pred) {
+      var b = this.loadBoard();
+      var t = b.towns[townId];
+      var lv = t && t.levels && t.levels[levelId];
+      if (!lv || !lv.runs) return 0;
+
+      var kept = [], gone = 0;
+      for (var i = 0; i < lv.runs.length; i++) {
+        if (pred(lv.runs[i], i)) {
+          gone++;
+          lv.totalGrog = Math.max(0, (lv.totalGrog || 0) - (lv.runs[i].grog | 0));
+        } else {
+          kept.push(lv.runs[i]);
+        }
+      }
+      if (!gone) return 0;
+
+      lv.runs = kept;
+      lv.bestTimeMs = kept.length ? kept[0].timeMs : 0;
+      lv.bestGrog = 0;
+      for (var k = 0; k < kept.length; k++) {
+        lv.bestGrog = Math.max(lv.bestGrog, kept[k].grog | 0);
+      }
+      write(LB_KEY, b);
+      return gone;
+    },
+
+    /** Drop one row by its rank on the board, 1 being the top. */
+    dropRun: function (townId, levelId, rank) {
+      return this.dropRuns(townId, levelId, function (r, i) { return i === rank - 1; });
+    },
+
     // ------------------------------------------------------------------ progress
 
     loadProgress: function () {
