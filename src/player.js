@@ -16,6 +16,12 @@
  *     urn instead, sets you back down on the last safe ground you stood on and
  *     gives you a long mercy window. It is a spare life, not a state.
  *
+ * GROG IS THE LIFE POOL. A death you actually take costs DEATH_COST barrels
+ * out of the purse. Dying with an empty purse is a GAME OVER — the level (or,
+ * in a Drunken Speedrun, the whole run) is finished, not merely restarted from
+ * the flag. So grog stopped being only a score the moment it became the thing
+ * standing between you and the end of a run: never walk past a barrel.
+ *
  * GRAVITY: `gsign` is +1 normally and -1 after a Fenwick veil gate. It scales
  * gravity, the jump impulse and the sprite; Physics.moveY reads `invert` to
  * ground an upside-down body on ceilings. Nothing else in the engine cares.
@@ -40,13 +46,19 @@
 
   var TONIC_TIME = 9.0;
 
+  /* Barrels a death costs you. Four deaths on a full-ish purse, which is enough
+   * rope to learn a level and not enough to ignore one. */
+  var DEATH_COST = 5;
+  PL.DEATH_COST = DEATH_COST;
+
   function Player(opts) {
     E.call(this, opts || {});
     this.w = 20; this.h = 28;
     this.spawnX = this.x; this.spawnY = this.y;
     this.checkpoint = null;
 
-    this.grog = 0;
+    this.grog = 0;          // the purse: also the life pool (see DEATH_COST)
+    this.grogEarned = 0;    // everything picked up, before deaths took any
     this.shards = [];
     this.pouch = 0;         // Wolendi Wind Pouches held (extra mid-air jump)
     this.items = [];        // carried single-use items, spent front-first
@@ -63,6 +75,7 @@
     this.iframes = 0;
     this.dead = false;
     this.deathTimer = 0;
+    this.deathToll = 0;     // barrels the last death cost, for the HUD
     this.frozen = false;    // set during trials / level-complete
 
     this.coyote = 0;
@@ -290,7 +303,9 @@
 
   /** Leviathan Marrow makes every barrel count twice. */
   Player.prototype.addGrog = function (n) {
-    this.grog += this.has('marrow') ? n * 2 : n;
+    var got = this.has('marrow') ? n * 2 : n;
+    this.grog += got;
+    this.grogEarned += got;
   };
 
   Player.prototype.giveUrn = function () { this.urn++; };
@@ -432,6 +447,24 @@
       return;
     }
 
+    // Grog is what a death is paid for with. An empty purse means there is
+    // nothing left to pay, and the run ends rather than restarting at the flag.
+    if (this.grog <= 0) {
+      this.dead = true;
+      this.deaths++;
+      this.deathTimer = 0;
+      this.vy = -7.5;
+      this.vx = 0;
+      this.frozen = false;
+      world.camera.kick(9);
+      PL.Audio.sfx('die');
+      if (world.onGameOver) world.onGameOver(cause);
+      return;
+    }
+    var toll = Math.min(DEATH_COST, this.grog);
+    this.grog -= toll;
+    this.deathToll = toll;
+
     this.dead = true;
     this.deaths++;
     this.deathTimer = 1.15;
@@ -444,6 +477,7 @@
     } else {
       PL.Audio.sfx('die');
     }
+    world.fx.label(this.cx(), this.y - 10, '-' + toll + ' GROG', C.coral);
     if (world.onDeath) world.onDeath(cause);
   };
 
@@ -459,6 +493,7 @@
     this.airJumpsLeft = 0;
     this.dropThrough = 0;
     this.safe = null;
+    this.deathToll = 0;
     this.setGravity(1);
   };
 

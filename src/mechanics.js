@@ -60,6 +60,14 @@
     return 0;
   };
 
+  /* Respawning into a flood you cannot climb out of in time is the same trap
+   * the boil had. The cycle restarts with the water out. */
+  Tide.prototype.onRespawn = function (world) {
+    this.t = 0;
+    this.level = 0;
+    world.tideY = this.lowY;
+  };
+
   Tide.prototype.update = function (dt, world) {
     this.t += dt;
     var f = this.phase();
@@ -124,6 +132,14 @@
     this.decor = false;
   }
   PL.extend(Boil, E);
+
+  /* It kept coming while you were dead, which meant a death anywhere past the
+   * middle of the level respawned you inside it — over and over. On a respawn
+   * it goes back to just behind wherever you have been put. */
+  Boil.prototype.onRespawn = function (world) {
+    var p = world.player;
+    this.x = (p ? p.x : 0) - this.w - 280;
+  };
 
   Boil.prototype.update = function (dt, world) {
     this.t += dt;
@@ -373,12 +389,13 @@
     }
     ctx.restore();
 
-    // Which way it is running, on the top edge, where nothing else lives.
+    // Which way it is running. Top-left under the purse and shard chips: the
+    // middle belongs to the clock and the right to the buff countdowns.
     if (Math.abs(f) > 0.05) {
-      var label = f > 0 ? 'RUNNING  ' + arrows(1) : arrows(-1) + '  RUNNING';
-      PL.gfx.text(ctx, label, W / 2, 24, {
-        font: PL.FONT.tiny, align: 'center',
-        color: 'rgba(207,230,228,' + (0.35 + Math.abs(f) * 0.4).toFixed(2) + ')'
+      var label = f > 0 ? 'RACE RUNNING  ' + arrows(1) : arrows(-1) + '  RACE RUNNING';
+      PL.gfx.text(ctx, label, 8, 46, {
+        font: PL.FONT.tiny,
+        color: 'rgba(207,230,228,' + (0.4 + Math.abs(f) * 0.45).toFixed(2) + ')'
       });
     }
   };

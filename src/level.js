@@ -222,6 +222,26 @@
     return out;
   }
 
+  /**
+   * Put the level back the way you found it. Called on every respawn.
+   *
+   * A death must never leave a run unwinnable, which is exactly what a spent
+   * spirit-light or a wall of steam that kept walking while you were dead
+   * would do. Anything consumable that the route depends on implements
+   * `onRespawn`; world timers are cleared outright, since every one of them
+   * is an effect the player earned and no longer has.
+   *
+   * Collected pickups deliberately do NOT come back — grog you already banked
+   * would otherwise be farmable, and no level needs an item to be passable.
+   */
+  World.prototype.respawn = function () {
+    this.timers = {};
+    for (var i = 0; i < this.entities.length; i++) {
+      var e = this.entities[i];
+      if (e.onRespawn) e.onRespawn(this);
+    }
+  };
+
   /** Start or restart a named world timer (seconds). */
   World.prototype.setTimer = function (name, secs) { this.timers[name] = secs; };
 

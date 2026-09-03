@@ -157,14 +157,22 @@
     });
   };
 
-  /* Shared table renderer — used here and on the standalone leaderboard view. */
+  /* Shared table renderer — used here and on the standalone leaderboard view.
+   *
+   * The MODE column is why speedrun splits can share a board with single-level
+   * runs: a time set on the way through a Drunken Speedrun is a real time on
+   * that level and belongs in the ranking, but it was set under different
+   * conditions — a carried purse, no chance to warm up — and the reader needs
+   * to be able to tell. */
   PL.LeaderboardTable = {
     draw: function (ctx, x, y, w, runs, highlight) {
-      PL.gfx.text(ctx, '#', x, y + 12, { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.45)' });
-      PL.gfx.text(ctx, 'TIME', x + 26, y + 12, { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.45)' });
-      PL.gfx.text(ctx, 'GROG', x + 118, y + 12, { font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.45)' });
-      PL.gfx.text(ctx, 'DEATHS', x + 176, y + 12, { font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.45)' });
-      PL.gfx.text(ctx, 'DATE', x + w, y + 12, { font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.45)' });
+      var dim = 'rgba(242,227,196,0.45)';
+      PL.gfx.text(ctx, '#', x, y + 12, { font: PL.FONT.tiny, color: dim });
+      PL.gfx.text(ctx, 'TIME', x + 26, y + 12, { font: PL.FONT.tiny, color: dim });
+      PL.gfx.text(ctx, 'MODE', x + 92, y + 12, { font: PL.FONT.tiny, color: dim });
+      PL.gfx.text(ctx, 'GROG', x + 168, y + 12, { font: PL.FONT.tiny, align: 'right', color: dim });
+      PL.gfx.text(ctx, 'DEATHS', x + 222, y + 12, { font: PL.FONT.tiny, align: 'right', color: dim });
+      PL.gfx.text(ctx, 'DATE', x + w, y + 12, { font: PL.FONT.tiny, align: 'right', color: dim });
       ctx.fillStyle = 'rgba(156,124,82,0.4)';
       ctx.fillRect(x, y + 16, w, 1);
 
@@ -182,8 +190,12 @@
         var col = i === 0 ? PL.C.lanternHi : (me ? PL.C.parchment : 'rgba(242,227,196,0.72)');
         PL.gfx.text(ctx, String(i + 1), x, ry, { font: PL.FONT.small, color: col });
         PL.gfx.text(ctx, U.formatTime(r.timeMs), x + 26, ry, { font: PL.FONT.mono, color: col });
-        PL.gfx.text(ctx, String(r.grog), x + 118, ry, { font: PL.FONT.small, align: 'right', color: col });
-        PL.gfx.text(ctx, String(r.deaths || 0), x + 176, ry, { font: PL.FONT.small, align: 'right', color: col });
+        PL.gfx.text(ctx, r.speedrun ? 'SPEEDRUN' : 'single', x + 92, ry, {
+          font: PL.FONT.tiny,
+          color: r.speedrun ? PL.C.teal : 'rgba(242,227,196,0.55)'
+        });
+        PL.gfx.text(ctx, String(r.grog), x + 168, ry, { font: PL.FONT.small, align: 'right', color: col });
+        PL.gfx.text(ctx, String(r.deaths || 0), x + 222, ry, { font: PL.FONT.small, align: 'right', color: col });
         PL.gfx.text(ctx, r.date || '', x + w, ry, {
           font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.45)'
         });

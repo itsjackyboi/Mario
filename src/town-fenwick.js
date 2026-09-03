@@ -151,6 +151,13 @@
     if (this.taken > 0) this.taken -= dt;
   };
 
+  /* A light you spent before dying is back when you are. Without this a death
+   * in the middle of a phantom crossing leaves the level unfinishable — and in
+   * a speedrun, the whole run with it. */
+  SpiritLight.prototype.onRespawn = function () {
+    this.taken = 0;
+  };
+
   SpiritLight.prototype.touch = function (player, world) {
     if (this.taken > 0) return;
     this.taken = 11 * this.regrow;         // regrows after the light has gone

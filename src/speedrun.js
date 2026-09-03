@@ -13,6 +13,13 @@
  * Records go in the normal leaderboard store under a synthetic area/level pair
  * ('_speedrun' / 'full-game'), which needs no schema change and keeps whole-run
  * times out of the per-level boards.
+ *
+ * Each level's split ALSO goes on that level's own board, flagged `speedrun`,
+ * because a personal best is a personal best however you got it — the board
+ * shows which mode it came from rather than throwing the row away.
+ *
+ * The purse carries between levels. Grog is the life pool now, so a run that
+ * started every level on nothing would end on the first death of each one.
  */
 (function (PL) {
   'use strict';
@@ -30,7 +37,8 @@
     levels: [],
     index: 0,
     elapsedMs: 0,
-    grog: 0,
+    purse: 0,       // grog in hand right now — carried level to level
+    grog: 0,        // everything collected over the whole run
     deaths: 0,
     shards: 0,
     splits: [],
@@ -49,6 +57,7 @@
       this.active = true;
       this.index = 0;
       this.elapsedMs = 0;
+      this.purse = 0;
       this.grog = 0;
       this.deaths = 0;
       this.shards = 0;
@@ -68,16 +77,28 @@
       var prev = this.splits.length ? this.splits[this.splits.length - 1].totalMs : 0;
 
       this.elapsedMs = scene.elapsedMs;
-      this.grog += p.grog;
+      this.purse = p.grog;                 // carried into the next level
+      this.grog += p.grogEarned;
       this.deaths += p.deaths;
       this.shards += p.shards.length;
+      var levelMs = scene.elapsedMs - prev;
       this.splits.push({
         id: scene.def.id,
         name: scene.def.name,
         town: scene.meta.townName || scene.def.town,
         totalMs: scene.elapsedMs,
-        levelMs: scene.elapsedMs - prev,
-        grog: p.grog
+        levelMs: levelMs,
+        grog: p.grogEarned
+      });
+
+      // The split is a real time on a real level, so it goes on that level's
+      // board too — tagged, not hidden.
+      PL.Store.recordRun(scene.def.town, scene.def.id, {
+        timeMs: levelMs,
+        grog: p.grogEarned,
+        shards: p.shards.length,
+        deaths: p.deaths,
+        speedrun: true
       });
 
       // Shards are permanent, and clearing a level should still unlock what it

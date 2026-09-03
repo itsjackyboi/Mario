@@ -135,6 +135,23 @@
       return null;
     },
 
+    /**
+     * The level this one's shard is the key to, or null. Used by the play
+     * scene to say so on the way in rather than on the results card, by which
+     * point it is too late to go back for it.
+     */
+    opensWith: function (def) {
+      var flat = this.allLevels();
+      for (var i = 0; i < flat.length; i++) {
+        var other = flat[i].def;
+        if (other === def) continue;
+        if (this.gatedBehind(other) === def) return other;
+        if (other.unlockAfter === def.id &&
+            (other.unlockAfterTown || other.town) === def.town) return other;
+      }
+      return null;
+    },
+
     /** Open only once the previous level in this area has given up its shard. */
     isUnlocked: function (def) {
       var prev = this.gatedBehind(def);

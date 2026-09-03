@@ -85,6 +85,10 @@
         grog: run.grog | 0,
         shards: run.shards | 0,
         deaths: run.deaths | 0,
+        // Set on a split out of a Drunken Speedrun. Stored as a flag rather
+        // than a separate board so a personal best stays a personal best
+        // however it was set, and the table can say which mode it came from.
+        speedrun: !!run.speedrun,
         date: PL.util.stamp()
       };
       lv.runs = (lv.runs || []).concat([entry]);

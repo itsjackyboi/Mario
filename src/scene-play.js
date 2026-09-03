@@ -30,9 +30,12 @@
     var p = (this.player = new PL.Player({ x: world.spawn.x, y: world.spawn.y }));
     world.player = p;
 
-    // In a Drunken Speedrun the clock is the run's, not the level's.
+    // In a Drunken Speedrun the clock and the purse are the run's, not the
+    // level's — grog is the life pool now, so starting every level on nothing
+    // would make the first death of each one a game over.
     this.speedrun = !!this.meta.speedrun;
     this.elapsedMs = this.speedrun ? PL.Speedrun.elapsedMs : 0;
+    if (this.speedrun) p.grog = PL.Speedrun.purse;
     this.finished = false;
     this.goalT = 0;
     this.respawnT = 0;
@@ -44,11 +47,20 @@
 
     world.onGoal = function () { self.reachGoal(); };
     world.onDeath = function () { self.respawnT = 1.35; };
+    world.onGameOver = function () { self.gameOverT = 1.5; };
+    this.gameOverT = 0;
     world.onTrial = function (gate) {
       self.trialActive = true;
       p.frozen = true;
       PL.Game.push(new PL.TrialScene(self, gate));
     };
+
+    // If this level's shard is the key to a door that is still shut, say so on
+    // the intro card. Once the door is open the note is just noise, so it goes.
+    var opens = PL.Towns.opensWith(this.def);
+    this.shardNote = (opens && this.def.shardCount && !PL.Towns.isUnlocked(opens))
+      ? 'Take the Red-Earth Shard to open ' + opens.name
+      : '';
 
     this.camera.follow(p, true);
   };
@@ -211,10 +223,30 @@
       this.respawnT -= dt;
       if (this.respawnT <= 0) {
         p.respawn(world);
+        // Put the level back the way it was found — a spent spirit-light or a
+        // wall of steam that walked on while you were dead would otherwise
+        // leave the level, and in a speedrun the whole run, unwinnable.
+        world.respawn();
         this.camera.follow(p, true);
         this.fadeIn = 0.8;
       }
     }
+
+    // --- game over --------------------------------------------------------
+    if (this.gameOverT > 0) {
+      this.gameOverT -= dt;
+      if (this.gameOverT <= 0) this.showGameOver();
+    }
+  };
+
+  PlayScene.prototype.showGameOver = function () {
+    var p = this.player;
+    PL.Game.replace(new PL.GameOverScene(this.def, this.meta, {
+      timeMs: this.elapsedMs,
+      grogEarned: this.speedrun ? PL.Speedrun.grog + p.grogEarned : p.grogEarned,
+      shards: this.speedrun ? PL.Speedrun.shards + p.shards.length : p.shards.length,
+      deaths: this.speedrun ? PL.Speedrun.deaths + p.deaths : p.deaths
+    }));
   };
 
   PlayScene.prototype.onTrialPassed = function (bonus) {
@@ -256,7 +288,10 @@
     if (this.speedrun) { PL.Speedrun.advance(this); return; }
     var run = {
       timeMs: this.elapsedMs,
-      grog: p.grog,
+      // What you picked up, not what survived the deaths — the board column
+      // says "grog collected" and it has to mean the same thing on a speedrun
+      // split, where the purse is carried in from the level before.
+      grog: p.grogEarned,
       shards: p.shards.length,
       deaths: p.deaths
     };
@@ -334,7 +369,7 @@
     if (this.introT > 0) {
       ctx.save();
       ctx.globalAlpha = Math.min(1, this.introT / 0.5);
-      PL.gfx.panel(ctx, W / 2 - 150, H / 2 - 40, 300, 74, { r: 6 });
+      PL.gfx.panel(ctx, W / 2 - 150, H / 2 - 40, 300, this.shardNote ? 96 : 74, { r: 6 });
       var cardTop = (this.meta.townName || 'SHANTY TOWN').toUpperCase();
       if (this.speedrun) {
         cardTop = cardTop + '  ·  ' + (this.meta.runIndex + 1) + ' / ' + this.meta.runCount;
@@ -348,6 +383,14 @@
       PL.gfx.text(ctx, this.def.blurb || '', W / 2, H / 2 + 22, {
         font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.6)'
       });
+      // The shard is the key to the next level, so say so before the run, not
+      // on the results card when it is too late to go back for it.
+      if (this.shardNote) {
+        PL.gfx.rect(ctx, W / 2 - 150, H / 2 + 34, 300, 18, 'rgba(212,87,78,0.16)');
+        PL.gfx.text(ctx, this.shardNote, W / 2, H / 2 + 46, {
+          font: PL.FONT.tiny, align: 'center', color: C.coral
+        });
+      }
       ctx.restore();
     }
 

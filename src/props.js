@@ -38,6 +38,18 @@
     }
   };
 
+  /* They restore themselves anyway, but not instantly — and a respawn onto a
+   * crossing that is still falling is a death you did not earn. */
+  LoosePlank.prototype.onRespawn = function () {
+    this.state = 'idle';
+    this.y = this.homeY;
+    this.tilt = 0;
+    this.vy = 0;
+    this.dy = 0;
+    this.active = true;
+    this.timer = 0;
+  };
+
   LoosePlank.prototype.update = function (dt, world) {
     this.t += dt;
     var prevY = this.y;

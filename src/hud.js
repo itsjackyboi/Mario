@@ -23,13 +23,27 @@
   PL.HUD = {
     draw: function (ctx, scene) {
       var p = scene.player;
-      var W = PL.VIEW_W;
+      var W = PL.VIEW_W, H = PL.VIEW_H;
 
       // ---- grog purse (top-left) ----------------------------------------
+      // It is the life pool as well as the score, so an empty purse pulses:
+      // the next death with nothing in here ends the run, not the life.
+      var broke = p.grog <= 0 && p.urn <= 0;
       chip(ctx, 6, 6, 78, 24);
+      if (broke) {
+        ctx.save();
+        ctx.globalAlpha = 0.25 + Math.abs(Math.sin(p.t * 4)) * 0.35;
+        PL.gfx.rect(ctx, 6, 6, 78, 24, C.coral);
+        ctx.restore();
+      }
       PL.ItemIcons.grog(ctx, 12, 10, 15);
-      PL.gfx.text(ctx, String(p.grog), 33, 23, { font: PL.FONT.hud, color: C.grogBand });
-      PL.gfx.text(ctx, 'GROG', 78, 22, { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.5)', align: 'right' });
+      PL.gfx.text(ctx, String(p.grog), 33, 23, {
+        font: PL.FONT.hud, color: broke ? C.coral : C.grogBand
+      });
+      PL.gfx.text(ctx, broke ? 'LAST' : 'GROG', 78, 22, {
+        font: PL.FONT.tiny, align: 'right',
+        color: broke ? C.coral : 'rgba(242,227,196,0.5)'
+      });
 
       // ---- shards --------------------------------------------------------
       if (scene.world.shardTotal > 0) {
@@ -52,7 +66,7 @@
         var sr = PL.Speedrun;
         PL.gfx.text(ctx,
           'RUN ' + (scene.meta.runIndex + 1) + ' / ' + scene.meta.runCount +
-          '  ·  ' + (sr.grog + p.grog) + ' grog',
+          '  ·  ' + (sr.grog + p.grogEarned) + ' grog collected',
           W / 2, 42, {
             font: PL.FONT.tiny, align: 'center', color: C.lantern
           });
@@ -86,21 +100,29 @@
       }
 
       // ---- active buffs ----------------------------------------------------
-      // Sits below the item slots so it never collides with their key hints.
-      var barY = 48;
+      // Two halves, deliberately apart: the COUNTDOWN stays up here under the
+      // item slots where the eye already is, and WHAT IT DOES goes in the
+      // bottom-right corner with room to actually read it. Cramming the effect
+      // text into the timer chip meant it was truncated to nothing.
+      var live = [];
       if (p.tonic > 0) {
-        this.bar(ctx, W - 176, barY, 170, 'CLOCKHEART', p.tonic / 9.0, C.teal, 'quickened');
-        barY += 20;
+        live.push({ label: 'CLOCKHEART', frac: p.tonic / 9.0, colour: C.teal,
+                    text: 'faster on your feet, and the room knows it' });
       }
       for (var bn in p.buffs) {
         if (bn === 'dashing') continue;                 // too brief to bother
         var cfg = PL.TownItems.byBuff[bn];
-        if (!cfg) continue;
-        this.bar(ctx, W - 176, barY, 170, cfg.hud, p.buffs[bn] / cfg.secs,
-                 cfg.colour, cfg.blurb);
-        barY += 20;
-        if (barY > 160) break;
+        if (!cfg || p.buffs[bn] <= 0) continue;
+        live.push({ label: cfg.hud, frac: p.buffs[bn] / cfg.secs,
+                    colour: cfg.colour, text: cfg.blurb });
       }
+
+      var barY = 48;
+      for (var lb = 0; lb < live.length && barY <= 160; lb++) {
+        this.bar(ctx, W - 176, barY, 170, live[lb].label, live[lb].frac, live[lb].colour);
+        barY += 20;
+      }
+      this.effects(ctx, live, W, H);
 
       // ---- checkpoint hint -------------------------------------------------
       if (scene.checkpointFlash > 0) {
@@ -152,7 +174,8 @@
       });
     },
 
-    bar: function (ctx, x, y, w, label, frac, color, sub) {
+    /** Name and countdown only. What it does is drawn by effects(). */
+    bar: function (ctx, x, y, w, label, frac, color) {
       chip(ctx, x, y, w, 17);
       var iw = (w - 8) * U.clamp(frac, 0, 1);
       ctx.save();
@@ -160,9 +183,33 @@
       PL.gfx.rect(ctx, x + 4, y + 12, iw, 3, color);
       ctx.restore();
       PL.gfx.text(ctx, label, x + 5, y + 10, { font: PL.FONT.tiny, color: color });
-      PL.gfx.text(ctx, U.fit(ctx, sub, PL.FONT.tiny, w - 66), x + w - 5, y + 10, {
+      PL.gfx.text(ctx, Math.ceil(frac * 100) + '%', x + w - 5, y + 10, {
         font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.45)'
       });
+    },
+
+    /**
+     * What every live effect actually does, bottom-right, stacked upward.
+     * It sits clear of the quip caption (bottom-left, up to 420 wide) and of
+     * the countdown chips (top-right, down to y=160).
+     */
+    effects: function (ctx, live, W, H) {
+      if (!live.length) return;
+      var rows = live.slice(0, 4);
+      var w = 240, lh = 23;
+      var h = 8 + rows.length * lh;
+      var x = W - w - 6, y = H - 76 - h;
+      PL.gfx.panel(ctx, x, y, w, h, {
+        r: 4, fill: 'rgba(18,12,17,0.82)', stroke: 'rgba(156,124,82,0.55)', alpha: 1
+      });
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i], ly = y + 5 + i * lh;
+        PL.gfx.rect(ctx, x + 7, ly + 4, 3, 13, r.colour);
+        PL.gfx.text(ctx, r.label, x + 15, ly + 9, { font: PL.FONT.tiny, color: r.colour });
+        PL.gfx.text(ctx, U.fit(ctx, r.text, PL.FONT.tiny, w - 24), x + 15, ly + 20, {
+          font: PL.FONT.tiny, color: 'rgba(242,227,196,0.72)'
+        });
+      }
     }
   };
 

@@ -44,8 +44,14 @@ The title screen offers both:
   with no results card between them. Dying, respawning, restarting a level and sitting in
   a Trial all cost you real time. It runs all sixteen levels including the Owe Block bonus,
   ignoring the usual unlock, because a route that changed with your save state would not be
-  comparable. Whole-game times get their own leaderboard entry, separate from the per-level
-  boards, and splits are shown at the end.
+  comparable. **Your purse carries between levels**, because grog is the life pool and a run
+  that started every level on nothing would end on the first death of each one.
+
+  Whole-game times get their own leaderboard entry, and **each level's split is also logged
+  on that level's own board**, tagged `SPEEDRUN` in the MODE column. A personal best is a
+  personal best however you set it; the column is there because a split was set under
+  different conditions — a carried purse, no chance to warm up — and the reader should be
+  able to tell.
 
 ## The levels
 
@@ -75,7 +81,9 @@ appears nowhere else, and is a long way harder than the two before it.
 
 **The first level of every area is open from the start. Every level after it needs the
 Red-Earth Shard out of the level before it.** Clearing a level is not enough — you have to
-have found its shard. A level you cannot enter says which shard it wants.
+have found its shard. A level you cannot enter says which shard it wants, the intro card on
+the way *in* names the level this one's shard opens (and stops saying it once that level is
+open), and the results card says outright when the next level stays shut.
 
 That makes each area a road rather than a menu, and it makes the shard the thing it always
 should have been: not a completionist tick, but the key to the next door.
@@ -143,7 +151,7 @@ area's third one answers that area's own hazard, which is why none of the effect
 
 | Item | Glyph | Effect |
 | --- | --- | --- |
-| Grog Barrel | `o` | The currency pickup. Tracked in the HUD, banked into the area purse on completion. |
+| Grog Barrel | `o` | The currency pickup **and the life pool**. Tracked in the HUD, banked into the area purse on completion; a death costs five of them, and dying with none is a game over. |
 | Hollow Urn | `U` | **A spare life.** Carried, not timed, and nothing about you changes while you hold it. The next thing that would kill you — enemy, spike, water, pit, anything — takes the urn instead: it shatters, you are put back at your last safe footing with ~2s of invincibility, and the death is not counted. One hit, one urn. |
 | ClockHeart Tonic | `T` | Timed. Big speed boost plus a screen-wide colour shift pulsing between day-order gold and night-revelry teal. |
 | Wolendi Wind Pouch | `W` | Single use, carried. One extra mid-air jump, spent automatically when you jump with nothing under you. |
@@ -214,6 +222,12 @@ that too would make every jump uncontrollable. (`src/player.js`)
 his face on it — a speech bubble over the action was covering the jumps. The box grows to
 fit its line and drops a type size before it would ever need a fourth row. (`src/quips.js`)
 
+**A buff's countdown and its description are in different corners.** The timer chip stays
+top-right under the item slots where the eye already is; what the buff actually *does* is
+drawn bottom-right, in a panel with room to read it. They used to share one 170px chip,
+which truncated every description to nothing. Both are clear of the quip caption's 420px
+box on the other side. (`src/hud.js`)
+
 **Grog is per level.** The counter resets at level start and is *kept* through deaths and
 checkpoint respawns, so a run's grog total is a clean, comparable leaderboard stat. On
 completion it is banked into a persistent per-area purse. (`src/items.js`)
@@ -225,6 +239,23 @@ and pits are always fatal. Providence's Friars are the exception: they take grog
 touching you, and cannot kill — Friars are flagged `harmful = false` for exactly that
 reason, and the collision path only calls `hurt()` on an enemy that is actually harmful.
 (`src/player.js`, `src/town-providence.js`, `src/scene-play.js`)
+
+**Grog is the life pool, and running out is a game over.** A death you actually take costs
+`DEATH_COST` (5) barrels out of the purse. Dying with an empty purse ends the attempt: on a
+single level it starts over from nothing — including the clock, the one thing an ordinary
+death does not cost you — and in a Drunken Speedrun the run is finished, because a run with
+a reset clock in the middle of it is not a run. Nothing is banked from a game over, but the
+shards you already picked up stay picked up, so the road you opened stays open. The purse
+chip pulses red and reads `LAST` when there is nothing left in it.
+(`src/player.js`, `src/scene-gameover.js`)
+
+**A death never leaves a level unwinnable.** `World.respawn()` puts the level back the way
+it was found on every respawn: spirit-lights come back, loose planks snap home, the tide
+starts its cycle with the water out, and the Rolling Boil goes back to behind wherever you
+have been put. Without it a death mid-crossing in Fenwick, or anywhere past the middle of
+Aleforge III, was a dead run — which in a speedrun meant the whole run. Anything consumable
+that a route depends on implements `onRespawn`; collected pickups deliberately do not come
+back, since grog you already banked would otherwise be farmable. (`src/level.js`)
 
 **The Hollow Urn is a spare life, not a power-up.** It was a timed
 unkillable-but-slowed state, which was both a downgrade to hold and a thing you had to
@@ -317,6 +348,7 @@ src/
   scene-play.js                the level runner (+ pause overlay)
   scene-complete.js            level-complete card + shared leaderboard table
   scene-ending.js              the finale's whole-tryout summary
+  scene-gameover.js            an empty purse ends the attempt
   speedrun.js                  Drunken Speedrun run state + its results card
 
 data/
