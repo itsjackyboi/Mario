@@ -61,15 +61,6 @@
         color: scene.finished ? C.lanternHi : C.parchment
       });
 
-      if (scene.deathClockFlash > 0) {
-        ctx.save();
-        ctx.globalAlpha = Math.min(1, scene.deathClockFlash);
-        PL.gfx.text(ctx, 'CLOCK BACK TO ZERO', W / 2, scene.speedrun ? 56 : 42, {
-          font: PL.FONT.tiny, align: 'center', color: C.coral
-        });
-        ctx.restore();
-      }
-
       // ---- speedrun readout, under the clock ------------------------------
       if (scene.speedrun) {
         var sr = PL.Speedrun;

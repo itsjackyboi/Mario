@@ -308,18 +308,25 @@ non-opaque scene pushed over the title, so the title keeps drawing behind it. Th
 its click target are defined once, together, in `PL.LetterIcon` so they cannot drift apart.
 (`src/scene-letter.js`)
 
-**A death puts the clock back to zero.** The level clock runs from the moment control is
-handed over — through Trials, through pauses, through a checkpoint respawn — but *dying*
-resets it, exactly as if you had walked out of the level and come back in.
+**Nothing mid-level ever winds the clock back.** A checkpoint respawn, a Trial and the
+pause overlay all leave it running; only your position resets. The clock is kept in two
+halves — `levelMs` is time spent in this scene, `baseMs` is everything banked before it —
+and it starts at zero when, and only when, a scene is built with a `baseMs` of zero. That
+is exactly the two cases that should do it:
 
-The clock is kept in two halves to make that work in a speedrun: `levelMs` is this attempt
-at this level, `baseMs` is everything banked before it (0 on a single level, the run's
-completed splits in a Drunken Speedrun), and what you see is the sum. A death zeroes
-`levelMs` only, so it erases the current attempt at the current level and never touches a
-banked split — the run clock only ever moves forward across levels.
+| | Clock |
+| --- | --- |
+| Checkpoint respawn | keeps running |
+| A Trial, or the pause overlay | keeps running |
+| `R`, "Run it again", "Take it again" **on a single level** | back to zero |
+| Purse empty → the attempt ends **on a single level** | back to zero on the retry |
+| Checkpoint respawn **in a speedrun** | keeps running |
+| `R` restart **in a speedrun** | keeps running — the new scene's base is the run clock as it stood |
+| Purse empty **in a speedrun** | the run is over; a new run starts at zero |
 
-It is not a free reset. A death costs five grog and an empty purse ends the attempt
-outright, so wiping a bad attempt is something you buy, not something you get.
+So a discarded attempt inside a run costs you every second it took, which is the whole
+point of a run — and the split for a restarted level is measured off the run clock rather
+than the scene's own, so the splits always add up to the total.
 (`src/scene-play.js`, `src/speedrun.js`)
 
 **Roto's bobbers never sink far enough to drown you.** They settle a capped 20px, which is

@@ -1,17 +1,24 @@
 /* scene-play.js — the level runner. Owns the world, the player, the clock and
  * the transitions in and out of a run.
  *
- * TIMER RULE: the clock is kept in two halves. `levelMs` is this attempt at
- * this level; `baseMs` is everything banked before it (0 on a single level, the
- * run's completed splits in a Drunken Speedrun). What the HUD shows, and what
- * gets recorded, is the sum.
+ * TIMER RULE: the clock is kept in two halves. `levelMs` is time spent in this
+ * PlayScene; `baseMs` is everything banked before it — 0 on a single level, the
+ * run clock so far in a Drunken Speedrun. What the HUD shows, and what gets
+ * recorded, is the sum.
  *
- * DYING RESETS `levelMs` TO ZERO — a death puts you back at the start of the
- * clock as well as at the flag, exactly as if you had walked out of the level
- * and come back in. In a speedrun that means a death erases the current attempt
- * at the current level but never touches the splits already banked, so the run
- * clock can only ever move forward across levels. It is not a free reset: a
- * death costs five grog, and an empty purse ends the attempt outright.
+ * NOTHING MID-LEVEL EVER WINDS THE CLOCK BACK. A checkpoint respawn, a Trial
+ * and the pause overlay all leave it running; only your position resets. The
+ * clock starts at zero when, and only when, a scene is built with `baseMs` of
+ * zero, which is exactly the two cases that should do it:
+ *
+ *   - a single level being started fresh — a new level, `R`, "Run it again",
+ *     or "Take it again" after the purse ran out and the attempt ended;
+ *   - a Drunken Speedrun being started, which is the only thing that puts
+ *     `PL.Speedrun.elapsedMs` back to zero.
+ *
+ * So a restart inside a speedrun carries the run clock straight on, because the
+ * new scene's `baseMs` is the run clock as it stood — a discarded attempt costs
+ * you the time it took, which is the whole point of a run.
  */
 (function (PL) {
   'use strict';
@@ -55,7 +62,6 @@
     this.introT = this.speedrun ? 1.3 : 2.1;
     this.fadeIn = 1;
     this.checkpointFlash = 0;
-    this.deathClockFlash = 0;
     this.trialActive = false;
     this.trialBonus = 0;
 
@@ -217,7 +223,6 @@
       }
     }
     this.quips.update(dt);
-    if (this.deathClockFlash > 0) this.deathClockFlash -= dt;
 
     // --- housekeeping -----------------------------------------------------
     for (var k = ents.length - 1; k >= 0; k--) {
@@ -238,11 +243,6 @@
     if (this.respawnT > 0) {
       this.respawnT -= dt;
       if (this.respawnT <= 0) {
-        // The clock goes back to the top of the level with you.
-        this.levelMs = 0;
-        this.elapsedMs = this.baseMs;
-        if (this.speedrun) PL.Speedrun.elapsedMs = this.elapsedMs;
-        this.deathClockFlash = 1.6;
         p.respawn(world);
         // Put the level back the way it was found — a spent spirit-light or a
         // wall of steam that walked on while you were dead would otherwise

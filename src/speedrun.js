@@ -6,11 +6,11 @@
  * and writes the sum back every frame, which means restarting a level and
  * sitting in a Trial cost you exactly what they should.
  *
- * A death is the one thing that does NOT simply add time: it puts the current
- * level's clock back to zero, so it erases this attempt at this level and
- * leaves every banked split alone. The run clock therefore only ever moves
- * forward across levels. Deaths are paid for in grog instead — five a time,
- * and an empty purse ends the run.
+ * Nothing inside a run winds that clock back. Dying, respawning at a flag and
+ * restarting a level all leave it running — a restart simply hands the new
+ * scene the run clock as its base. The only two things that put it back to zero
+ * are finishing the run and starting a new one, and the only way out of a bad
+ * run is the purse: five grog a death, and an empty one ends it.
  *
  * Every level is in the run, including the Owe Block bonus — a speedrun route
  * that changed depending on your save state would not be comparable to anyone
@@ -80,14 +80,17 @@
     /** Called by PlayScene when a level's tankard is reached. */
     advance: function (scene) {
       var p = scene.player;
+      var prev = this.splits.length ? this.splits[this.splits.length - 1].totalMs : 0;
+
       this.elapsedMs = scene.elapsedMs;
       this.purse = p.grog;                 // carried into the next level
       this.grog += p.grogEarned;
       this.deaths += p.deaths;
       this.shards += p.shards.length;
-      // The scene keeps this attempt's clock separately, which is the number
-      // the split wants — a death resets it, and the banked splits do not move.
-      var levelMs = scene.levelMs;
+      // Measured off the run clock rather than the scene's own, so a level that
+      // was restarted still shows every second it actually cost — and the
+      // splits always add up to the total.
+      var levelMs = scene.elapsedMs - prev;
       this.splits.push({
         id: scene.def.id,
         name: scene.def.name,
