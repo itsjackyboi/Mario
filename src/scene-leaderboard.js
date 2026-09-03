@@ -20,6 +20,8 @@
     this.sel = 0;
   }
 
+  LeaderboardScene.prototype.enter = function () { PL.Theme.apply(null); };
+
   LeaderboardScene.prototype.update = function (dt) {
     this.t += dt;
     var In = PL.Input;

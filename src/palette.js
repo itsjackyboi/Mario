@@ -36,6 +36,11 @@
     lanternHi: '#ffe2a8',
     flame:     '#ff8b42',
 
+    // Hazards. Split from `coral` so a town can retint its spikes without
+    // touching the Red-Earth Shard, which must read the same everywhere.
+    hazard:     '#d4574e',
+    hazardDark: '#8c3630',
+
     // Accents
     coral:     '#d4574e',   // danger, red-earth shard
     coralDark: '#8c3630',

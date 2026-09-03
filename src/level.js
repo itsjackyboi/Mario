@@ -8,12 +8,19 @@
  *   town: 'shantytown',
  *   name: 'The Crash Cliffs',
  *   blurb: 'one line of flavour for the level-select screen',
- *   segments: [ seg, seg, ... ],   // each seg = array of equal-length strings,
- *                                  // one string per row, top row first.
- *                                  // Every segment must have the same row count.
+ *   height: 20,                 // rows per segment (default 20)
+ *   segWidth: 30,               // columns per segment (default 30)
+ *   segments: [ seg, seg, ... ],   // each seg = array of strings, one per row.
  *   quips: { '1': 'spoken line', ... },  // digits 1-9 place a one-liner trigger
  *   trial: 'plankPour'          // optional: trial gate glyph 'G' opens this
  * }
+ *
+ * Segments are BOTTOM-ALIGNED and RIGHT-PADDED: a segment with fewer than
+ * `height` rows gets empty sky added above it, and a row shorter than
+ * `segWidth` gets empty space added after it. Level content lives at the
+ * bottom of the frame, so this lets a segment be written as just the rows that
+ * actually contain something. A segment that is too tall, or a row that is too
+ * long, is an error — those are always mistakes, never intent.
  *
  * Terrain glyphs live in tiles.js (PL.Tiles.LEGEND). Every other glyph is an
  * entity marker listed in MARKERS below. Segments are concatenated left to
@@ -43,7 +50,34 @@
     'Z': 'tankard',
     'G': 'trialGate',
     'l': 'lantern',
-    'd': 'post'
+    'd': 'post',
+
+    // Aleforge
+    'k': 'kegChute',      // rolls a keg downhill at the player on a cycle
+    'g': 'windGust',      // Wolendi updraft column
+    'e': 'gearPlatform',  // clockwork platform on a circular track
+    'n': 'clockArm',      // sweeping clock hand, lethal
+
+    // Providence
+    'a': 'apostle',       // marches in strict time with the chime
+    'f': 'friar',         // fines you grog if you cross his sightline
+    'b': 'bell',          // chime tower (scenery + the visible beat)
+
+    // Owe Block
+    'm': 'cutter',        // Crimson Cutters (red)
+    'j': 'circus',        // Seaside Circus (blue)
+    'y': 'bandanaRed',
+    'v': 'bandanaBlue',
+    'Y': 'stankTank',     // safe-house checkpoint
+
+    // Fenwick
+    't': 'vine',          // living vine that extends and retracts
+    'i': 'spiritLight',   // reveals phantom footing for a while
+    'h': 'phantom',       // footing that only exists in spirit-light
+
+    // Roto Kaiishi
+    's': 'bobber',        // stilt platform that sinks under your weight
+    'u': 'stall'          // merchant stall (scenery / paid shortcut)
   };
 
   function World(def) {
@@ -66,6 +100,9 @@
     this.tankard = null;
     this.checkpoints = [];
     this.time = 0;
+    // Named world-wide countdowns, ticked once per frame by the play scene.
+    // Fenwick's spirit-light uses one; any town-wide timed effect can.
+    this.timers = {};
 
     var shardIndex = 0;
     for (var ty = 0; ty < this.rows; ty++) {
@@ -104,37 +141,66 @@
         var ent = PL.Entities.create(type, opts);
         this.add(ent);
         if (type === 'tankard') this.tankard = ent;
-        if (type === 'checkpoint') this.checkpoints.push(ent);
+        // Any entity that flags itself a checkpoint joins the respawn set, so a
+        // town can dress one as something other than a flag.
+        if (ent.isCheckpoint) this.checkpoints.push(ent);
       }
     }
     this.shardTotal = shardIndex;
   }
 
-  /** Concatenate segments horizontally, validating that everything lines up. */
+  function repeat(ch, n) {
+    var s = '';
+    while (s.length < n) s += ch;
+    return s;
+  }
+
+  /**
+   * Concatenate segments horizontally. Short segments gain empty sky on top;
+   * short rows gain empty space on the right. Anything oversized is an error.
+   */
   function flatten(def) {
     if (def.rows) return def.rows.slice();
     var segs = def.segments;
     if (!segs || !segs.length) throw new Error('Level ' + def.id + ' has no segments');
-    var nRows = segs[0].length;
+
+    var height = def.height || 20;
+    var segWidth = def.segWidth || 30;
     var out = [];
-    for (var r = 0; r < nRows; r++) out.push('');
+    for (var r = 0; r < height; r++) out.push('');
+
     for (var s = 0; s < segs.length; s++) {
       var seg = segs[s];
-      if (seg.length !== nRows) {
+      if (seg.length > height) {
         throw new Error('Level ' + def.id + ': segment ' + s + ' has ' + seg.length +
-                        ' rows, expected ' + nRows);
+                        ' rows, more than the level height of ' + height);
       }
-      var wSeg = seg[0].length;
-      for (var r2 = 0; r2 < nRows; r2++) {
-        if (seg[r2].length !== wSeg) {
-          throw new Error('Level ' + def.id + ': segment ' + s + ' row ' + r2 +
-                          ' is ' + seg[r2].length + ' chars, expected ' + wSeg);
+      var pad = height - seg.length;      // sky above; content is bottom-aligned
+      var blank = repeat('.', segWidth);
+      for (var r2 = 0; r2 < height; r2++) {
+        var row = r2 < pad ? blank : seg[r2 - pad];
+        if (row.length > segWidth) {
+          throw new Error('Level ' + def.id + ': segment ' + s + ' row ' + (r2 - pad) +
+                          ' is ' + row.length + ' chars, wider than segWidth ' + segWidth);
         }
-        out[r2] += seg[r2];
+        if (row.length < segWidth) row += repeat('.', segWidth - row.length);
+        out[r2] += row;
       }
     }
     return out;
   }
+
+  /** Start or restart a named world timer (seconds). */
+  World.prototype.setTimer = function (name, secs) { this.timers[name] = secs; };
+
+  /** Seconds left on a named world timer, or 0. */
+  World.prototype.timer = function (name) { return this.timers[name] || 0; };
+
+  World.prototype.tickTimers = function (dt) {
+    for (var k in this.timers) {
+      if (this.timers[k] > 0) this.timers[k] = Math.max(0, this.timers[k] - dt);
+    }
+  };
 
   World.prototype.add = function (e) {
     this.entities.push(e);

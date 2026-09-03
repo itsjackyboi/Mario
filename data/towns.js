@@ -1,11 +1,17 @@
-/* data/towns.js — the town registry the level-select screen reads.
+/* data/towns.js — the area registry the level-select screen reads.
  *
- * Adding a town later:
- *   1. Add an entry to `list` below (id, name, tagline, sealedNote).
- *   2. Create data/<town>/level-1.js etc. and call
- *      PL.Towns.addLevel('<town>', def) at the bottom of each file.
+ * Six areas, in the order the tryout is meant to be taken. Everything is
+ * selectable from the start except Owe Block, which is a *bonus branch* off
+ * Providence: it unlocks once Providence's final level has been cleared
+ * (documented in the README — the alternative rule, all Providence shards,
+ * would have let a player lock themselves out of the game's hardest level by
+ * missing a collectible, which is a worse deal).
+ *
+ * Adding an area later:
+ *   1. Add an entry to `list` below.
+ *   2. Create data/<area>/level-1.js calling PL.Towns.addLevel('<area>', def).
  *   3. Add the <script> tags to index.html.
- *   4. Optionally register a backdrop: PL.Backdrops.register('<town>', fn).
+ *   4. Register a theme (src/themes.js) and a backdrop (src/town-<area>.js).
  * Nothing in src/ needs to change.
  */
 (function (PL) {
@@ -24,36 +30,31 @@
       {
         id: 'aleforge',
         name: 'Aleforge',
-        tagline: 'Brewing capital. The real Trials.',
-        sealedNote: 'The Gilded Tankard is not taking newcomers yet.',
+        tagline: 'Brick, copper and steam. The real Trials.',
         levels: []
       },
       {
         id: 'providence',
         name: 'Providence',
-        tagline: 'Order, tonic, prayer. Joyless.',
-        sealedNote: 'The Apostles have not opened the lake port.',
-        levels: []
-      },
-      {
-        id: 'roto',
-        name: 'Roto Kaiishi',
-        tagline: 'Trade hub. Everything has a price.',
-        sealedNote: 'No berth booked. No coin to book one.',
+        tagline: 'Order, tonic, prayer. All on the beat.',
         levels: []
       },
       {
         id: 'fenwick',
         name: 'Fenwick',
         tagline: 'Mud magic and moss monks.',
-        sealedNote: 'The woods have not agreed to let you in.',
         levels: []
       },
       {
-        id: 'oweblock',
-        name: 'Owe Block',
-        tagline: 'Debt, gangs, and cheap rum.',
-        sealedNote: 'Your name is not on anybody\'s ledger yet.',
+        id: 'roto',
+        name: 'Roto Kaiishi',
+        tagline: 'A market on stilts. Everything has a price.',
+        levels: []
+      },
+      {
+        id: 'tavern',
+        name: "Sackbeard's Tavern",
+        tagline: 'Inside the beast. Where all of it ends.',
         levels: []
       }
     ],
@@ -86,6 +87,18 @@
       return n;
     },
 
+    /** Every level in every area, in play order. */
+    allLevels: function () {
+      var out = [];
+      for (var i = 0; i < this.list.length; i++) {
+        var town = this.list[i];
+        for (var l = 0; l < town.levels.length; l++) {
+          out.push({ town: town, def: town.levels[l], index: l });
+        }
+      }
+      return out;
+    },
+
     indexOf: function (townId, levelId) {
       var t = this.get(townId);
       if (!t) return -1;
@@ -104,13 +117,34 @@
       };
     },
 
-    /** The level after this one, or null if it is the last built level. */
+    /** A bonus level stays shut until its prerequisite level is cleared. */
+    isUnlocked: function (def) {
+      if (!def.bonus || !def.unlockAfter) return true;
+      return PL.Store.cleared(def.unlockAfterTown || def.town, def.unlockAfter);
+    },
+
+    unlockNote: function (def) {
+      if (this.isUnlocked(def)) return '';
+      return def.unlockNote || 'Clear this town first.';
+    },
+
+    /**
+     * The level to offer next. Rolls over into the following area at the end
+     * of a town, and skips a bonus level that has not been unlocked.
+     */
     nextLevel: function (townId, levelId) {
-      var t = this.get(townId);
-      var i = this.indexOf(townId, levelId);
-      if (!t || i < 0 || i + 1 >= t.levels.length) return null;
-      var def = t.levels[i + 1];
-      return { def: def, meta: this.metaFor(townId, def.id) };
+      var flat = this.allLevels();
+      var at = -1;
+      for (var i = 0; i < flat.length; i++) {
+        if (flat[i].town.id === townId && flat[i].def.id === levelId) { at = i; break; }
+      }
+      if (at < 0) return null;
+      for (var j = at + 1; j < flat.length; j++) {
+        var row = flat[j];
+        if (!this.isUnlocked(row.def)) continue;
+        return { def: row.def, meta: this.metaFor(row.town.id, row.def.id) };
+      }
+      return null;
     }
   });
 

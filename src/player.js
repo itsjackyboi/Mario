@@ -39,6 +39,7 @@
     this.shards = [];
     this.pouch = 0;         // Wolendi Wind Pouches held (extra mid-air jump)
     this.seeds = 0;         // Veilwalker Seeds held
+    this.bandana = null;    // Owe Block: 'red' | 'blue' — who lets you pass
     this.deaths = 0;
 
     this.urn = 0;           // Hollow Urn timer

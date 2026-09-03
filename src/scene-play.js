@@ -18,6 +18,9 @@
 
   PlayScene.prototype.enter = function () {
     var self = this;
+    // Swap the live palette and tile styles to this town's before anything is
+    // built or drawn. Menus reset it back to base.
+    PL.Theme.apply(this.def.theme || this.def.town);
     var world = (this.world = PL.Level.build(this.def));
     world.fx = new PL.Fx();
     world.camera = this.camera = new PL.Camera(world.w, world.h);
@@ -61,6 +64,7 @@
   PlayScene.prototype.update = function (dt) {
     var world = this.world, p = this.player;
     world.time += dt;
+    world.tickTimers(dt);
     this.fadeIn = Math.max(0, this.fadeIn - dt * 1.6);
     if (this.introT > 0) this.introT -= dt;
     if (this.checkpointFlash > 0) this.checkpointFlash -= dt;
@@ -204,7 +208,12 @@
     PL.Store.collectShards(this.def.town, p.shards);
     PL.Store.completeLevel(this.def.town, this.def.id, p.grog);
     var result = PL.Store.recordRun(this.def.town, this.def.id, run);
-    PL.Game.replace(new PL.CompleteScene(this.def, this.meta, run, result));
+    // The capstone level finishes the whole tryout rather than the town.
+    if (this.def.ending) {
+      PL.Game.replace(new PL.EndingScene(this.def, this.meta, run, result));
+    } else {
+      PL.Game.replace(new PL.CompleteScene(this.def, this.meta, run, result));
+    }
   };
 
   // -------------------------------------------------------------------- draw

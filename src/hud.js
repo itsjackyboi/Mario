@@ -53,6 +53,23 @@
       slotX -= 38;
       this.slot(ctx, slotX, 6, 'pouch', p.pouch, '↑↑');
 
+      // ---- worn colours (Owe Block) ---------------------------------------
+      if (p.bandana) {
+        var gang = PL.Gangs[p.bandana];
+        slotX -= 96;
+        chip(ctx, slotX, 6, 92, 24);
+        ctx.fillStyle = gang.flag;
+        ctx.beginPath();
+        ctx.moveTo(slotX + 6, 12);
+        ctx.lineTo(slotX + 24, 12);
+        ctx.lineTo(slotX + 15, 25);
+        ctx.closePath();
+        ctx.fill();
+        PL.gfx.text(ctx, gang.name.split(' ')[0], slotX + 88, 22, {
+          font: PL.FONT.tiny, align: 'right', color: gang.flag
+        });
+      }
+
       // ---- active powerups ------------------------------------------------
       // Sits below the item slots so it never collides with their key hints.
       var barY = 48;

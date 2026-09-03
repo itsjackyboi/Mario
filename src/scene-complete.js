@@ -22,6 +22,9 @@
     this.options.push({ label: 'Level select', act: 'select' });
   }
 
+  // Keep the town's palette through the results card so the hand-off reads.
+  CompleteScene.prototype.enter = function () { PL.Theme.apply(this.def.theme || this.def.town); };
+
   CompleteScene.prototype.update = function (dt) {
     this.t += dt;
     var In = PL.Input;

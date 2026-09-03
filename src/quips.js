@@ -43,7 +43,46 @@
       // --- the six of them together -----------------------------------------
       six1: "Six kings for one crown. That's not a dynasty, that's a bar tab nobody wants to settle.",
       six2: "Ode to the Six. Six verses, six men, and not one of 'em could row a dinghy straight.",
-      six3: "Six kings, and every one of 'em crowned for drinking. I'm about to be crowned for climbing."
+      six3: "Six kings, and every one of 'em crowned for drinking. I'm about to be crowned for climbing.",
+
+      // --- Aleforge ---------------------------------------------------------
+      af1: "Brewing capital of the isles, and they crowned a man King of Kegs who can't keep hold of his own.",
+      af2: "Bonehardy's the mayor here. Sits in taverns, not town hall. Frankly the job picked the right man.",
+      af3: "The Drunken Trials. Fifty-one years shut, and the first winner was so gone he missed his own coronation.",
+      af4: "Anqoak reads the future out of a library in Hoegaarden. Never once read the room.",
+      af5: "Jagerbauhm got his taste off a fake ClockHeart Tonic at sixteen. Whole legend, built on a bad batch.",
+      af6: "They built a clock tower so nobody in Aleforge would ever have an excuse. Nobody uses it.",
+
+      // --- Providence -------------------------------------------------------
+      pv1: "Whole town runs on a bell. Anqoak came here to get clever and left without a soul. Bad trade.",
+      pv2: "Jagerbauhm grew up in these spires pretending to be sober. That's the most impressive thing about him.",
+      pv3: "Order, they call it. Jameson Pilsner would last one chime in this place before somebody fined his hat.",
+      pv4: "Cardinal born to a Shanty mother, running the tidiest town in the isles. Best joke anyone ever told.",
+      pv5: "Six kings couldn't agree on a crown. This lot can't disagree on a bell. Neither's a way to live.",
+
+      // --- Owe Block --------------------------------------------------------
+      ob1: "Crimson Cutters. Bonehardy, Anqoak and Jagerbauhm ran with this lot and got flattened by a circus.",
+      ob2: "Buke was raised in a whiskey barrel and it still gave him more upbringing than this street gives anyone.",
+      ob3: "Two colours, one alley, and nobody's king of either. Feels more honest than a crown, if I'm straight.",
+      ob4: "Anqoak rapped his way out of trouble down here. Rapped. I'd rather take the beating.",
+
+      // --- Fenwick ----------------------------------------------------------
+      fw1: "Veilwalkers live ten lifetimes to our one and not one of 'em wasted a single hour being a Liquor King.",
+      fw2: "Guinnie turned on his own captain near these woods. Only decent thing in his file, and he keeps it quiet.",
+      fw3: "Six kings, and none of 'em ever set foot in here. Woods don't care what you're crowned.",
+
+      // --- Roto Kaiishi -----------------------------------------------------
+      rt1: "Anqoak runs his whole fortune through this market. Aggressive mercantilism, he calls it. Fencing, we call it.",
+      rt2: "Pilsner claims the Coors Golden Isles export nothing. Convenient, for a place nobody's found.",
+      rt3: "Bonehardy took a chest of gold off a man he'd just maimed. Round here they'd call that a receipt.",
+      rt4: "Everything's for sale in Roto. Six crowns included, and I reckon they'd go cheap.",
+
+      // --- Sackbeard's Tavern -----------------------------------------------
+      tv1: "Sackbeard killed the thing we're standing in and built a bar out of it. That's a legend. That's the bar.",
+      tv2: "Gideon Drake sailed in mutinied and half-dead and still out-mayored the lot of them. Low bar. Big beast.",
+      tv3: "Six kings drank under these ribs and not one of 'em had to climb here first.",
+      tv4: "Old Salty says the new pirates are looking for the wrong sort of booty. Old Salty is right about everything.",
+      tv5: "Nobody knows my name yet. After this cup, somebody's going to have to write it down."
     },
 
     /** Resolve '@key' references; anything else is used verbatim. */

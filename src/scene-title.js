@@ -17,6 +17,8 @@
     }
   }
 
+  TitleScene.prototype.enter = function () { PL.Theme.apply(null); };
+
   TitleScene.prototype.update = function (dt) {
     this.t += dt;
     if (this.confirmWipe > 0) this.confirmWipe -= dt;

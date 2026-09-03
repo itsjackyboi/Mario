@@ -90,6 +90,12 @@
         case 'quip':     this.tone(260, 0.06, 'triangle', 0.18); break;
         case 'trialHit': this.tone(660, 0.09, 'square', 0.3, 900); break;
         case 'trialMiss':this.tone(180, 0.22, 'sawtooth', 0.3, 90); break;
+        case 'chime':    this.tone(1046, 0.55, 'sine', 0.22); this.tone(1568, 0.4, 'sine', 0.1); break;
+        case 'chimeLow': this.tone(523, 0.6, 'sine', 0.24); this.tone(784, 0.45, 'sine', 0.1); break;
+        case 'fine':     this.tone(660, 0.09, 'square', 0.25, 300); setTimeout(function(){A.tone(440,0.16,'square',0.22,180);},80); break;
+        case 'spirit':   this.tone(1320, 0.3, 'sine', 0.22, 1980); break;
+        case 'creak':    this.tone(120, 0.32, 'sawtooth', 0.18, 70); break;
+        case 'gust':     this.noise(0.5, 0.2, 420, 0.4); break;
         case 'trialWin': this.tone(523,0.1,'square',0.3); setTimeout(function(){A.tone(659,0.1,'square',0.3);},90);
                          setTimeout(function(){A.tone(784,0.1,'square',0.3);},180);
                          setTimeout(function(){A.tone(1047,0.3,'square',0.3);},270); break;

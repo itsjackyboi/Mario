@@ -13,7 +13,10 @@
   PL.Backdrops = {
     register: function (town, factory) { registry[town] = factory; },
     create: function (world) {
-      var f = registry[world.town] || registry['shantytown'];
+      // A level may name a theme of its own (Owe Block sits inside Providence
+      // but looks nothing like it).
+      var key = (world.def && world.def.theme) || world.town;
+      var f = registry[key] || registry['shantytown'];
       return f(world);
     }
   };

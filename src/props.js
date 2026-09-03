@@ -196,6 +196,7 @@
     this.x = opts.x + 3;
     // The marker tile is the flag's *base*; the pole rises two tiles from it.
     this.y = opts.y + T - this.h;
+    this.isCheckpoint = true;
     this.lit = false;
     this.pop = 0;
     this.cull = false;
@@ -268,7 +269,10 @@
    * into a giant tankard of beer. Touch it and the run stops. */
   function Tankard(opts) {
     E.call(this, opts);
-    this.w = T * 3; this.h = T * 4;
+    // `tankardScale` on the level def makes the capstone's cup outsize.
+    var k = (opts.def && opts.def.tankardScale) || 1;
+    this.w = Math.round(T * 3 * k);
+    this.h = Math.round(T * 4 * k);
     this.x = opts.x;
     this.y = opts.y + T - this.h;
     this.cull = false;
@@ -286,8 +290,14 @@
   };
 
   Tankard.prototype.draw = function (ctx, cam) {
-    var x = Math.round(this.x - cam.ox()), y = Math.round(this.y - cam.oy());
-    var w = this.w, h = this.h;
+    // Drawn at the base 96x128 size inside a scale transform, so the capstone
+    // level's outsize cup is the same artwork, just bigger.
+    var k = this.w / (T * 3);
+    ctx.save();
+    ctx.translate(Math.round(this.x - cam.ox()), Math.round(this.y - cam.oy()));
+    ctx.scale(k, k);
+    var x = 0, y = 0;
+    var w = T * 3, h = T * 4;
     var bodyY = y + 18;
     var bodyH = h - 18;
 
@@ -346,6 +356,7 @@
 
     // rim
     PL.gfx.rect(ctx, x - 3, y + 18, w + 6, 5, '#c9bfae');
+    ctx.restore();
   };
 
   // ------------------------------------------------------------- trial gate

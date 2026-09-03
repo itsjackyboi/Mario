@@ -150,7 +150,47 @@
       return this.townProgress(townId).completed.indexOf(levelId) !== -1;
     },
 
-    clearProgress: function () { write(PR_KEY, { version: VERSION, towns: {} }); }
+    clearProgress: function () { write(PR_KEY, { version: VERSION, towns: {} }); },
+
+    // ------------------------------------------------------------ aggregates
+
+    /**
+     * Totals across every registered level, for the finale's ending screen.
+     * `totalBestMs` sums each level's best time; levels never cleared count as
+     * missing rather than zero, so a partial run reads honestly.
+     */
+    grandTotals: function () {
+      var towns = (PL.Towns && PL.Towns.list) || [];
+      var out = {
+        levels: 0, cleared: 0, totalBestMs: 0, missing: 0,
+        grog: 0, shards: 0, shardTotal: 0, deaths: 0
+      };
+      for (var t = 0; t < towns.length; t++) {
+        var town = towns[t];
+        var prog = this.townProgress(town.id);
+        out.grog += prog.purse;
+        out.shards += prog.shards.length;
+        for (var l = 0; l < town.levels.length; l++) {
+          var def = town.levels[l];
+          out.levels++;
+          out.shardTotal += PL.Towns.shardCount(def);
+          var best = this.bestFor(town.id, def.id);
+          if (best) {
+            out.cleared++;
+            out.totalBestMs += best.timeMs;
+            out.deaths += best.deaths || 0;
+          } else {
+            out.missing++;
+          }
+        }
+      }
+      return out;
+    },
+
+    /** True once the named level has been cleared at least once. */
+    cleared: function (townId, levelId) {
+      return !!this.bestFor(townId, levelId);
+    }
   });
 
 })(window.PL = window.PL || {});
