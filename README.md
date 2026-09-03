@@ -1,6 +1,6 @@
 # Pintland Isles: The Drunken Trials Tryout
 
-A 2D side-scrolling platformer across the Pintland Isles. You play an unnamed, unproven
+A 2D side-scrolling platformer across the Pintland Isles. You play **Corb**, an unproven
 pirate who rowed in for the Drunken Trials with no crew, no legend and no reputation — and
 a great deal to say about the six Liquor Kings who already have all three.
 
@@ -29,6 +29,19 @@ Nothing is fetched at runtime, so it works offline.
 | Restart level | `R` |
 | Mute | `M` |
 | Menus | `↑` `↓` `←` `→`, `Enter` to confirm, `Esc` to back out |
+
+## Two ways to play
+
+The title screen offers both:
+
+- **Row ashore** — the normal game. Pick an area and a level; each level is timed on its
+  own and logged to that level's top ten.
+- **Drunken speedrun** — every level in the isles back to back on **one unbroken clock**,
+  with no results card between them. Dying, respawning, restarting a level and sitting in
+  a Trial all cost you real time. It runs all sixteen levels including the Owe Block bonus,
+  ignoring the usual unlock, because a route that changed with your save state would not be
+  comparable. Whole-game times get their own leaderboard entry, separate from the per-level
+  boards, and splits are shown at the end.
 
 ## The levels
 
@@ -109,6 +122,15 @@ joining it. Bandanas are not consumed: you can go back and switch sides.
 
 ## Design decisions worth knowing
 
+**Releasing the keys stops Corb dead.** On the ground there is no friction slide at all —
+the old deceleration carried you off ledges after you had already let go, which reads as the
+game killing you rather than you missing. Air momentum is deliberately untouched: killing
+that too would make every jump uncontrollable. (`src/player.js`)
+
+**Corb's one-liners live in a fixed caption box.** Bottom-left, out of the play area, with
+his face on it — a speech bubble over the action was covering the jumps. The box grows to
+fit its line and drops a type size before it would ever need a fourth row. (`src/quips.js`)
+
 **Grog is per level.** The counter resets at level start and is *kept* through deaths and
 checkpoint respawns, so a run's grog total is a clean, comparable leaderboard stat. On
 completion it is banked into a persistent per-area purse. (`src/items.js`)
@@ -168,6 +190,7 @@ src/
   scene-play.js                the level runner (+ pause overlay)
   scene-complete.js            level-complete card + shared leaderboard table
   scene-ending.js              the finale's whole-tryout summary
+  speedrun.js                  Drunken Speedrun run state + its results card
 
 data/
   towns.js                     the area registry and unlock rules
@@ -358,9 +381,18 @@ new areas are simply new keys under `towns`.
 
 `runs` keeps the ten fastest per level, sorted ascending. Shards are stored as
 `"<levelId>:<index>"`. Owe Block banks into `providence` (it is a Providence sublevel) while
-being themed separately. `PL.Store.grandTotals()` rolls everything up for the ending screen
-and the level-select header. **Wipe local records** on the title screen clears both keys. If
-`localStorage` is unavailable the game says so on the title screen and stays fully playable.
+being themed separately. Whole-game speedruns use a synthetic area/level pair —
+`towns._speedrun.levels['full-game']` — which needed no schema change and keeps run times
+out of the per-level boards. `PL.Store.grandTotals()` rolls the per-level records up for the
+ending screen and the level-select header.
+
+If `localStorage` is unavailable the game says so on the title screen and stays fully
+playable — scores just aren't kept. There is no in-game wipe; clearing site data for the
+page removes both keys.
+
+The records view lists all sixteen levels plus the speedrun in one scrolling panel: only a
+window of rows is drawn and it follows the selection, with a scrollbar and a position
+counter.
 
 ## Credits and canon
 

@@ -1,11 +1,15 @@
-/* quips.js — the mouth on our unproven pirate.
+/* quips.js — the mouth on Corb, our unproven pirate.
  *
  * Levels place trigger zones with the digits 1-9 (see level.js) next to the
  * thing being mocked: a shrine, a moored ship, a tavern door, a memorial.
  * Walking into the zone fires the line once. Nothing fires at random.
  *
- * LINES is a shared pool so future towns can reuse or extend the material —
- * level files may hold literal text or a `@key` reference into this table.
+ * The line shows in a fixed caption box in the bottom-left corner rather than
+ * a speech bubble over the action — Corb talks a lot, and the middle of the
+ * screen is where the jumps are.
+ *
+ * LINES is a shared pool so towns can reuse or extend the material — level
+ * files may hold literal text or a `@key` reference into this table.
  */
 (function (PL) {
   'use strict';
@@ -82,7 +86,7 @@
       tv2: "Gideon Drake sailed in mutinied and half-dead and still out-mayored the lot of them. Low bar. Big beast.",
       tv3: "Six kings drank under these ribs and not one of 'em had to climb here first.",
       tv4: "Old Salty says the new pirates are looking for the wrong sort of booty. Old Salty is right about everything.",
-      tv5: "Nobody knows my name yet. After this cup, somebody's going to have to write it down."
+      tv5: "Nobody in the eleven seas has had to say the name Corb out loud. After this cup, somebody writes it down."
     },
 
     /** Resolve '@key' references; anything else is used verbatim. */
@@ -99,6 +103,7 @@
   function QuipBox() {
     this.text = '';
     this.timer = 0;
+    this.full = 1;
     this.queue = [];
     this.anchor = null;
   }
@@ -111,7 +116,7 @@
     }
     this.text = text;
     this.anchor = anchor;
-    this.timer = 2.0 + Math.min(3.4, text.length * 0.035);
+    this.timer = this.full = 2.2 + Math.min(3.6, text.length * 0.04);
     PL.Audio.sfx('quip');
   };
 
@@ -122,59 +127,65 @@
         var next = this.queue.shift();
         this.text = next.text;
         this.anchor = next.anchor;
-        this.timer = 2.0 + Math.min(3.4, next.text.length * 0.035);
+        this.timer = this.full = 2.2 + Math.min(3.6, next.text.length * 0.04);
         PL.Audio.sfx('quip');
       }
     }
   };
 
-  QuipBox.prototype.draw = function (ctx, cam) {
+  /* Fixed caption box, bottom-left. Never moves, never covers the player.
+   * Height grows with the line count and the type drops a size before it would
+   * ever need a fourth line, so nothing overlaps and nothing gets clipped. */
+  var BOX_W = 420, TEXT_X = 74, LINE_H = 13;
+
+  QuipBox.prototype.draw = function (ctx) {
     if (this.timer <= 0 || !this.text) return;
-    var a = this.anchor;
-    var ax = a ? a.cx() - cam.ox() : PL.VIEW_W / 2;
-    var ay = a ? a.y - cam.oy() : PL.VIEW_H / 2;
+
+    ctx.font = PL.FONT.body;
+    var font = PL.FONT.body;
+    var lines = U.wrapText(ctx, this.text, BOX_W - TEXT_X - 12);
+    if (lines.length > 2) {
+      ctx.font = font = PL.FONT.small;
+      lines = U.wrapText(ctx, this.text, BOX_W - TEXT_X - 12);
+    }
+    var h = Math.max(42, 16 + lines.length * LINE_H + 8);
+    var x = 8, y = PL.VIEW_H - h - 8;
+    var fade = Math.min(1, this.timer / 0.3, (this.full - this.timer) / 0.18);
 
     ctx.save();
-    ctx.font = PL.FONT.body;
-    var maxW = 236;
-    var lines = U.wrapText(ctx, this.text, maxW);
-    var lh = 14;
-    var w = 0;
-    for (var i = 0; i < lines.length; i++) w = Math.max(w, ctx.measureText(lines[i]).width);
-    w = Math.min(maxW, w) + 18;
-    var h = lines.length * lh + 14;
-
-    var bx = U.clamp(ax - w / 2, 6, PL.VIEW_W - w - 6);
-    var by = ay - h - 16;
-    var flip = false;
-    if (by < 34) { by = ay + 40; flip = true; }
-
-    var fade = Math.min(1, this.timer / 0.35);
-    ctx.globalAlpha = fade;
-
-    // weathered parchment scrap nailed to the air
-    PL.gfx.panel(ctx, bx, by, w, h, {
-      fill: 'rgba(242,227,196,0.95)', stroke: 'rgba(90,68,54,0.9)', r: 3, alpha: 1
+    ctx.globalAlpha = Math.max(0, fade);
+    PL.gfx.panel(ctx, x, y, BOX_W, h, {
+      r: 4, fill: 'rgba(18,12,17,0.9)', stroke: 'rgba(156,124,82,0.8)', alpha: 1
     });
-    // tail
-    ctx.fillStyle = 'rgba(242,227,196,0.95)';
-    ctx.beginPath();
-    var tx = U.clamp(ax, bx + 12, bx + w - 12);
-    if (flip) {
-      ctx.moveTo(tx - 6, by + 1); ctx.lineTo(tx + 6, by + 1); ctx.lineTo(tx, by - 9);
-    } else {
-      ctx.moveTo(tx - 6, by + h - 1); ctx.lineTo(tx + 6, by + h - 1); ctx.lineTo(tx, by + h + 9);
-    }
-    ctx.closePath();
-    ctx.fill();
 
-    for (var j = 0; j < lines.length; j++) {
-      PL.gfx.text(ctx, lines[j], bx + 9, by + 17 + j * lh, {
-        font: PL.FONT.body, color: '#3a2a20', shadow: false
+    // Corb, in miniature, so it is obvious who is talking
+    drawCorbHead(ctx, x + 9, y + (h - 22) / 2);
+    PL.gfx.text(ctx, 'CORB', x + 38, y + h / 2 + 3, {
+      font: PL.FONT.tiny, color: C.lantern
+    });
+
+    var top = y + (h - lines.length * LINE_H) / 2 + 10;
+    for (var i = 0; i < lines.length; i++) {
+      PL.gfx.text(ctx, lines[i], x + TEXT_X, top + i * LINE_H, {
+        font: font, color: C.parchment
       });
     }
     ctx.restore();
   };
+
+  function drawCorbHead(ctx, x, y) {
+    PL.gfx.rect(ctx, x + 2, y + 4, 18, 14, '#d9a173');
+    ctx.fillStyle = '#b07f55';
+    ctx.fillRect(x + 2, y + 14, 18, 3);
+    ctx.fillStyle = PL.C.ink;
+    ctx.fillRect(x + 13, y + 8, 3, 3);
+    ctx.fillStyle = '#40312a';
+    ctx.beginPath();
+    ctx.moveTo(x - 2, y + 5); ctx.lineTo(x + 24, y + 5);
+    ctx.lineTo(x + 19, y - 1); ctx.lineTo(x + 3, y - 1);
+    ctx.closePath(); ctx.fill();
+    PL.gfx.rect(ctx, x + 1, y + 3, 20, 3, '#5a4436');
+  }
 
   PL.QuipBox = QuipBox;
 

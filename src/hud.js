@@ -47,6 +47,17 @@
         color: scene.finished ? C.lanternHi : C.parchment
       });
 
+      // ---- speedrun readout, under the clock ------------------------------
+      if (scene.speedrun) {
+        var sr = PL.Speedrun;
+        PL.gfx.text(ctx,
+          'RUN ' + (scene.meta.runIndex + 1) + ' / ' + scene.meta.runCount +
+          '  ·  ' + (sr.grog + p.grog) + ' grog',
+          W / 2, 42, {
+            font: PL.FONT.tiny, align: 'center', color: C.lantern
+          });
+      }
+
       // ---- carried items (top-right) --------------------------------------
       var slotX = W - 6 - 34;
       this.slot(ctx, slotX, 6, 'seed', p.seeds, 'E');

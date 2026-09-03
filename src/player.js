@@ -1,8 +1,10 @@
 /* player.js — the unproven pirate.
  *
- * Movement is classic momentum platforming: acceleration + friction, variable
- * jump height on button release, coyote time and a jump buffer, and one-way
- * platforms you can drop through with Down + Jump.
+ * Movement is momentum platforming with one deliberate exception: on the
+ * ground, releasing the direction keys stops Corb dead. Acceleration, variable
+ * jump height, coyote time, a jump buffer and drop-through platforms all
+ * behave normally. Air momentum is untouched — killing that too would make
+ * every jump uncontrollable.
  *
  * DAMAGE MODEL (documented choice):
  *   - Enemy or spike contact with grog in the purse: you keep your life, a few
@@ -19,7 +21,6 @@
 
   var GRAV = 0.62, MAXFALL = 12.5;
   var ACCEL_G = 0.78, ACCEL_A = 0.5;
-  var FRICTION = 0.80;
   var MAXRUN = 4.3;
   var JUMP_V = -11.4;
   var JUMP_CUT = 0.42;
@@ -118,8 +119,10 @@
       var a = (U.sign(this.vx) !== 0 && U.sign(this.vx) !== dir) ? accel * 1.9 : accel;
       this.vx = U.approach(this.vx, maxRun * dir, a);
     } else if (this.grounded) {
-      this.vx *= FRICTION;
-      if (Math.abs(this.vx) < 0.08) this.vx = 0;
+      // Hands off the keys means stop, on the spot. The old friction slide
+      // carried you off ledges after you had already let go, which read as the
+      // game killing you rather than you missing.
+      this.vx = 0;
     } else {
       this.vx *= 0.985;
     }

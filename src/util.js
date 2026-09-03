@@ -82,6 +82,15 @@
     return 'rgb(' + r + ',' + g + ',' + bl + ')';
   };
 
+  /** Shorten `text` with an ellipsis until it measures under `maxW`. */
+  U.fit = function (ctx, text, font, maxW) {
+    ctx.font = font;
+    if (ctx.measureText(text).width <= maxW) return text;
+    var s = String(text);
+    while (s.length > 1 && ctx.measureText(s + '…').width > maxW) s = s.slice(0, -1);
+    return s + '…';
+  };
+
   U.pick = function (arr, rand) {
     return arr[Math.floor((rand || Math.random)() * arr.length) % arr.length];
   };

@@ -8,8 +8,11 @@
     this.opaque = true;
     this.t = 0;
     this.sel = 0;
-    this.options = ['Row ashore', 'Leaderboards', 'Wipe local records'];
-    this.confirmWipe = 0;
+    this.options = [
+      { label: 'Row ashore', hint: 'Pick a town and a level. Times logged per level.' },
+      { label: 'Drunken speedrun', hint: 'Every level back to back on one unbroken clock.' },
+      { label: 'Leaderboards', hint: "This browser's records, per level and whole-game." }
+    ];
     this.stars = [];
     var rnd = U.rng(77);
     for (var i = 0; i < 60; i++) {
@@ -21,28 +24,15 @@
 
   TitleScene.prototype.update = function (dt) {
     this.t += dt;
-    if (this.confirmWipe > 0) this.confirmWipe -= dt;
     var In = PL.Input;
     if (In.pressed('up')) { this.sel = (this.sel + this.options.length - 1) % this.options.length; PL.Audio.sfx('menu'); }
     if (In.pressed('down')) { this.sel = (this.sel + 1) % this.options.length; PL.Audio.sfx('menu'); }
     if (In.pressed('confirm') || In.pressed('jump')) {
       PL.Audio.sfx('select');
-      if (this.sel === 0) {
-        PL.Game.replace(new PL.LevelSelectScene('shantytown'));
-      } else if (this.sel === 1) {
-        PL.Game.push(new PL.LeaderboardScene());
-      } else {
-        if (this.confirmWipe > 0) {
-          PL.Store.clearBoard();
-          PL.Store.clearProgress();
-          this.confirmWipe = 0;
-          this.wiped = 1.8;
-        } else {
-          this.confirmWipe = 3.0;
-        }
-      }
+      if (this.sel === 0) PL.Game.replace(new PL.LevelSelectScene('shantytown'));
+      else if (this.sel === 1) PL.Speedrun.start();
+      else PL.Game.push(new PL.LeaderboardScene());
     }
-    if (this.wiped > 0) this.wiped -= dt;
   };
 
   TitleScene.prototype.draw = function (ctx) {
@@ -97,7 +87,7 @@
     }
 
     // the tankard, front and centre, because that is where every level ends
-    var tw = 88, th = 106, tx = W / 2 - tw / 2, ty = 112;
+    var tw = 84, th = 98, tx = W / 2 - tw / 2, ty = 106;
     ctx.save();
     ctx.translate(0, Math.sin(t * 1.2) * 2);
     PL.gfx.glow(ctx, W / 2, ty + th * 0.6, 130, 'rgba(255,179,71,0.4)', 0.55);
@@ -123,7 +113,7 @@
     ctx.restore();
 
     // our nobody, mid-leap
-    var px = W / 2 - 132, py = 160 + Math.sin(t * 2.4) * 6;
+    var px = W / 2 - 128, py = 150 + Math.sin(t * 2.4) * 6;
     ctx.save();
     ctx.translate(px, py);
     ctx.rotate(-0.12);
@@ -156,28 +146,33 @@
       font: 'bold 17px "Trebuchet MS", "Segoe UI", sans-serif',
       align: 'center', color: C.lantern
     });
-    PL.gfx.text(ctx, 'No crew. No legend. No reputation. Just a long climb and a full cup.',
+    PL.gfx.text(ctx, 'You are Corb. No crew, no legend, no reputation — just a long climb and a full cup.',
       W / 2, 96, { font: PL.FONT.small, align: 'center', color: 'rgba(242,227,196,0.65)' });
 
     // ---- menu ------------------------------------------------------------
     for (var m = 0; m < this.options.length; m++) {
-      var my = 244 + m * 23;
+      var my = 240 + m * 23;
       var on = m === this.sel;
-      var label = this.options[m];
-      if (m === 2 && this.confirmWipe > 0) label = 'Wipe local records — press again';
-      if (m === 2 && this.wiped > 0) label = 'Records wiped';
       if (on) {
-        PL.gfx.rect(ctx, W / 2 - 120, my - 14, 240, 22, 'rgba(255,179,71,0.16)');
-        PL.gfx.text(ctx, '>', W / 2 - 112, my, { font: PL.FONT.hud, color: C.lantern });
+        PL.gfx.rect(ctx, W / 2 - 130, my - 14, 260, 22, 'rgba(255,179,71,0.16)');
+        PL.gfx.text(ctx, '>', W / 2 - 122, my, { font: PL.FONT.hud, color: C.lantern });
       }
-      PL.gfx.text(ctx, label, W / 2, my, {
+      PL.gfx.text(ctx, this.options[m].label, W / 2, my, {
         font: PL.FONT.hud, align: 'center',
         color: on ? C.parchment : 'rgba(242,227,196,0.55)'
       });
     }
+    // one line explaining whatever is highlighted, best time folded in
+    var hint = this.options[this.sel].hint;
+    var srBest = this.sel === 1 ? PL.Speedrun.best() : null;
+    if (srBest) hint += '   Best: ' + U.formatTime(srBest.timeMs);
+    PL.gfx.text(ctx, hint, W / 2, 304, {
+      font: PL.FONT.tiny, align: 'center',
+      color: srBest ? 'rgba(255,226,168,0.8)' : 'rgba(242,227,196,0.6)'
+    });
 
     // ---- controls --------------------------------------------------------
-    PL.gfx.panel(ctx, 20, 314, W - 40, 40, { r: 5, alpha: 0.9 });
+    PL.gfx.panel(ctx, 20, 312, W - 40, 42, { r: 5, alpha: 0.9 });
     var cols = [
       ['MOVE', '← →  A D'],
       ['JUMP', 'SPACE / Z'],
@@ -187,11 +182,9 @@
     ];
     for (var c = 0; c < cols.length; c++) {
       var cx = 32 + c * ((W - 64) / cols.length);
-      PL.gfx.text(ctx, cols[c][0], cx, 330, { font: PL.FONT.tiny, color: C.lantern });
+      PL.gfx.text(ctx, cols[c][0], cx, 329, { font: PL.FONT.tiny, color: C.lantern });
       PL.gfx.text(ctx, cols[c][1], cx, 345, { font: PL.FONT.small, color: 'rgba(242,227,196,0.8)' });
     }
-    PL.gfx.text(ctx, 'Hold JUMP for height. A Wolendi Wind Pouch buys one more jump in the air.',
-      W / 2, 308, { font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.5)' });
     if (!PL.Store.available) {
       PL.gfx.text(ctx, 'localStorage unavailable — records will not be saved', W / 2, 232, {
         font: PL.FONT.tiny, align: 'center', color: C.coral

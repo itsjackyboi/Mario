@@ -30,11 +30,13 @@
     var p = (this.player = new PL.Player({ x: world.spawn.x, y: world.spawn.y }));
     world.player = p;
 
-    this.elapsedMs = 0;
+    // In a Drunken Speedrun the clock is the run's, not the level's.
+    this.speedrun = !!this.meta.speedrun;
+    this.elapsedMs = this.speedrun ? PL.Speedrun.elapsedMs : 0;
     this.finished = false;
     this.goalT = 0;
     this.respawnT = 0;
-    this.introT = 2.1;
+    this.introT = this.speedrun ? 1.3 : 2.1;
     this.fadeIn = 1;
     this.checkpointFlash = 0;
     this.trialActive = false;
@@ -78,14 +80,17 @@
       return;
     }
 
-    if (!this.finished) this.elapsedMs += dt * 1000;
+    if (!this.finished) {
+      this.elapsedMs += dt * 1000;
+      if (this.speedrun) PL.Speedrun.elapsedMs = this.elapsedMs;
+    }
 
     // --- goal sequence ----------------------------------------------------
     if (this.finished) {
       this.goalT += dt;
       world.fx.update(dt);
       this.camera.update();
-      if (this.goalT > 1.7) this.showResults();
+      if (this.goalT > (this.speedrun ? 1.15 : 1.7)) this.showResults();
       return;
     }
 
@@ -199,6 +204,8 @@
 
   PlayScene.prototype.showResults = function () {
     var p = this.player;
+    // A speedrun banks its own totals and goes straight into the next level.
+    if (this.speedrun) { PL.Speedrun.advance(this); return; }
     var run = {
       timeMs: this.elapsedMs,
       grog: p.grog,
@@ -280,7 +287,11 @@
       ctx.save();
       ctx.globalAlpha = Math.min(1, this.introT / 0.5);
       PL.gfx.panel(ctx, W / 2 - 150, H / 2 - 40, 300, 74, { r: 6 });
-      PL.gfx.text(ctx, (this.meta.townName || 'SHANTY TOWN').toUpperCase(), W / 2, H / 2 - 18, {
+      var cardTop = (this.meta.townName || 'SHANTY TOWN').toUpperCase();
+      if (this.speedrun) {
+        cardTop = cardTop + '  ·  ' + (this.meta.runIndex + 1) + ' / ' + this.meta.runCount;
+      }
+      PL.gfx.text(ctx, cardTop, W / 2, H / 2 - 18, {
         font: PL.FONT.small, align: 'center', color: C.lantern
       });
       PL.gfx.text(ctx, this.def.name, W / 2, H / 2 + 4, {
@@ -333,7 +344,9 @@
     this.play = play;
     this.opaque = false;
     this.sel = 0;
-    this.options = ['Resume', 'Restart level', 'Level select', 'Abandon to title'];
+    this.options = play.speedrun
+      ? ['Resume', 'Restart level', 'Abandon the run']
+      : ['Resume', 'Restart level', 'Level select', 'Abandon to title'];
   }
 
   PauseScene.prototype.update = function () {
@@ -343,12 +356,19 @@
     if (In.pressed('pause') || In.pressed('back')) { PL.Game.pop(); return; }
     if (In.pressed('confirm') || In.pressed('jump')) {
       PL.Audio.sfx('select');
-      switch (this.sel) {
-        case 0: PL.Game.pop(); break;
-        case 1: PL.Game.pop(); PL.Game.replace(new PlayScene(this.play.def, this.play.meta)); break;
-        case 2: PL.Game.reset(new PL.LevelSelectScene(this.play.def.town)); break;
-        case 3: PL.Game.reset(new PL.TitleScene()); break;
+      if (this.sel === 0) { PL.Game.pop(); return; }
+      if (this.sel === 1) {
+        PL.Game.pop();
+        PL.Game.replace(new PlayScene(this.play.def, this.play.meta));
+        return;
       }
+      if (this.play.speedrun) {
+        PL.Speedrun.abort();
+        PL.Game.reset(new PL.TitleScene());
+        return;
+      }
+      if (this.sel === 2) PL.Game.reset(new PL.LevelSelectScene(this.play.def.town));
+      else PL.Game.reset(new PL.TitleScene());
     }
   };
 
