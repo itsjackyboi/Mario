@@ -11,8 +11,15 @@
  *     Grog Barrels bounce loose (re-collectable for a few seconds), and you get
  *     ~1.5s of invincibility.
  *   - The same contact with an empty purse is fatal.
- *   - Water and falling out of the level are always fatal, powerup or not —
- *     otherwise the Hollow Urn would let you sit in the sea forever.
+ *   - Water and falling out of the level are fatal too.
+ *   - EXCEPT while you are carrying a Hollow Urn: any death at all breaks the
+ *     urn instead, sets you back down on the last safe ground you stood on and
+ *     gives you a long mercy window. It is a spare life, not a state.
+ *
+ * BUFFS: timed effects live in `this.buffs` as name -> seconds remaining, set
+ * by `buff(name, secs)` and read by `has(name)`. Every town item is one of
+ * these; see items-town.js. Carried single-use items queue in `this.items` and
+ * are spent front-first with the ITEM key.
  */
 (function (PL) {
   'use strict';
@@ -27,7 +34,6 @@
   var COYOTE = 0.11;
   var BUFFER = 0.13;
 
-  var URN_TIME = 9.0;
   var TONIC_TIME = 9.0;
 
   function Player(opts) {
@@ -39,12 +45,16 @@
     this.grog = 0;
     this.shards = [];
     this.pouch = 0;         // Wolendi Wind Pouches held (extra mid-air jump)
-    this.seeds = 0;         // Veilwalker Seeds held
+    this.items = [];        // carried single-use items, spent front-first
     this.bandana = null;    // Owe Block: 'red' | 'blue' — who lets you pass
     this.deaths = 0;
 
-    this.urn = 0;           // Hollow Urn timer
+    this.urn = 0;           // Hollow Urns carried — each one is a spare life
+    this.urnFlash = 0;      // the moment one breaks
     this.tonic = 0;         // ClockHeart Tonic timer
+    this.buffs = {};        // name -> seconds remaining
+    this.safe = null;       // last patch of ground worth putting you back on
+    this.safeT = 0;
     this.iframes = 0;
     this.dead = false;
     this.deathTimer = 0;
@@ -63,30 +73,52 @@
 
   // --------------------------------------------------------------- modifiers
 
+  // ------------------------------------------------------------------- buffs
+
+  Player.prototype.buff = function (name, secs) {
+    this.buffs[name] = Math.max(this.buffs[name] || 0, secs);
+  };
+
+  Player.prototype.has = function (name) { return (this.buffs[name] || 0) > 0; };
+
+  Player.prototype.buffLeft = function (name) { return this.buffs[name] || 0; };
+
+  Player.prototype.clearBuffs = function () { this.buffs = {}; };
+
+  // --------------------------------------------------------------- modifiers
+
   Player.prototype.speedMul = function () {
     var m = 1;
-    if (this.urn > 0) m *= 0.60;     // soullessness: unkillable but withered
-    if (this.tonic > 0) m *= 1.45;   // clockheart: day order, night revelry
+    if (this.tonic > 0) m *= 1.45;      // clockheart: day order, night revelry
+    if (this.has('marrow')) m *= 1.22;  // leviathan marrow
     return m;
   };
 
   Player.prototype.jumpMul = function () {
     var m = 1;
-    if (this.urn > 0) m *= 0.88;
     if (this.tonic > 0) m *= 1.05;
+    if (this.has('lagerhorn')) m *= 1.30;
     return m;
   };
 
+  Player.prototype.gravMul = function () {
+    return this.has('spiritweed') ? 0.60 : 1;
+  };
+
   Player.prototype.invulnerable = function () {
-    return this.iframes > 0 || this.urn > 0;
+    return this.iframes > 0 || this.has('pour');
   };
 
   // ----------------------------------------------------------------- updates
 
   Player.prototype.update = function (dt, world) {
     this.t += dt;
-    if (this.urn > 0) this.urn = Math.max(0, this.urn - dt);
     if (this.tonic > 0) this.tonic = Math.max(0, this.tonic - dt);
+    if (this.urnFlash > 0) this.urnFlash -= dt;
+    for (var bk in this.buffs) {
+      this.buffs[bk] -= dt;
+      if (this.buffs[bk] <= 0) delete this.buffs[bk];
+    }
     if (this.iframes > 0) this.iframes -= dt;
     if (this.landSquash > 0) this.landSquash -= dt;
     if (this.dropThrough > 0) this.dropThrough--;
@@ -165,10 +197,12 @@
     }
 
     // --- item use -----------------------------------------------------------
-    if (In.pressed('item')) this.useSeed(world);
+    if (In.pressed('item')) this.useItem(world);
 
     // --- integrate ----------------------------------------------------------
-    this.vy = Math.min(this.vy + GRAV, MAXFALL);
+    this.vy = Math.min(this.vy + GRAV * this.gravMul(), MAXFALL);
+    // Albatross Ballast: hold JUMP on the way down and you barely fall at all.
+    if (this.has('glide') && this.vy > 2.2 && In.down('jump')) this.vy = 2.2;
 
     var ride = this.riding;
     this.riding = null;
@@ -200,8 +234,14 @@
       this.coyote = COYOTE;
       this.airJumpsLeft = 0;
       this.runPhase += Math.abs(this.vx) * 0.12;
-    } else if (wasGrounded && this.vy > 0) {
-      // just walked off a ledge — coyote already primed above
+      // Remember somewhere solid to put you back down if an urn breaks.
+      this.safeT -= dt;
+      if (this.safeT <= 0) {
+        this.safeT = 0.25;
+        if (!PL.Physics.lethalOverlap(world, this)) {
+          this.safe = { x: this.x, y: this.y };
+        }
+      }
     }
 
     // --- hazards ------------------------------------------------------------
@@ -234,28 +274,68 @@
 
   // ------------------------------------------------------------------- items
 
-  Player.prototype.addGrog = function (n) { this.grog += n; };
+  /** Leviathan Marrow makes every barrel count twice. */
+  Player.prototype.addGrog = function (n) {
+    this.grog += this.has('marrow') ? n * 2 : n;
+  };
 
-  Player.prototype.giveUrn = function () { this.urn = URN_TIME; };
+  Player.prototype.giveUrn = function () { this.urn++; };
   Player.prototype.giveTonic = function () { this.tonic = TONIC_TIME; };
   Player.prototype.givePouch = function () { this.pouch++; };
-  Player.prototype.giveSeed = function () { this.seeds++; };
+
+  /** Queue a carried single-use item. `kind` is dispatched by useItem(). */
+  Player.prototype.giveItem = function (kind) {
+    if (this.items.length < 9) this.items.push(kind);
+  };
+  Player.prototype.giveSeed = function () { this.giveItem('seed'); };
 
   Player.prototype.collectShard = function (id) {
     if (this.shards.indexOf(id) === -1) this.shards.push(id);
   };
 
-  /** Veilwalker Seed: grow a short-lived shelf of packed earth ahead of you. */
-  Player.prototype.useSeed = function (world) {
-    if (this.seeds <= 0) return;
-    this.seeds--;
-    var px = this.cx() + this.facing * 46 - 29;
-    var py = this.y + this.h + 16;
-    px = U.clamp(px, 0, world.w - 58);
-    var plat = PL.Entities.create('seedPlatform', { x: px, y: py, tx: 0, ty: 0 });
-    world.add(plat);
-    world.fx.burst(px + 29, py, '#9ec27a', 12, { speed: 2.2, life: 0.6 });
-    PL.Audio.sfx('seed');
+  /** Spend the front carried item. One button for all of them. */
+  Player.prototype.useItem = function (world) {
+    if (!this.items.length) return;
+    var kind = this.items[0];
+    var used = true;
+
+    if (kind === 'seed') {
+      // Veilwalker Seed: a short-lived shelf of packed earth ahead of you.
+      var px = U.clamp(this.cx() + this.facing * 46 - 29, 0, world.w - 58);
+      var py = this.y + this.h + 16;
+      world.add(PL.Entities.create('seedPlatform', { x: px, y: py, tx: 0, ty: 0 }));
+      world.fx.burst(px + 29, py, '#9ec27a', 12, { speed: 2.2, life: 0.6 });
+      PL.Audio.sfx('seed');
+
+    } else if (kind === 'dash') {
+      // Bellows-Breath: one hard shove of bought Wolendi wind.
+      this.vx = this.facing * 11.5;
+      this.vy = Math.min(this.vy, -1.2);
+      this.buff('dashing', 0.42);
+      world.fx.burst(this.cx(), this.cy(), '#f6cf82', 16,
+                     { speed: 3.2, life: 0.5, angle: this.facing > 0 ? Math.PI : 0, spread: 1.2 });
+      world.camera.kick(4);
+      PL.Audio.sfx('gust');
+
+    } else if (kind === 'colours') {
+      // Windsunk Colours: fly your own flag and the sea respects it.
+      this.setCheckpoint(this.x, this.y);
+      world.fx.ring(this.cx(), this.cy(), PL.C.coral, 60);
+      world.fx.label(this.cx(), this.y - 8, 'COLOURS PLANTED', PL.C.lanternHi);
+      PL.Audio.sfx('flag');
+
+    } else if (kind === 'spareUrn') {
+      // Sackbeard's Own Cup: drink it and there is one more life in you.
+      this.giveUrn();
+      world.fx.ring(this.cx(), this.cy(), '#ffd77a', 64);
+      world.fx.label(this.cx(), this.y - 8, 'ONE MORE IN YOU', '#ffd77a');
+      PL.Audio.sfx('urn');
+
+    } else {
+      used = false;
+    }
+
+    if (used) this.items.shift();
   };
 
   Player.prototype.setCheckpoint = function (x, y) {
@@ -267,6 +347,34 @@
   /** Take a hit: shed grog and get a moment of mercy, or die if broke. */
   Player.prototype.hurt = function (world, knockDir, fromHazard) {
     if (this.dead || this.invulnerable()) return;
+
+    // Glyph of Purity: nothing leaves your purse, and an empty purse is not
+    // a death sentence while it holds.
+    if (this.has('purity')) {
+      this.iframes = 1.2;
+      this.vx = (knockDir || -this.facing) * 2.6;
+      this.vy = -4.4;
+      this.grounded = false;
+      world.fx.ring(this.cx(), this.cy(), '#e8ecf3', 40);
+      world.fx.label(this.cx(), this.y - 6, 'UNTOUCHED', '#e8ecf3');
+      PL.Audio.sfx('chime');
+      return;
+    }
+
+    // Crimson Firewater: the Block's answer to an empty purse. You still get
+    // knocked about, you just do not go down for it.
+    if (this.grog <= 0 && this.has('firewater')) {
+      this.iframes = 1.5;
+      this.vx = (knockDir || -this.facing) * 3.4;
+      this.vy = -5.2;
+      this.grounded = false;
+      world.camera.kick(fromHazard ? 6 : 4);
+      world.fx.burst(this.cx(), this.cy(), '#e04b3a', 12, { speed: 2.6, life: 0.5 });
+      world.fx.label(this.cx(), this.y - 6, 'STILL STANDING', '#e04b3a');
+      PL.Audio.sfx('hurt');
+      return;
+    }
+
     if (this.grog <= 0) { this.kill(world, 'hit'); return; }
 
     var drop = Math.min(6, this.grog);
@@ -290,6 +398,25 @@
 
   Player.prototype.kill = function (world, cause) {
     if (this.dead) return;
+
+    // A Hollow Urn takes the death instead of you: it shatters, you are set
+    // back on the last safe ground, and you get a long mercy window.
+    if (this.urn > 0) {
+      this.urn--;
+      this.urnFlash = 0.9;
+      this.iframes = 2.2;
+      var back = this.safe || this.checkpoint || { x: this.spawnX, y: this.spawnY };
+      this.x = back.x; this.y = back.y;
+      this.vx = 0; this.vy = 0;
+      this.dropThrough = 0;
+      world.fx.ring(this.cx(), this.cy(), 'rgba(198,211,216,0.95)', 78);
+      world.fx.burst(this.cx(), this.cy(), PL.C.pale, 22, { speed: 3.2, life: 0.8 });
+      world.fx.label(this.cx(), this.y - 10, 'THE URN TAKES IT', PL.C.pale);
+      world.camera.kick(6);
+      PL.Audio.sfx('urn');
+      return;
+    }
+
     this.dead = true;
     this.deaths++;
     this.deathTimer = 1.15;
@@ -312,10 +439,11 @@
     this.dead = false;
     this.frozen = false;
     this.iframes = 1.2;
-    this.urn = 0;
     this.tonic = 0;
+    this.clearBuffs();       // timed effects lapse; carried things do not
     this.airJumpsLeft = 0;
     this.dropThrough = 0;
+    this.safe = null;
   };
 
   // ------------------------------------------------------------------- render
@@ -347,10 +475,17 @@
     // Powerups recolour the sprite itself rather than compositing a rectangle
     // over the frame — the silhouette has to stay readable either way.
     var tintTo = null, tintAmt = 0;
-    if (this.urn > 0) {
+    if (this.has('pour')) {
+      // A measure of the Pour Eternal: he is briefly not really here.
+      var cyc = Math.floor(this.t * 14) % 3;
+      tintTo = cyc === 0 ? C.lanternHi : (cyc === 1 ? C.coral : C.teal);
+      tintAmt = 0.66;
+    } else if (this.has('spiritweed')) {
+      tintTo = '#9fe8d8';
+      tintAmt = 0.35;
+    } else if (this.urnFlash > 0) {
       tintTo = C.pale;
-      tintAmt = 0.62;
-      ctx.globalAlpha = 0.78;
+      tintAmt = 0.7;
     } else if (this.tonic > 0) {
       var pulse = (Math.sin(this.t * 6) + 1) / 2;
       tintTo = pulse > 0.5 ? C.teal : C.lantern;
@@ -395,13 +530,26 @@
     ctx.globalAlpha = 1;
     ctx.restore();
 
-    // trailing wisps / speed lines drawn outside the squash transform
+    // trailing marks drawn outside the squash transform
     if (this.urn > 0) {
-      for (var i = 0; i < 3; i++) {
-        var wy = y + 6 + ((this.t * 26 + i * 11) % 26);
-        ctx.fillStyle = 'rgba(198,211,216,' + (0.35 - i * 0.08) + ')';
-        ctx.fillRect(x + 3 + Math.sin(this.t * 4 + i * 2) * 8, wy, 3, 3);
+      // the stored soul, riding along as a small pale wisp
+      var uy = y - 8 + Math.sin(this.t * 3) * 2;
+      PL.gfx.glow(ctx, x + this.w / 2, uy, 14, 'rgba(198,211,216,0.7)', 0.4);
+      PL.gfx.rect(ctx, x + this.w / 2 - 3, uy - 3, 6, 6, C.pale);
+      if (this.urn > 1) {
+        PL.gfx.text(ctx, 'x' + this.urn, x + this.w / 2 + 8, uy + 3,
+                    { font: PL.FONT.tiny, color: C.pale });
       }
+    }
+    if (this.has('pour')) {
+      for (var pi = 1; pi <= 3; pi++) {
+        ctx.fillStyle = ['rgba(255,226,168,0.4)', 'rgba(212,87,78,0.35)', 'rgba(79,184,165,0.3)'][pi - 1];
+        ctx.fillRect(x - this.facing * pi * 8, y + 4, 8, this.h - 8);
+      }
+    }
+    if (this.has('dashing')) {
+      ctx.fillStyle = 'rgba(246,207,130,0.5)';
+      for (var di = 1; di <= 4; di++) ctx.fillRect(x - this.facing * di * 9, y + 6 + di, 7, 3);
     }
     if (this.tonic > 0 && Math.abs(this.vx) > 2) {
       ctx.fillStyle = 'rgba(79,184,165,0.35)';

@@ -36,7 +36,8 @@
     this.isPlatform = true;
     this.active = false;
     this.dx = 0; this.dy = 0;
-    this.phase = ((opts.tx * 0.23 + opts.ty * 0.41) % 1) * VINE_PERIOD;
+    this.period = VINE_PERIOD / ((opts.def && opts.def.diff) || 1);
+    this.phase = ((opts.tx * 0.23 + opts.ty * 0.41) % 1) * this.period;
     this.leaves = [];
     for (var i = 0; i < 6; i++) this.leaves.push({ at: 0.12 + i * 0.15, up: i % 2 ? 1 : -1 });
     this.cull = false;
@@ -61,8 +62,14 @@
 
   Vine.prototype.update = function (dt, world) {
     if (!this.dir) this.resolve(world);
+    // Mossbound Boots persuade a vine to stay out.
+    var pl = world && world.player;
+    if (pl && pl.has && pl.has('grip') && this.len > this.maxLen * 0.9 &&
+        PL.util.overlaps(pl, { x: this.x, y: this.y - 8, w: this.w, h: this.h + 12 })) {
+      return;
+    }
     this.t += dt;
-    var p = ((this.t + this.phase) % VINE_PERIOD) / VINE_PERIOD;
+    var p = ((this.t + this.phase) % this.period) / this.period;
     var f;
     if (p < 0.16) f = p / 0.16;             // reaching out
     else if (p < 0.70) f = 1;               // held
@@ -129,6 +136,7 @@
     E.call(this, opts);
     this.w = 20; this.h = 20;
     this.x = opts.x + 6; this.baseY = opts.y + 6; this.y = this.baseY;
+    this.regrow = (opts.def && opts.def.diff) || 1;
     this.taken = 0;
     this.motes = [];
     for (var i = 0; i < 5; i++) {
@@ -145,7 +153,7 @@
 
   SpiritLight.prototype.touch = function (player, world) {
     if (this.taken > 0) return;
-    this.taken = 11;                       // regrows after the light has gone
+    this.taken = 11 * this.regrow;         // regrows after the light has gone
     world.setTimer('spirit', SPIRIT_TIME);
     world.fx.ring(this.cx(), this.cy(), 'rgba(226,255,246,0.95)', 90);
     world.fx.label(this.cx(), this.y - 8, 'SPIRIT-LIGHT', C.lanternHi);
@@ -194,7 +202,9 @@
 
   Phantom.prototype.update = function (dt, world) {
     this.t += dt;
-    var on = world.timer('spirit') > 0;
+    // Veilwalker's Draught: you see it the way they do, light or no light.
+    var pl = world.player;
+    var on = world.timer('spirit') > 0 || !!(pl && pl.has && pl.has('veil'));
     this.vis = U.approach(this.vis, on ? 1 : 0, dt * 5);
     this.active = this.vis > 0.5;
   };

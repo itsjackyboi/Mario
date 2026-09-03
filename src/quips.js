@@ -86,7 +86,38 @@
       tv2: "Gideon Drake sailed in mutinied and half-dead and still out-mayored the lot of them. Low bar. Big beast.",
       tv3: "Six kings drank under these ribs and not one of 'em had to climb here first.",
       tv4: "Old Salty says the new pirates are looking for the wrong sort of booty. Old Salty is right about everything.",
-      tv5: "Nobody in the eleven seas has had to say the name Corb out loud. After this cup, somebody writes it down."
+      tv5: "Nobody in the eleven seas has had to say the name Corb out loud. After this cup, somebody writes it down.",
+
+      /* --- rumours ----------------------------------------------------------
+       * Things Corb heard on the crossing and has been chewing on ever since.
+       * Deliberately unverified — that is the point of a rumour — and usable
+       * in any town, which is why they are pooled apart from the town sets. */
+      ru1: "Heard Bonehardy's mines run dry six years back and he's been selling the same tour of 'em ever since.",
+      ru2: "Rumour on the boat: Jagerbauhm's crown don't come off. Not won't. Don't.",
+      ru3: "They say Guinnie's never once bought a drink. Forty years. Not one. That's not luck, that's a system.",
+      ru4: "Word is Pilsner drew the Coors Golden Isles on a napkin and has been defending the napkin ever since.",
+      ru5: "Heard Buke lost a duel to a man who'd already left the room. Won't say who told me. Wasn't sober neither.",
+      ru6: "There's a story Anqoak sold his own name to a Roto trader and buys it back yearly at interest.",
+      ru7: "They reckon the Trials were shut fifty-one years because the last winner never stopped drinking. Still going, some say.",
+      ru8: "A deckhand swore the Six meet once a year to argue over who's least embarrassing. Nobody's ever won that one.",
+      ru9: "Heard the bells in Providence were cast from a Liquor King's crown. Sounds about the value of it.",
+      ru10: "Somebody told me the Stank Tank's got a cellar the Cardinal don't know about. Somebody tells me a lot of things.",
+      ru11: "They say Fenwick's vines remember every man who cut one. Long memory for a plant. Short careers for the men.",
+      ru12: "Heard Sackbeard's beast is still alive under the floorboards and the drinking is what keeps it down.",
+      ru13: "Word round the docks: half the crews out here are named after a king, and none of 'em would sail with one.",
+      ru14: "They say the crown weighs nine pounds. Nine. That's a full keg's worth of nothing on a man's head.",
+      ru15: "Heard a Friar once fined a gull. Bird had no purse. Bird got a ledger entry anyway.",
+
+      /* --- what Corb has been called ----------------------------------------
+       * The insults come back the other way too. He has been rehearsing. */
+      in1: "Old Salty said I'd never make it past Shanty Town. Old Salty's wrong about exactly one thing.",
+      in2: "My own crew called me 'the lad who tried.' Going to make that a title before the week's out.",
+      in3: "Man at the pier laughed and said the Trials weren't for the sober. Neither's a mayor's chair, and here we are.",
+      in4: "They asked which king I'd back. Told 'em none. They asked which one'd have me. Fair.",
+      in5: "Six men crowned for drinking, and every one of 'em got there without climbing a single wall. Unbelievable.",
+      in6: "Uncle says I've got sense. Sense is what you call a man who hasn't done the stupid thing yet.",
+      in7: "Nobody's written a verse about me. Nobody's written a verse about a man who finished, either.",
+      in8: "Kings, they call themselves. I've met a keg with more of a plan."
     },
 
     /** Resolve '@key' references; anything else is used verbatim. */

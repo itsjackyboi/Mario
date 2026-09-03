@@ -27,6 +27,11 @@
     var In = PL.Input;
     if (In.pressed('up')) { this.sel = (this.sel + this.options.length - 1) % this.options.length; PL.Audio.sfx('menu'); }
     if (In.pressed('down')) { this.sel = (this.sel + 1) % this.options.length; PL.Audio.sfx('menu'); }
+    if (PL.LetterIcon.clicked() || In.pressed('letter')) {
+      PL.Audio.sfx('select');
+      PL.Game.push(new PL.LetterScene());
+      return;
+    }
     if (In.pressed('confirm') || In.pressed('jump')) {
       PL.Audio.sfx('select');
       if (this.sel === 0) PL.Game.replace(new PL.LevelSelectScene('shantytown'));
@@ -171,13 +176,15 @@
       color: srBest ? 'rgba(255,226,168,0.8)' : 'rgba(242,227,196,0.6)'
     });
 
+    // ---- the letter from Aleforge ----------------------------------------
+    PL.LetterIcon.draw(ctx, t, PL.LetterIcon.hot());
+
     // ---- controls --------------------------------------------------------
     PL.gfx.panel(ctx, 20, 312, W - 40, 42, { r: 5, alpha: 0.9 });
     var cols = [
       ['MOVE', '← →  A D'],
       ['JUMP', 'SPACE / Z'],
-      ['DROP', '↓ + JUMP'],
-      ['SEED', 'E / SHIFT'],
+      ['USE ITEM', 'E / SHIFT'],
       ['PAUSE', 'ESC · M mute']
     ];
     for (var c = 0; c < cols.length; c++) {

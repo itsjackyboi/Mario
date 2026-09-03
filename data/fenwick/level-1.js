@@ -4,6 +4,9 @@
  * are the schedule, and the phantom footing only exists while a spirit-light
  * is burning. Vine markers go on the first empty tile out from a bank — the
  * vine works out which way to grow.
+ *
+ * By this point in the tryout the crossings are long enough that you cannot
+ * stand and watch a whole cycle before committing to it.
  */
 (function (PL) {
   'use strict';
@@ -12,14 +15,15 @@
     id: 'fenwick-1',
     name: 'Brandywine Brush',
     blurb: 'Bog, vine and spirit-light. Nothing here wants to hurt you.',
+    diff: 1.3,
 
-    quips: { '1': '@fw1', '2': '@fw2', '3': '@fw3' },
+    quips: { '1': '@fw1', '2': '@fw2', '3': '@fw3', '4': '@ru11', '5': '@in6' },
 
     segments: [
 
       /* 0 — dry ground while you get your eye in. */
       [
-        '.@...o....o.........1.........',
+        '.@...o....o....w....1.........',
         '##############################',
         '##############################',
         '##############################'
@@ -36,8 +40,8 @@
 
       /* 2 — the light on the bank shows the whole bridge. Then it doesn't. */
       [
-        '.....o...o...o...o...o........',
-        '.....h.h.h.h.h.h.h.h.h.h......',
+        '.....o..o..o..o..o..o..o..o...',
+        '.....h..h..h..h..h..h..h..h...',
         '..i...........................',
         '####~~~~~~~~~~~~~~~~~~~~~~####',
         '####~~~~~~~~~~~~~~~~~~~~~~####',
@@ -47,8 +51,8 @@
       /* 3 — the flag, with bramble in the path. */
       [
         '..............................',
-        '...F......o.......o.....l...2.',
-        '#########xx########xx#########',
+        '...F...*..o....M..o.....l...2.',
+        '########xxx#######xxx#########',
         '##############################',
         '##############################'
       ],
@@ -59,16 +63,25 @@
         '.............hhh..............',
         '......o....o...o...o..........',
         '.....t.....h.h.h.h......t.....',
-        '..i...........................',
+        '..i.......................4...',
         '#####~~~~~~~~~~~~~~~~~~~~#####',
         '#####~~~~~~~~~~~~~~~~~~~~#####',
         '#####~~~~~~~~~~~~~~~~~~~~#####'
       ],
 
-      /* 5 — the cup, in a clearing. */
+      /* 5 — the deep bog. Four vines, no light, no phantoms. */
+      [
+        '......o....o......o....o......',
+        '......t....t......t....t......',
+        '######~~~~~~######~~~~~~######',
+        '######~~~~~~######~~~~~~######',
+        '######~~~~~~######~~~~~~######'
+      ],
+
+      /* 6 — the cup, in a clearing. */
       [
         '........====..................',
-        '.....o.....o.......Z...3......',
+        '.....o.....o....5..Z...3......',
         '##############################',
         '##############################',
         '##############################'

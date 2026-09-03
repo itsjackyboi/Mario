@@ -101,6 +101,9 @@
       });
       var label = r.speedrun ? '★  ' + r.def.name
                              : (PL.Towns.ROMAN[r.index] || (r.index + 1)) + '.  ' + r.def.name;
+      // The list scrolls, so a long name must end in an ellipsis inside the
+      // panel rather than run under the scroll track and get sliced by the clip.
+      label = PL.util.fit(ctx, label, PL.FONT.hud, LIST_W - 34);
       PL.gfx.text(ctx, label, LIST_X + 16, y + 10, {
         font: PL.FONT.hud, color: on ? C.lanternHi : 'rgba(242,227,196,0.8)'
       });

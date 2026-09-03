@@ -23,12 +23,16 @@ Nothing is fetched at runtime, so it works offline.
 | Move | `←` `→` or `A` `D` |
 | Jump | `Space` / `Z` / `K` — hold for height |
 | Drop through a plank | `↓` + Jump |
-| Use Veilwalker Seed | `E` / `Shift` / `X` |
+| Use item | `E` / `Shift` / `X` — spends the front of the carried queue |
 | Buy from a Roto stall | `↓` while standing in it |
 | Pause | `Esc` / `P` |
 | Restart level | `R` |
 | Mute | `M` |
+| Read the letter (title screen) | click the envelope, or `L` |
 | Menus | `↑` `↓` `←` `→`, `Enter` to confirm, `Esc` to back out |
+
+There is no drop-item control. Carried items are a FIFO queue — `E` spends whichever is at
+the front, and the HUD shows it plus a `+N` for whatever is stacked behind it.
 
 ## Two ways to play
 
@@ -91,14 +95,53 @@ Implemented once, reused by every area without modification:
 
 ### Items
 
+Six of these are found everywhere. The other twenty-one are **local**: three per area,
+pulled from that area's own lore, and they only ever appear in that area's levels. Each
+area's third one answers that area's own hazard, which is why none of the effects overlap.
+
+**Everywhere:**
+
 | Item | Glyph | Effect |
 | --- | --- | --- |
 | Grog Barrel | `o` | The currency pickup. Tracked in the HUD, banked into the area purse on completion. |
-| Hollow Urn | `U` | Timed. Unkillable by enemies and spikes, but **slowed and weakened**, with a drained, colourless tint. Water and pits still kill you. |
+| Hollow Urn | `U` | **A spare life.** Carried, not timed, and nothing about you changes while you hold it. The next thing that would kill you — enemy, spike, water, pit, anything — takes the urn instead: it shatters, you are put back at your last safe footing with ~2s of invincibility, and the death is not counted. One hit, one urn. |
 | ClockHeart Tonic | `T` | Timed. Big speed boost plus a screen-wide colour shift pulsing between day-order gold and night-revelry teal. |
 | Wolendi Wind Pouch | `W` | Single use, carried. One extra mid-air jump, spent automatically when you jump with nothing under you. |
 | Veilwalker Seed | `S` | Single use, carried. `E` grows a shelf of packed red earth just ahead and below you; it withers after ~5 seconds. |
 | Red-Earth Shard | `R` | Pure collectible, one per level, sixteen in the game. Collecting every shard in an area lights that area's bonus indicator. |
+
+**Local to one area:**
+
+| Area | Item | Glyph | Effect |
+| --- | --- | --- | --- |
+| **Shanty Town** | Old Salty's Pipe | `P` | 10s. Enemies you touch go over instead of you — the old man's stare, bottled. |
+| | Windsunk Colours | `A` | Carried. `E` plants your own flag: an extra checkpoint, wherever you are standing. |
+| | Windsunk Whistle | `r` | 10s. The Council's own note. Rival crews within seven tiles turn and run, at double pace. |
+| **Aleforge** | Lagerhorn | `N` | 9s. Higher jump and a heavier landing; the horn's note carries you. |
+| | Bellows-Breath | `E` | Carried. `E` fires a flat, fast dash in the way you are facing. |
+| | Coopers' Hoop | `&` | 10s. Kegs stave in against you instead of the other way round, and pay a barrel for it. |
+| **Providence** | Fortunate Scarab | `K` | 8s. Every hazard in the level runs at 45% speed. You do not — and neither does the clock. |
+| | Glyph of Purity | `Q` | 10s. Friars cannot fine you and contact cannot knock your grog loose. |
+| | Cardinal's Indulgence | `+` | 8s. Signed, sealed, and the whole Order stops where it stands: Apostles mid-step, Friars mid-sweep. |
+| **Fenwick** | Spiritweed | `w` | 10s. Gravity at 60%: longer, floatier arcs over the bog. |
+| | Mossbound Boots | `M` | 12s. Nothing gives way under you — a vine will not curl back and a loose plank will not drop. |
+| | Veilwalker's Draught | `*` | 10s. Phantom footing holds with no spirit-light burning. You see it the way they do. |
+| **Roto Kaiishi** | Goldcoral Chit | `D` | 12s. Loose grog in the level is pulled to you. |
+| | Albatross Ballast | `O` | 12s. Hold Jump on the way down and you barely fall at all. |
+| | Tide-Reader's Glass | `^` | 12s. Read the swell right and the sea-wretches never surface. |
+| **Owe Block** | Cutter's Shiv | `X` | 10s. Gang members die on contact instead of you. |
+| | Circus Greasepaint | `J` | 12s. Both gangs read you as one of theirs, whatever bandana you are wearing. |
+| | Crimson Firewater | `!` | 10s. An empty purse stops being a death sentence: a hit still knocks you about, you just do not go down for it. |
+| **Sackbeard's Tavern** | The Pour Eternal | `q` | 7s. Nothing in the isles can touch you, water and pits included. |
+| | Leviathan Marrow | `z` | 12s. Every grog barrel is worth double. |
+| | Sackbeard's Own Cup | `$` | Carried. `E` drinks it for a Hollow Urn — one more life, on the house. |
+
+The whole table is data in `src/items-town.js` — glyph, area, buff name, duration, HUD
+label, one-line blurb and its own `draw`, which paints both the world sprite and the HUD
+icon. Adding a twenty-second means adding a row there and, if it is a new kind of effect,
+one branch in whichever file owns the thing it changes. `src/level.js` reads the glyph
+table straight off `PL.TownItems`, so its marker map is never edited by hand for an item,
+and the HUD builds its buff bars from `PL.TownItems.byBuff`, so it never is either.
 
 ### Hazards by area
 
@@ -139,9 +182,44 @@ completion it is banked into a persistent per-area purse. (`src/items.js`)
 knocks up to six barrels loose — they bounce and can be scooped back up for a few seconds —
 and gives you ~1.5s of invincibility. The same contact with an empty purse is fatal. Water
 and pits are always fatal. Providence's Friars are the exception: they take grog without
-touching you, and cannot kill. (`src/player.js`, `src/town-providence.js`)
+touching you, and cannot kill — Friars are flagged `harmful = false` for exactly that
+reason, and the collision path only calls `hurt()` on an enemy that is actually harmful.
+(`src/player.js`, `src/town-providence.js`, `src/scene-play.js`)
 
-**The Hollow Urn does not save you from drowning.** It ignores enemies and spikes only.
+**The Hollow Urn is a spare life, not a power-up.** It was a timed
+unkillable-but-slowed state, which was both a downgrade to hold and a thing you had to
+watch a bar for. Now it works the way a mushroom does: you carry it, nothing changes, and
+the next fatal thing spends it instead of you — including water and pits, which the old
+version pointedly did not cover. (`Player.prototype.kill`, `src/player.js`)
+
+**Difficulty is a per-level number, not a rewrite.** Every level def carries `diff`, and
+every timed hazard in the game divides its period (or multiplies its speed) by it at
+construction: patroller and Ganger pace, wretch and vine and gust cycles, keg-chute
+interval, loose-plank shake and fall, gear and clock-arm rate, bobber sink, spirit-light
+regrow. So the curve below is one number per file, and a new hazard joins the curve by
+reading `(opts.def && opts.def.diff) || 1` in its constructor.
+
+| Area | `diff` |
+| --- | --- |
+| Shanty Town | 0.95 → 1.05 |
+| Aleforge | 1.10 → 1.20 |
+| Providence | 1.25 → 1.35 |
+| Fenwick | 1.30 → 1.40 |
+| Roto Kaiishi | 1.40 → 1.50 |
+| Owe Block (bonus) | 1.60 |
+| Sackbeard's Tavern | 1.70 |
+
+The geometry rises with it. Shanty Town gaps are two or three tiles with something to land
+on; Providence onward the terraces break into pillars with four-tile drops and no floor
+under them; Roto's last crossings are bobbing platforms with no fixed deck anywhere in
+them. Nothing exceeds the jump budget — a level's every column is audited for footing —
+but from Providence on, most of it is at the edge of it.
+
+**The letter is the reason he came.** A small envelope on the title screen (click it, or
+press `L`) opens the letter from Corb's uncle that got him on the boat. It is a
+non-opaque scene pushed over the title, so the title keeps drawing behind it. The icon and
+its click target are defined once, together, in `PL.LetterIcon` so they cannot drift apart.
+(`src/scene-letter.js`)
 
 **The clock never stops.** It runs from the moment control is handed over until you touch
 the tankard, including through deaths, checkpoint respawns and Trials. Only your position
@@ -161,7 +239,7 @@ src/
   util.js                      clamp/lerp, seeded RNG, time formatting, colour mixing
   palette.js                   the base colour set + low-level draw helpers
   themes.js                    per-area palette + tile-style overrides
-  input.js                     keyboard → named actions, latched edge detection
+  input.js                     keyboard + pointer → named actions, latched edges
   audio.js                     synthesised SFX (no asset files)
   storage.js                   localStorage leaderboard, progress, and aggregates
   game.js                      canvas setup, fixed-timestep loop, scene stack
@@ -169,7 +247,8 @@ src/
   tiles.js                     tile ids, the glyph legend, per-style tile painting
   entities.js                  Entity base, type registry, tile collision (Physics)
   fx.js                        particles and floating labels
-  items.js                     the six pickups + knocked-loose grog
+  items.js                     the six everywhere-pickups + knocked-loose grog
+  items-town.js                the fourteen area-local items, as one table
   enemies.js                   Enemy base, rival crew, coral-eyed sea-wretch
   props.js                     loose planks, movers, checkpoint, tankard, trial gate, scenery
   player.js                    movement, powerups, damage, rendering
@@ -184,7 +263,8 @@ src/
   town-fenwick.js               |
   town-roto.js                  |
   town-tavern.js               /   (the finale reuses everyone else's entities)
-  scene-title.js               title, premise, control legend
+  scene-letter.js              the letter from Mr. BBL + its title-screen envelope
+  scene-title.js               title, premise, control legend, the envelope
   scene-levelselect.js         areas, levels, the Owe Block branch, shard indicators
   scene-leaderboard.js         standalone records view
   scene-play.js                the level runner (+ pause overlay)
@@ -223,6 +303,7 @@ PL.Towns.addLevel('aleforge', {
   blurb: 'Shown on the level-select screen.',
   height: 20,                    // rows per segment (default 20)
   segWidth: 30,                  // columns per segment (default 30)
+  diff: 1.2,                     // hazard tempo; 1.0 is Shanty Town pace
   trial: 'goldenTaps',           // optional — what the `G` glyph opens
   theme: 'oweblock',             // optional — use another area's palette/backdrop
   bonus: true,                   // optional — draws as a branch, needs unlocking
@@ -297,6 +378,13 @@ beast's own plating in the Tavern:
 | `h` | phantom footing | Fenwick |
 | `s` | bobbing stilt platform | Roto |
 | `u` | merchant stall | Roto |
+| `P` `A` `r` | Old Salty's Pipe / Windsunk Colours / Windsunk Whistle | Shanty Town |
+| `N` `E` `&` | Lagerhorn / Bellows-Breath / Coopers' Hoop | Aleforge |
+| `K` `Q` `+` | Fortunate Scarab / Glyph of Purity / Cardinal's Indulgence | Providence |
+| `X` `J` `!` | Cutter's Shiv / Circus Greasepaint / Crimson Firewater | Owe Block |
+| `w` `M` `*` | Spiritweed / Mossbound Boots / Veilwalker's Draught | Fenwick |
+| `D` `O` `^` | Goldcoral Chit / Albatross Ballast / Tide-Reader's Glass | Roto |
+| `q` `z` `$` | The Pour Eternal / Leviathan Marrow / Sackbeard's Own Cup | Tavern |
 | `1`–`9` | quip trigger zone, text from the level's `quips` map | any |
 
 **Placement rules that will save you time:**
@@ -317,9 +405,14 @@ beast's own plating in the Tavern:
 ### Quips
 
 `quips` maps a digit to either a literal string or `'@key'`, resolved against the shared
-pool in `src/quips.js` (which now carries a set per area). Place the digit next to the
-thing being mocked — a keg stack, a bone shrine, a bell tower, a gang tag, the beast's own
-ribs — so the line reads as a reaction rather than a random barb. Each zone fires once.
+pool in `src/quips.js`. The pool is grouped: one set per Liquor King, one per area, plus
+`ru*` (rumours Corb picked up on the crossing and has not verified) and `in*` (what people
+have said about *him*, which he has been rehearsing answers to). The last two are
+deliberately area-neutral, so any level can pull from them.
+
+Place the digit next to the thing being mocked — a keg stack, a bone shrine, a bell tower,
+a gang tag, the beast's own ribs — so the line reads as a reaction rather than a random
+barb. Each zone fires once.
 
 ## Adding a new area
 

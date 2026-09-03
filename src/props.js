@@ -25,13 +25,16 @@
     this.tilt = 0;
     this.dx = 0; this.dy = 0;
     this.cull = false;
+    this.diff = (opts.def && opts.def.diff) || 1;
   }
   PL.extend(LoosePlank, E);
 
-  LoosePlank.prototype.onStand = function () {
+  LoosePlank.prototype.onStand = function (a) {
+    // Mossbound Boots hold anything together for as long as they last.
+    if (a && a.has && a.has('grip')) return;
     if (this.state === 'idle') {
       this.state = 'shake';
-      this.timer = 0.6;
+      this.timer = 0.6 / this.diff;
     }
   };
 
@@ -43,7 +46,7 @@
       this.tilt = Math.sin(this.t * 46) * 0.055;
       if (this.timer <= 0) {
         this.state = 'fall';
-        this.timer = 2.6;
+        this.timer = 2.6 / this.diff;
         this.vy = 0.6;
         this.active = false;
         PL.Audio.sfx('crumble');

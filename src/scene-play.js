@@ -95,15 +95,41 @@
     }
 
     // --- entities ---------------------------------------------------------
+    // Fortunate Scarab shows a true vision of the future: the world's hazards
+    // crawl while Corb keeps his own pace.
+    var hz = p.has('scarab') ? 0.45 : 1;
+    var hdt = dt * hz;
+    if (hz !== 1) world.time -= dt * (1 - hz);   // the chime slows with it
+
     var ents = world.entities;
     for (var i = 0; i < ents.length; i++) {
       var e = ents[i];
       if (e.remove) continue;
+      // Old Salty's Pipe leaves things flat on their back for a while.
+      if (e.stunT > 0) {
+        e.stunT -= dt;
+        if (e.stunT <= 0 && e.dying <= 0) e.harmful = true;
+      }
       if (e.cull && !this.camera.sees(e.x, e.y, e.w, e.h, 140)) continue;
-      if (e.update) e.update(dt, world);
+      if (e.update) e.update(hdt, world);
     }
 
     p.update(dt, world);
+
+    // Goldcoral Chit: loose grog comes to you.
+    if (p.has('magnet')) {
+      for (var mg = 0; mg < ents.length; mg++) {
+        var gi = ents[mg];
+        if (gi.remove || (gi.type !== 'grog' && gi.type !== 'looseGrog')) continue;
+        var mdx = p.cx() - gi.cx(), mdy = p.cy() - gi.cy();
+        var md = Math.hypot(mdx, mdy);
+        if (md > 4 && md < 150) {
+          gi.x += (mdx / md) * 3.6;
+          gi.y += (mdy / md) * 3.6;
+          if (gi.baseY != null) gi.baseY = gi.y;
+        }
+      }
+    }
 
     // --- player vs entities ----------------------------------------------
     if (!p.dead) {
@@ -114,15 +140,37 @@
         if (!U.overlaps(pb, en)) continue;
 
         if (en instanceof PL.Enemy) {
-          if (!en.harmful) continue;
+          // A harmless-but-stompable enemy (Providence's Friars, anything
+          // stunned) still reacts to contact — it just cannot hurt you.
+          if (!en.harmful && !en.stompable) continue;
+          var away = U.sign(p.cx() - en.cx()) || 1;
+
+          // Cutter's Shiv and the Pour Eternal both settle it on contact.
+          if (p.has('shiv') || p.has('pour')) {
+            if (en.stompable) en.stomp(p, world);
+            else { en.harmful = false; en.stunT = 3; }
+            this.camera.kick(2);
+            continue;
+          }
+          // Old Salty's Pipe puts them over instead of putting you over.
+          if (p.has('pipe')) {
+            en.harmful = false;
+            en.stunT = 2.4;
+            en.vy = -6;
+            en.vx = -away * 3;
+            world.fx.burst(en.cx(), en.cy(), C.woodPale, 8, { speed: 2.2, life: 0.4 });
+            PL.Audio.sfx('stomp');
+            continue;
+          }
+
           var wasAbove = (p.y + p.h) - p.vy <= en.y + 10;
           if (en.stompable && p.vy > 0.5 && wasAbove) {
             en.stomp(p, world);
             p.vy = PL.Input.down('jump') ? -11.0 : -8.2;
             p.grounded = false;
             this.camera.kick(3);
-          } else if (!p.invulnerable()) {
-            p.hurt(world, U.sign(p.cx() - en.cx()) || 1);
+          } else if (en.harmful && !p.invulnerable()) {
+            p.hurt(world, away);
           }
         } else if (en.touch) {
           en.touch(p, world);

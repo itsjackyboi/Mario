@@ -11,12 +11,13 @@
     ArrowUp: 'up', KeyW: 'up',
     ArrowDown: 'down', KeyS: 'down',
     Space: 'jump', KeyZ: 'jump', KeyK: 'jump',
-    KeyE: 'item', ShiftLeft: 'item', ShiftRight: 'item', KeyX: 'item', KeyL: 'item',
+    KeyE: 'item', ShiftLeft: 'item', ShiftRight: 'item', KeyX: 'item',
     Enter: 'confirm', NumpadEnter: 'confirm',
     Escape: 'back', Backspace: 'back',
     KeyP: 'pause',
     KeyM: 'mute',
-    KeyR: 'restart'
+    KeyR: 'restart',
+    KeyL: 'letter'
   };
 
   var Input = (PL.Input = {
@@ -24,7 +25,21 @@
     hits: {},         // went down since the last frame (latched)
     lifts: {},        // came up since the last frame (latched)
 
+    // Pointer, in logical 640x360 space. `clicked` is latched like a key press.
+    mouse: { x: -1, y: -1, down: false, clicked: false, over: false },
+
     down: function (a) { return !!this.state[a]; },
+
+    /** True if the pointer is inside this logical rect. */
+    hovering: function (x, y, w, h) {
+      var m = this.mouse;
+      return m.over && m.x >= x && m.x <= x + w && m.y >= y && m.y <= y + h;
+    },
+
+    /** True on the frame a click lands inside this logical rect. */
+    clickedIn: function (x, y, w, h) {
+      return this.mouse.clicked && this.hovering(x, y, w, h);
+    },
 
     /* Latched rather than derived from last-frame state: a tap that starts and
      * ends inside a single frame would otherwise be swallowed entirely. */
@@ -34,6 +49,7 @@
     endFrame: function () {
       this.hits = {};
       this.lifts = {};
+      this.mouse.clicked = false;
     },
 
     /** Forget everything — used on scene changes so a held key doesn't leak. */
@@ -62,6 +78,34 @@
         }
       });
       window.addEventListener('blur', function () { self.clear(); });
+    },
+
+    /** Map real pointer positions onto the fixed 640x360 logical canvas. */
+    installPointer: function (canvas) {
+      var self = this;
+      function toLogical(e) {
+        var r = canvas.getBoundingClientRect();
+        if (!r.width || !r.height) return null;
+        return {
+          x: (e.clientX - r.left) / r.width * PL.VIEW_W,
+          y: (e.clientY - r.top) / r.height * PL.VIEW_H
+        };
+      }
+      canvas.addEventListener('pointermove', function (e) {
+        var pt = toLogical(e);
+        if (!pt) return;
+        self.mouse.x = pt.x; self.mouse.y = pt.y; self.mouse.over = true;
+      });
+      canvas.addEventListener('pointerdown', function (e) {
+        var pt = toLogical(e);
+        if (!pt) return;
+        self.mouse.x = pt.x; self.mouse.y = pt.y;
+        self.mouse.over = true;
+        self.mouse.down = true;
+        self.mouse.clicked = true;
+      });
+      window.addEventListener('pointerup', function () { self.mouse.down = false; });
+      canvas.addEventListener('pointerleave', function () { self.mouse.over = false; });
     }
   });
 

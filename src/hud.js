@@ -58,11 +58,15 @@
           });
       }
 
-      // ---- carried items (top-right) --------------------------------------
-      var slotX = W - 6 - 34;
-      this.slot(ctx, slotX, 6, 'seed', p.seeds, 'E');
+      // ---- carried things (top-right) --------------------------------------
+      var slotX = W - 6 - 40;
+      this.itemSlot(ctx, slotX, 6, p);
       slotX -= 38;
       this.slot(ctx, slotX, 6, 'pouch', p.pouch, '↑↑');
+      if (p.urn > 0) {
+        slotX -= 38;
+        this.slot(ctx, slotX, 6, 'urn', p.urn, 'SPARE');
+      }
 
       // ---- worn colours (Owe Block) ---------------------------------------
       if (p.bandana) {
@@ -81,16 +85,21 @@
         });
       }
 
-      // ---- active powerups ------------------------------------------------
+      // ---- active buffs ----------------------------------------------------
       // Sits below the item slots so it never collides with their key hints.
       var barY = 48;
-      if (p.urn > 0) {
-        this.bar(ctx, W - 156, barY, 150, 'HOLLOW URN', p.urn / 9.0, C.pale, 'withered');
-        barY += 22;
-      }
       if (p.tonic > 0) {
-        this.bar(ctx, W - 156, barY, 150, 'CLOCKHEART', p.tonic / 9.0, C.teal, 'quickened');
-        barY += 22;
+        this.bar(ctx, W - 176, barY, 170, 'CLOCKHEART', p.tonic / 9.0, C.teal, 'quickened');
+        barY += 20;
+      }
+      for (var bn in p.buffs) {
+        if (bn === 'dashing') continue;                 // too brief to bother
+        var cfg = PL.TownItems.byBuff[bn];
+        if (!cfg) continue;
+        this.bar(ctx, W - 176, barY, 170, cfg.hud, p.buffs[bn] / cfg.secs,
+                 cfg.colour, cfg.blurb);
+        barY += 20;
+        if (barY > 160) break;
       }
 
       // ---- checkpoint hint -------------------------------------------------
@@ -102,6 +111,30 @@
         });
         ctx.restore();
       }
+    },
+
+    /** The one ITEM button: shows what E will spend, and how many are queued. */
+    itemSlot: function (ctx, x, y, p) {
+      chip(ctx, x, y, 40, 24);
+      var kind = p.items[0];
+      if (kind) {
+        var cfg = kind === 'seed' ? null : PL.TownItems.byCarry[kind];
+        if (cfg) PL.TownItems.icon(ctx, cfg, x + 5, y + 4, 16, p.t);
+        else PL.ItemIcons.seed(ctx, x + 5, y + 5, 15);
+        if (p.items.length > 1) {
+          PL.gfx.text(ctx, '+' + (p.items.length - 1), x + 36, y + 18, {
+            font: PL.FONT.tiny, align: 'right', color: C.parchment
+          });
+        }
+      } else {
+        PL.gfx.text(ctx, '—', x + 20, y + 17, {
+          font: PL.FONT.small, align: 'center', color: 'rgba(242,227,196,0.3)'
+        });
+      }
+      PL.gfx.text(ctx, 'E', x + 20, y + 33, {
+        font: PL.FONT.tiny, align: 'center',
+        color: kind ? C.lantern : 'rgba(242,227,196,0.4)'
+      });
     },
 
     slot: function (ctx, x, y, icon, count, keyHint) {
@@ -120,14 +153,14 @@
     },
 
     bar: function (ctx, x, y, w, label, frac, color, sub) {
-      chip(ctx, x, y, w, 18);
+      chip(ctx, x, y, w, 17);
       var iw = (w - 8) * U.clamp(frac, 0, 1);
       ctx.save();
       ctx.globalAlpha = 0.85;
       PL.gfx.rect(ctx, x + 4, y + 12, iw, 3, color);
       ctx.restore();
       PL.gfx.text(ctx, label, x + 5, y + 10, { font: PL.FONT.tiny, color: color });
-      PL.gfx.text(ctx, sub, x + w - 5, y + 10, {
+      PL.gfx.text(ctx, U.fit(ctx, sub, PL.FONT.tiny, w - 66), x + w - 5, y + 10, {
         font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.45)'
       });
     }

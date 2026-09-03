@@ -12,6 +12,7 @@
  *   segWidth: 30,               // columns per segment (default 30)
  *   segments: [ seg, seg, ... ],   // each seg = array of strings, one per row.
  *   quips: { '1': 'spoken line', ... },  // digits 1-9 place a one-liner trigger
+ *   diff: 1.25,                 // hazard tempo (1.0 = Shanty Town). See below.
  *   trial: 'plankPour'          // optional: trial gate glyph 'G' opens this
  * }
  *
@@ -80,6 +81,12 @@
     'u': 'stall'          // merchant stall (scenery / paid shortcut)
   };
 
+  /* The fourteen town items register their own glyphs (see items-town.js), so
+   * adding one never means editing this table. */
+  if (PL.TownItems) {
+    for (var ig in PL.TownItems.glyphs) MARKERS[ig] = PL.TownItems.glyphs[ig];
+  }
+
   function World(def) {
     this.def = def;
     this.id = def.id;
@@ -100,6 +107,9 @@
     this.tankard = null;
     this.checkpoints = [];
     this.time = 0;
+    // Difficulty knob: hazards run faster and hold shorter as it rises.
+    // Set per level with `diff` (1.0 = Shanty Town pace).
+    this.diff = def.diff || 1;
     // Named world-wide countdowns, ticked once per frame by the play scene.
     // Fenwick's spirit-light uses one; any town-wide timed effect can.
     this.timers = {};

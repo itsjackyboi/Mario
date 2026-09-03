@@ -28,6 +28,7 @@
       this.ctx = canvas.getContext('2d', { alpha: false });
       this.ctx.imageSmoothingEnabled = false;
       PL.Input.install();
+      PL.Input.installPointer(canvas);
       this.resize();
       var self = this;
       window.addEventListener('resize', function () { self.resize(); });

@@ -43,10 +43,11 @@
     this.w = 22; this.h = 28;
     this.x = opts.x + 5;
     this.y = opts.y + T - this.h;
-    this.speed = 0.85;
+    this.speed = 0.85 * ((opts.def && opts.def.diff) || 1);
     this.facing = (opts.tx % 2 === 0) ? -1 : 1;
     this.vy = 0;
     this.bob = 0;
+    this.fleeing = 0;
   }
   PL.extend(Patroller, Enemy);
 
@@ -59,12 +60,22 @@
     PL.Physics.moveY(this, world, this.vy);
     if (this.grounded) this.vy = 0;
 
+    // Windsunk Whistle: the Council's own note. They know it, and they go.
+    var pl = world.player;
+    if (pl && pl.has && pl.has('whistle') && Math.abs(pl.cx() - this.cx()) < T * 7) {
+      this.facing = pl.cx() < this.cx() ? 1 : -1;
+      this.fleeing = 1;
+    } else {
+      this.fleeing = 0;
+    }
+
     if (this.grounded) {
       // Turn at a wall or at the lip of a platform — they're drunk, not suicidal.
       var aheadX = this.facing > 0 ? this.x + this.w + 2 : this.x - 2;
       var floor = PL.Physics.groundUnder(world, aheadX, this.y + this.h + 4);
       if (!floor) this.facing *= -1;
-      if (PL.Physics.moveX(this, world, this.speed * this.facing)) this.facing *= -1;
+      var sp = this.speed * (this.fleeing ? 2.1 : 1);
+      if (PL.Physics.moveX(this, world, sp * this.facing)) this.facing *= -1;
       this.bob = Math.sin(this.t * 9) * 1.4;
     } else {
       PL.Physics.moveX(this, world, this.speed * this.facing * 0.6);
@@ -127,7 +138,7 @@
     this.hideY = this.waterY + 30;
     this.upY = this.waterY - 26;
     this.y = this.hideY;
-    this.period = 3.1;
+    this.period = 3.1 / ((opts.def && opts.def.diff) || 1);
     this.phase = (opts.tx * 0.37) % 1;    // stagger neighbours
     this.risen = 0;
   }
@@ -136,6 +147,15 @@
   Wretch.prototype.update = function (dt, world) {
     this.t += dt;
     if (this.tickDeath(dt)) return;
+    // Tide-Reader's Glass: read the swell right and they never surface.
+    var rp = world.player;
+    if (rp && rp.has && rp.has('tideglass')) {
+      this.risen = 0;
+      this.harmful = false;
+      this.stompable = false;
+      this.y = this.hideY;
+      return;
+    }
     var p = ((this.t / this.period) + this.phase) % 1;
     // 0.00-0.10 rise, 0.10-0.45 up, 0.45-0.55 sink, rest hidden
     var r;

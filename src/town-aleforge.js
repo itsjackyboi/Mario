@@ -33,6 +33,17 @@
     this.life -= dt;
     if (this.life <= 0) { this.remove = true; return; }
 
+    // Coopers' Hoop: the staves come apart on you rather than the reverse.
+    var kp = world.player;
+    if (kp && kp.has && kp.has('hoop') && PL.util.overlaps(this, kp)) {
+      world.fx.burst(this.cx(), this.cy(), C.grogBand, 16, { speed: 3.2, life: 0.6 });
+      world.fx.label(this.cx(), this.y - 6, 'STAVED IN', '#b87333');
+      PL.Audio.sfx('stomp');
+      kp.addGrog(1);
+      this.remove = true;
+      return;
+    }
+
     this.vy = Math.min(this.vy + 0.6, 13);
     this.grounded = false;
     PL.Physics.moveY(this, world, this.vy);
@@ -83,7 +94,7 @@
   function KegChute(opts) {
     E.call(this, opts);
     this.w = T; this.h = T;
-    this.period = 3.4;
+    this.period = 3.4 / ((opts.def && opts.def.diff) || 1);
     this.timer = 1.2 + ((opts.tx * 0.37) % 1) * 2;
     this.decor = true;      // never damages you itself
     this.cull = false;
@@ -136,6 +147,7 @@
     this.x = opts.x; this.y = opts.y;
     this.phase = ((opts.tx * 0.29 + opts.ty * 0.11) % 1) * GUST_PERIOD;
     this.shearDir = (opts.tx % 2) ? 1 : -1;
+    this.period = GUST_PERIOD / ((opts.def && opts.def.diff) || 1);
     this.mode = 'calm';
     this.strength = 0;
     this.cull = false;
@@ -148,7 +160,7 @@
 
   WindGust.prototype.update = function (dt, world) {
     this.t += dt;
-    var p = ((this.t + this.phase) % GUST_PERIOD) / GUST_PERIOD;
+    var p = ((this.t + this.phase) % this.period) / this.period;
     if (p < 0.14) { this.mode = 'wind'; this.strength = p / 0.14; }
     else if (p < 0.56) { this.mode = 'lift'; this.strength = 1; }
     else if (p < 0.70) { this.mode = 'shear'; this.strength = 1; }
@@ -234,7 +246,7 @@
     this.w = T * 2; this.h = 12;
     this.hubX = opts.x + T; this.hubY = opts.y + T;
     this.radius = T * 2.4;
-    this.rate = 0.62 * ((opts.tx % 2) ? -1 : 1);
+    this.rate = 0.62 * ((opts.tx % 2) ? -1 : 1) * ((opts.def && opts.def.diff) || 1);
     this.angle = ((opts.tx * 0.41 + opts.ty * 0.23) % 1) * Math.PI * 2;
     this.isPlatform = true;
     this.active = true;
@@ -293,7 +305,7 @@
     E.call(this, opts);
     this.hubX = opts.x + T / 2; this.hubY = opts.y + T / 2;
     this.len = T * 3.4;
-    this.rate = 0.75 * ((opts.ty % 2) ? -1 : 1);
+    this.rate = 0.75 * ((opts.ty % 2) ? -1 : 1) * ((opts.def && opts.def.diff) || 1);
     this.angle = ((opts.tx * 0.53) % 1) * Math.PI * 2;
     // Bounding box is the whole sweep; touch() does the real test.
     this.w = this.len * 2; this.h = this.len * 2;

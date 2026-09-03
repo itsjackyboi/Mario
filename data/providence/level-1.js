@@ -3,6 +3,10 @@
  * Cut stone terraces. Apostles march exactly one tile per chime and turn on
  * every fourth, so every patrol in this town is a countable pattern rather
  * than a wandering hazard. The bells are the metronome.
+ *
+ * This is where the tryout stops being forgiving: the terraces are broken by
+ * four-tile drops with nothing under them, and the iron in the floor is laid
+ * in threes rather than pairs.
  */
 (function (PL) {
   'use strict';
@@ -11,8 +15,9 @@
     id: 'providence-1',
     name: 'The Ordered Stair',
     blurb: 'Everything here moves on the bell. Learn the bell.',
+    diff: 1.25,
 
-    quips: { '1': '@pv4', '2': '@pv1' },
+    quips: { '1': '@pv4', '2': '@pv1', '3': '@ru9', '4': '@ru15' },
 
     segments: [
 
@@ -25,60 +30,70 @@
         '##############################'
       ],
 
-      /* 1 — one step up, one Apostle on each level. */
+      /* 1 — one step up, an Apostle on each level, iron in the risers. */
       [
         '..............a...o...........',
-        '..............######..........',
-        '..a.....o.....######....a.....',
-        '##############################',
+        '..........#########...........',
+        '..a...o...#########....a...o..',
+        '#####xx##################xx###',
         '##############################',
         '##############################'
       ],
 
-      /* 2 — a gap in the terrace, ledges across it. */
+      /* 2 — the terrace breaks. Three drops, ledges over two of them. */
       [
         '......o...o...................',
         '......==..==..................',
-        '....o.........a.......==......',
-        '#####........########....#####',
-        '#####........########....#####',
-        '#####........########....#####'
+        '....o.............a...==..o...',
+        '#####....####....####....#####',
+        '#####....####....####....#####',
+        '#####....####....####....#####'
       ],
 
       /* 3 — the flag between two bells. */
       [
         '..............................',
-        '...F....b.o.......o..b..2.....',
+        '...F....b.o....+..o..b..2.....',
         '##############################',
         '##############################',
         '##############################'
       ],
 
-      /* 4 — iron in the floor, Apostles on top of it. */
+      /* 4 — iron in the floor, laid in threes, Apostles on top of it. */
       [
         '.......o.......o.......o......',
-        '..a........a..........a.......',
-        '####xx######xx#####xx#########',
+        '..a....a...........a..........',
+        '###xxx###xxx###xxx###xxx######',
         '##############################',
         '##############################'
       ],
 
-      /* 5 — up the ledges for the shard; an urn if you would rather not. */
+      /* 5 — up the ledges for the shard. A Scarab, if you can reach it. */
       [
         '..................R...........',
         '................====..........',
         '..........====................',
-        '.....====.....................',
-        '..U.....o.....o......f........',
+        '.....====..........K..........',
+        '..U.....o.....o......f...3....',
         '##############################',
         '##############################',
         '##############################'
       ],
 
-      /* 6 — the cup at the head of the stair. */
+      /* 6 — the ledger run: step, iron, step, and three of the Order. */
+      [
+        '.........o..........o.........',
+        '.........==.........==........',
+        '...a..........a...........a...',
+        '####xx####xx####xx####xx######',
+        '##############################',
+        '##############################'
+      ],
+
+      /* 7 — the cup at the head of the stair. */
       [
         '........====..................',
-        '.....o.....o.......Z..........',
+        '.....o.....o....4..Z..........',
         '##############################',
         '##############################',
         '##############################'

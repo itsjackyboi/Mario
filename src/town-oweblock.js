@@ -32,7 +32,7 @@
     this.gang = gang;
     this.rival = gang === 'red' ? 'blue' : 'red';
     this.facing = (opts.tx % 2) ? 1 : -1;
-    this.speed = 1.0;
+    this.speed = 1.0 * ((opts.def && opts.def.diff) || 1);
     this.hp = 3;
     this.hitCool = 0;
     this.target = null;
@@ -56,13 +56,15 @@
     if (this.grounded) this.vy = 0;
 
     var p = world.player;
-    // A matching bandana buys you invisibility from this gang.
-    var friendly = p && p.bandana === this.gang;
-    this.harmful = !friendly;
+    // A matching bandana buys you invisibility from this gang; Circus
+    // greasepaint buys it from both at once.
+    var friendly = p && (p.bandana === this.gang || p.has('greasepaint'));
+    this.harmful = !friendly && this.stunT <= 0;
 
     // --- pick something to be angry at ------------------------------------
     this.target = this.nearestRival(world);
-    var huntPlayer = p && !p.dead && !p.frozen && p.bandana === this.rival &&
+    var huntPlayer = p && !p.dead && !p.frozen && !p.has('greasepaint') &&
+                     p.bandana === this.rival &&
                      Math.abs(p.cx() - this.cx()) < T * 8 &&
                      Math.abs(p.cy() - this.cy()) < T * 2.5;
 

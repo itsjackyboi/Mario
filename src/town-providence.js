@@ -15,6 +15,13 @@
   function beatPhase(time) { return (time % BEAT) / BEAT; }
   PL.Providence = { BEAT: BEAT, beatAt: beatAt, beatPhase: beatPhase };
 
+  /* A Cardinal's Indulgence stops the whole Order — Apostles mid-step, Friars
+   * mid-sweep. Both read it from one place so they can never disagree. */
+  function stilled(world) {
+    var p = world && world.player;
+    return !!(p && p.has && p.has('stilled'));
+  }
+
   // ================================================================ apostle
 
   /* Marches exactly one tile per chime, then stands. Turns about every fourth
@@ -35,6 +42,8 @@
   Apostle.prototype.update = function (dt, world) {
     this.t += dt;
     if (this.tickDeath(dt)) return;
+    // Cardinal's Indulgence: signed, sealed, and they stop where they stand.
+    if (stilled(world)) { this.lastBeat = -1; return; }
 
     this.vy = Math.min(this.vy + 0.55, 12);
     this.grounded = false;
@@ -112,6 +121,10 @@
     this.x = opts.x + 4;
     this.y = opts.y + T - this.h;
     this.facing = (opts.tx % 2) ? 1 : -1;
+    // He takes grog, never blood — walking into him is not supposed to be a
+    // death on an empty purse, which is what inheriting Enemy's default made
+    // it. He is still stompable if you would rather settle it that way.
+    this.harmful = false;
     this.range = T * 5.5;
     this.cooldown = 0;
     this.alert = 0;
@@ -123,6 +136,7 @@
   Friar.prototype.update = function (dt, world) {
     this.t += dt;
     if (this.tickDeath(dt)) return;
+    if (stilled(world)) { this.lastBeat = -1; this.alert = 0; return; }
     this.vy = Math.min(this.vy + 0.55, 12);
     this.grounded = false;
     PL.Physics.moveY(this, world, this.vy);
@@ -140,7 +154,7 @@
 
     var p = world.player;
     if (!p || p.dead || p.frozen || this.cooldown > 0) return;
-    if (p.urn > 0) return;                       // no soul, no wallet, no crime
+    if (p.has('purity')) return;                 // the Glyph answers for you
 
     if (this.sees(p, world)) {
       this.alert = 1;

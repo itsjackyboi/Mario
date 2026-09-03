@@ -1,4 +1,5 @@
-/* items.js — every pickup in the game.
+/* items.js — the pickups shared by every town. Town-specific items live in
+ * items-town.js.
  *
  * GROG ECONOMY (documented choice):
  * Grog Barrels are tracked PER LEVEL. The counter resets when a level starts
@@ -126,12 +127,14 @@
     this.x = opts.x + 6; this.baseY = opts.y + 6; this.y = this.baseY; }
   PL.extend(Urn, Pickup);
 
+  /* A vessel for storing one's own soul: it takes the next death for you and
+   * shatters. One spare life, carried — not a state you walk around in. */
   Urn.prototype.touch = function (player, world) {
     if (this.taken) return;
     this.take(world, player);
     player.giveUrn();
     world.fx.ring(this.cx(), this.cy(), 'rgba(198,211,216,0.9)', 46);
-    world.fx.label(this.cx(), this.y - 6, 'HOLLOW URN', C.pale);
+    world.fx.label(this.cx(), this.y - 6, 'HOLLOW URN — A SPARE LIFE', C.pale);
     PL.Audio.sfx('urn');
   };
 
@@ -351,6 +354,16 @@
       ctx.beginPath(); ctx.moveTo(x + s / 2, y + s * 0.2);
       ctx.quadraticCurveTo(x + s * 0.85, y, x + s * 0.9, y + s * 0.15);
       ctx.stroke();
+    },
+    urn: function (ctx, x, y, s) {
+      ctx.fillStyle = PL.C.pale;
+      ctx.beginPath();
+      ctx.moveTo(x + s * 0.25, y + s * 0.25);
+      ctx.quadraticCurveTo(x, y + s * 0.65, x + s * 0.25, y + s);
+      ctx.lineTo(x + s * 0.75, y + s);
+      ctx.quadraticCurveTo(x + s, y + s * 0.65, x + s * 0.75, y + s * 0.25);
+      ctx.closePath(); ctx.fill();
+      PL.gfx.rect(ctx, x + s * 0.15, y + s * 0.08, s * 0.7, s * 0.16, '#9fb0b8');
     },
     shard: function (ctx, x, y, s) {
       ctx.fillStyle = C.coral;

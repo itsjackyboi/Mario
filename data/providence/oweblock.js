@@ -7,6 +7,11 @@
  * There is no Trial gate: the gauntlet is the trial. The Stank Tank is the
  * only checkpoint, and it is deliberately a long way in.
  *
+ * The Block is tuned above everything on the main road: the mine shafts are
+ * four tiles wide with nothing at the bottom, both colours are on every
+ * screen, and the two things the street will actually sell you — a Cutter's
+ * Shiv and a pot of Circus Greasepaint — are both off the safe line.
+ *
  * Stored under the `providence` town (so its grog and shards bank there) but
  * themed 'oweblock', which is what `theme:` on a level def is for.
  */
@@ -20,10 +25,14 @@
     theme: 'oweblock',
     bonus: true,
     difficulty: 'BRUTAL',
+    diff: 1.6,
     unlockAfter: 'providence-3',
     unlockNote: 'Clear The Chime Vault to open the Owe Block road.',
 
-    quips: { '1': '@ob1', '2': '@ob4', '3': '@ob2', '4': '@ob3' },
+    quips: {
+      '1': '@ob1', '2': '@ob4', '3': '@ob2', '4': '@ob3',
+      '5': '@ru10', '6': '@ru5', '7': '@in8'
+    },
 
     segments: [
 
@@ -41,18 +50,18 @@
         '......o....o..................',
         '......==...==.................',
         '....o.......j....o.....==.....',
-        '#####........#########....####',
-        '#####........#########....####',
-        '#####........#########....####'
+        '#####....#####....#####...####',
+        '#####....#####....#####...####',
+        '#####....#####....#####...####'
       ],
 
       /* 2 — up the crates onto the low roofs, where the Cutters sit. */
       [
         '.............m................',
         '............CCC...............',
-        '.......CC...CCC...............',
+        '.......CC...CCC.......X.......',
         '..m....CC...CCC.......o....2..',
-        '##############################',
+        '######xx##########xx##########',
         '##############################',
         '##############################'
       ],
@@ -60,20 +69,20 @@
       /* 3 — the Stank Tank. Nobody kicks this door in. */
       [
         '..............................',
-        '...Y......v.......o.....l...3.',
+        '...Y......v....!..o.....l...3.',
         '##############################',
         '##############################',
         '##############################'
       ],
 
-      /* 4 — crossfire. Three shafts, both colours, no cover. */
+      /* 4 — crossfire. Four shafts, both colours, no cover. */
       [
         '.....o.......o.........o......',
         '.....==......==........==.....',
-        '..m.......j.........m......j..',
-        '####.....####.....####.....###',
-        '####.....####.....####.....###',
-        '####.....####.....####.....###'
+        '..m.......j.......m........j..',
+        '####....####....####....######',
+        '####....####....####....######',
+        '####....####....####....######'
       ],
 
       /* 5 — a Circus lookout on the ledge with the shard. */
@@ -81,9 +90,9 @@
         '...............R..j...........',
         '...............====...........',
         '..........====................',
-        '.....====.....................',
-        '..m.....o.....o.......m.......',
-        '##############################',
+        '.....====..............J......',
+        '..m.....o.....o.......m....5..',
+        '####xx#########xx#############',
         '##############################',
         '##############################'
       ],
@@ -97,19 +106,29 @@
         '###....###....###....###....##'
       ],
 
-      /* 7 — the long alley. Pick a colour or fight everyone. */
+      /* 7 — the scaffold. Four boards, four bodies, one drop under all of it. */
+      [
+        '....o.....o.....o.....o.......',
+        '....==....==....==....==......',
+        '..m....j.......m......j....6..',
+        '####...####...####...####..###',
+        '####...####...####...####..###',
+        '####...####...####...####..###'
+      ],
+
+      /* 8 — the long alley. Pick a colour or fight everyone. */
       [
         '.....o.....o.....o....o.......',
         '..y...m...j...m...j...v.....4.',
-        '##############################',
+        '####xx##########xx############',
         '##############################',
         '##############################'
       ],
 
-      /* 8 — out the far end, to the only clean thing on the Block. */
+      /* 9 — out the far end, to the only clean thing on the Block. */
       [
         '........====..................',
-        '.....o.....o.......Z..........',
+        '.....o.....o....7..Z..........',
         '##############################',
         '##############################',
         '##############################'

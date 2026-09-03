@@ -27,18 +27,23 @@
     this.phase = ((opts.tx * 0.37 + opts.ty * 0.19) % 1) * Math.PI * 2;
     this.sink = 0;
     this.loaded = false;
+    this.diff = (opts.def && opts.def.diff) || 1;
     this.cull = false;
   }
   PL.extend(Bobber, E);
 
-  Bobber.prototype.onStand = function () { this.loaded = true; };
+  Bobber.prototype.onStand = function (a) {
+    // Mossbound Boots keep the float riding high under you.
+    if (a && a.has && a.has('grip')) return;
+    this.loaded = true;
+  };
 
   Bobber.prototype.update = function (dt) {
     this.t += dt;
     var px = this.x, py = this.y;
     // Settling is quick, recovery is slow and springy.
     this.sink = this.loaded
-      ? Math.min(20, this.sink + dt * 34)
+      ? Math.min(20, this.sink + dt * 34 * this.diff)
       : Math.max(0, this.sink - dt * 13);
     this.loaded = false;
 
