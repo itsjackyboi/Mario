@@ -17,7 +17,7 @@
     blurb: 'Bog, vine and spirit-light. Nothing here wants to hurt you.',
     diff: 1.3,
 
-    quips: { '1': '@fw1', '2': '@fw2', '3': '@fw3', '4': '@ru11', '5': '@in6' },
+    quips: { '1': '@fw1', '2': '@fw2', '3': '@fw3', '4': '@?ru', '5': '@?in,cr' },
 
     segments: [
 

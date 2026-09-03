@@ -30,7 +30,7 @@
 
     quips: {
       '1': '@bonehardy2', '2': '@guinnie2', '3': '@six1',
-      '4': '@anqoak2', '5': '@buke2', '6': '@ru7', '7': '@in1'
+      '4': '@anqoak2', '5': '@buke2', '6': '@?ru', '7': '@?in,cr'
     },
 
     segments: [

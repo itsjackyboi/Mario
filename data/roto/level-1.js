@@ -17,7 +17,7 @@
     blurb: 'Bobbing boards, open water, and somebody selling something.',
     diff: 1.4,
 
-    quips: { '1': '@rt4', '2': '@rt1', '3': '@rt3', '4': '@ru6', '5': '@in3' },
+    quips: { '1': '@rt4', '2': '@rt1', '3': '@rt3', '4': '@?ru', '5': '@?in,cr' },
 
     segments: [
 

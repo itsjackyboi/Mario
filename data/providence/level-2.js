@@ -17,7 +17,7 @@
     blurb: 'Friars with lamps and ledgers. Keep out of the light.',
     diff: 1.3,
 
-    quips: { '1': '@pv3', '2': '@pv2', '3': '@pv5', '4': '@ru15', '5': '@in4' },
+    quips: { '1': '@pv3', '2': '@pv2', '3': '@pv5', '4': '@?ru', '5': '@?in,cr' },
 
     segments: [
 

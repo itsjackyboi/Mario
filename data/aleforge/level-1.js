@@ -16,7 +16,7 @@
     blurb: 'Over the tile and slate, with the kegs coming down at you.',
     diff: 1.1,
 
-    quips: { '1': '@af1', '2': '@af2', '3': '@af3', '4': '@ru1', '5': '@in3' },
+    quips: { '1': '@af1', '2': '@af2', '3': '@af3', '4': '@?ru', '5': '@?in,cr' },
 
     segments: [
 

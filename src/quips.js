@@ -2,14 +2,24 @@
  *
  * Levels place trigger zones with the digits 1-9 (see level.js) next to the
  * thing being mocked: a shrine, a moored ship, a tavern door, a memorial.
- * Walking into the zone fires the line once. Nothing fires at random.
+ * Walking into a zone arms a line; nothing fires at random.
+ *
+ * HE ONLY GETS TWO A LEVEL. A level places five to seven zones and `QuipBudget`
+ * decides which two of them actually speak — weighted so the budget is spent by
+ * the end of the level and a different couple speaks on every attempt. He was
+ * narrating, and the joke does not survive that.
  *
  * The line shows in a fixed caption box in the bottom-left corner rather than
- * a speech bubble over the action — Corb talks a lot, and the middle of the
- * screen is where the jumps are.
+ * a speech bubble over the action, because the middle of the screen is where
+ * the jumps are.
  *
- * LINES is a shared pool so towns can reuse or extend the material — level
- * files may hold literal text or a `@key` reference into this table.
+ * LINES is a shared pool so towns can reuse or extend the material. A level
+ * file may hold literal text, a `@key` reference to one specific line, or a
+ * `@?group` draw — a random line from `ru` (rumours he picked up on the
+ * crossing), `in` (what people have said about him) or `cr` (what he makes of
+ * the whole business), preferring ones this session has not heard. That is what
+ * makes a pool this size worth having: two runs at a level are two different
+ * conversations.
  */
 (function (PL) {
   'use strict';
@@ -117,17 +127,125 @@
       in5: "Six men crowned for drinking, and every one of 'em got there without climbing a single wall. Unbelievable.",
       in6: "Uncle says I've got sense. Sense is what you call a man who hasn't done the stupid thing yet.",
       in7: "Nobody's written a verse about me. Nobody's written a verse about a man who finished, either.",
-      in8: "Kings, they call themselves. I've met a keg with more of a plan."
+      in8: "Kings, they call themselves. I've met a keg with more of a plan.",
+      in9: "'Green,' the harbourmaster said. Green's what a thing is before it's worth picking.",
+      in10: "Told a man I'd win. He asked which trial. I said all of 'em. He bought me a drink out of pity.",
+      in11: "They've a word here for a pirate with no crew. Several words. None of 'em fit on a headstone.",
+      in12: "My mother said I'd come to nothing. She never said which nothing, so I've options.",
+      in13: "A cooper laughed so hard he dropped a stave. I'll take that. Nobody drops anything for a nobody.",
+      in14: "Every one of these kings was a nobody once. That's the only encouraging thing about the lot of 'em.",
+      in15: "Been called unproven. Proven's just unproven that kept going a bit longer.",
+      in16: "The bookmakers won't take a bet on me. Won't take one. That's not odds, that's an opinion.",
+
+      ru16: "Heard the Trials used to have seven. Nobody says what happened to the seventh, and nobody asks twice.",
+      ru17: "They say Bonehardy's mine collapsed on a full shift and he called it a restructuring.",
+      ru18: "Word is Guinnie can tell what's in a barrel through the wood. Only useful talent in the whole peerage.",
+      ru19: "Heard a man drank the whole Aleforge cellar dry in a night. Heard it from four men. All four were him.",
+      ru20: "They reckon Jagerbauhm's never once paid for a room. Angels don't, apparently.",
+      ru21: "There's talk the Cardinal writes the bell schedule to hide something. There's always talk.",
+      ru22: "Heard the Owe Block gangs were one crew till somebody laughed at somebody's hat.",
+      ru23: "They say Roto sold the same shipment eleven times and every buyer's still waiting politely.",
+      ru24: "Word round Fenwick is the Veilwalkers won't say your name aloud in case they get attached.",
+      ru25: "Heard Pilsner's crew mutinied twice and both times he thanked them for the initiative.",
+      ru26: "They say Buke won a duel by falling over at exactly the right moment. Still counts, apparently.",
+      ru27: "Heard Anqoak's library has one book in it and it's a ledger of who owes him.",
+      ru28: "There's a rumour the crown's a fake and the real one sank. Half of Aleforge would rather not know.",
+      ru29: "Heard the Stank Tank's landlord has never once been seen. Rent still gets collected.",
+      ru30: "They say a Friar fined the Cardinal once. Say it quietly. Say it somewhere else.",
+      ru31: "Word is the tide charts round here haven't been right since the beast died. Or since it stopped pretending to be.",
+      ru32: "Heard a man in Roto bought a map to the Coors Golden Isles. Heard he's still walking.",
+      ru33: "They say the first Trial was settled by a coin toss and the loser's been mayor ever since.",
+      ru34: "Heard Sackbeard never actually drank. Ran the best bar in the eleven seas stone sober out of spite.",
+      ru35: "Word is the bells in Providence go quiet one night a year and nobody will say which.",
+
+      // --- what he thinks of the whole business -----------------------------
+      cr1: "Six crowns and not one of 'em earned in daylight. I'll take mine wet, thanks.",
+      cr2: "A tryout. That's all this is. Nobody's crowned a tryout before, so I'll be the first at something.",
+      cr3: "Everybody here's got a legend and a limp. I've got neither yet. Working on the first one.",
+      cr4: "You want to know a town, look at what it's proud of. Then look at what it's quiet about.",
+      cr5: "Whole world's kept upright by people nobody writes verses about. Ask a cooper.",
+      cr6: "Not one of these kings had to climb. That's going in my verse, whoever ends up writing it.",
+      cr7: "Rowing over, I made a list of everything I'd say to 'em. It's long. Getting longer.",
+      cr8: "They keep asking what I'm here to prove. Wrong question. Ask what I'm here to take.",
+      cr9: "If a crown's what they hand a man for drinking, I'd rather have the tab.",
+      cr10: "Uncle wants a mayor. I want a look at their faces. We'll both be served."
     },
 
-    /** Resolve '@key' references; anything else is used verbatim. */
-    resolve: function (text) {
-      if (typeof text === 'string' && text.charAt(0) === '@') {
-        return this.LINES[text.slice(1)] || text;
+    /* How many lines Corb gets per level. He is funnier at two than at seven —
+     * the box is a punctuation mark, not a commentary track. Levels place more
+     * trigger zones than this; `PL.QuipBudget` decides which of them speak, and
+     * it is a different couple every attempt. */
+    PER_LEVEL: 2,
+
+    /** Every key in a group prefix ('ru', 'in', 'cr', ...), in table order. */
+    group: function (prefix) {
+      var out = [];
+      for (var k in this.LINES) {
+        if (k.indexOf(prefix) === 0 && !isNaN(Number(k.slice(prefix.length)))) out.push(k);
       }
-      return text;
+      return out;
+    },
+
+    /* Lines already used this session, so a random draw does not repeat itself
+     * while there is anything unheard left in the group. */
+    heard: {},
+
+    /**
+     * Resolve a level's quip text.
+     *   '@key'   one specific line
+     *   '@?ru'   a random line from the `ru` group, preferring unheard ones
+     * Anything else is used verbatim.
+     */
+    resolve: function (text) {
+      if (typeof text !== 'string' || text.charAt(0) !== '@') return text;
+      var key = text.slice(1);
+      if (key.charAt(0) === '?') return this.LINES[this.draw(key.slice(1))] || text;
+      this.heard[key] = true;
+      return this.LINES[key] || text;
+    },
+
+    /**
+     * A key from one or more groups ('ru', or 'in,cr'), preferring lines this
+     * session has not heard so a big pool actually gets through.
+     */
+    draw: function (prefix) {
+      var groups = prefix.split(','), all = [];
+      for (var g = 0; g < groups.length; g++) {
+        all = all.concat(this.group(groups[g]));
+      }
+      if (!all.length) return null;
+      var fresh = [];
+      for (var i = 0; i < all.length; i++) if (!this.heard[all[i]]) fresh.push(all[i]);
+      var pool = fresh.length ? fresh : all;
+      var key = pool[Math.floor(Math.random() * pool.length)];
+      this.heard[key] = true;
+      return key;
     }
   };
+
+  /**
+   * Which of a level's trigger zones actually speak.
+   *
+   * A level places five to seven zones next to the things worth mocking, but
+   * Corb only gets `PER_LEVEL` of them — he was narrating, and the joke does not
+   * survive that. The choice is made as each zone is crossed, weighted by how
+   * many are left, which spends the whole budget by the end of the level and
+   * picks a different couple every attempt. Combined with '@?' draws, two runs
+   * at the same level are two different conversations.
+   */
+  function QuipBudget(total, limit) {
+    this.left = Math.max(1, total);
+    this.spend = Math.min(limit == null ? PL.Quips.PER_LEVEL : limit, this.left);
+  }
+
+  QuipBudget.prototype.take = function () {
+    var take = this.spend > 0 && Math.random() < this.spend / this.left;
+    this.left = Math.max(1, this.left - 1);
+    if (take) this.spend--;
+    return take;
+  };
+
+  PL.QuipBudget = QuipBudget;
 
   // --------------------------------------------------------------- the bubble
 

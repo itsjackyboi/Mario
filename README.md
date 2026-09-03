@@ -218,9 +218,19 @@ the old deceleration carried you off ledges after you had already let go, which 
 game killing you rather than you missing. Air momentum is deliberately untouched: killing
 that too would make every jump uncontrollable. (`src/player.js`)
 
-**Corb's one-liners live in a fixed caption box.** Bottom-left, out of the play area, with
-his face on it — a speech bubble over the action was covering the jumps. The box grows to
-fit its line and drops a type size before it would ever need a fourth row. (`src/quips.js`)
+**Corb gets two lines a level.** A level places five to seven trigger zones next to the
+things worth mocking, and `QuipBudget` decides which two of them actually speak — weighted
+by how many zones are left, so the budget is always spent by the end of the level and a
+different couple speaks on every attempt. He was narrating, and the joke does not survive
+that.
+
+That is also what makes a hundred-line pool worth having: a level file can write `'@?ru'`
+instead of naming a line, which draws a random one from that group and prefers ones this
+session has not heard. Two runs at the same level are two different conversations.
+
+**His one-liners live in a fixed caption box.** Bottom-left, out of the play area, with his
+face on it — a speech bubble over the action was covering the jumps. The box grows to fit
+its line and drops a type size before it would ever need a fourth row. (`src/quips.js`)
 
 **A buff's countdown and its description are in different corners.** The timer chip stays
 top-right under the item slots where the eye already is; what the buff actually *does* is
@@ -298,9 +308,19 @@ non-opaque scene pushed over the title, so the title keeps drawing behind it. Th
 its click target are defined once, together, in `PL.LetterIcon` so they cannot drift apart.
 (`src/scene-letter.js`)
 
-**The clock never stops.** It runs from the moment control is handed over until you touch
-the tankard, including through deaths, checkpoint respawns and Trials. Only your position
-resets. (`src/scene-play.js`, `src/trials.js`)
+**A death puts the clock back to zero.** The level clock runs from the moment control is
+handed over — through Trials, through pauses, through a checkpoint respawn — but *dying*
+resets it, exactly as if you had walked out of the level and come back in.
+
+The clock is kept in two halves to make that work in a speedrun: `levelMs` is this attempt
+at this level, `baseMs` is everything banked before it (0 on a single level, the run's
+completed splits in a Drunken Speedrun), and what you see is the sum. A death zeroes
+`levelMs` only, so it erases the current attempt at the current level and never touches a
+banked split — the run clock only ever moves forward across levels.
+
+It is not a free reset. A death costs five grog and an empty purse ends the attempt
+outright, so wiping a bad attempt is something you buy, not something you get.
+(`src/scene-play.js`, `src/speedrun.js`)
 
 **Roto's bobbers never sink far enough to drown you.** They settle a capped 20px, which is
 pressure on your timing rather than a delayed death. (`src/town-roto.js`)
@@ -487,15 +507,26 @@ beast's own plating in the Tavern:
 
 ### Quips
 
-`quips` maps a digit to either a literal string or `'@key'`, resolved against the shared
-pool in `src/quips.js`. The pool is grouped: one set per Liquor King, one per area, plus
-`ru*` (rumours Corb picked up on the crossing and has not verified) and `in*` (what people
-have said about *him*, which he has been rehearsing answers to). The last two are
-deliberately area-neutral, so any level can pull from them.
+`quips` maps a digit to one of three things, all resolved against the shared pool of ~100
+lines in `src/quips.js`:
+
+| Written as | Gives you |
+| --- | --- |
+| `'a literal line'` | exactly that |
+| `'@pv3'` | that one line — for a zone placed next to the specific thing it mocks |
+| `'@?ru'` | a random line from the `ru` group, preferring ones unheard this session |
+| `'@?in,cr'` | the same, drawing across several groups |
+
+The pool is grouped: one set per Liquor King, one per area, plus three area-neutral ones —
+`ru*` (rumours he picked up on the crossing and has not verified), `in*` (what people have
+said about *him*, which he has been rehearsing answers to) and `cr*` (what he makes of the
+whole business). The `@?` form exists so those three actually get heard: he only says two
+lines a level, so naming a fixed line in every zone would mean most of the pool never
+surfaced.
 
 Place the digit next to the thing being mocked — a keg stack, a bone shrine, a bell tower,
 a gang tag, the beast's own ribs — so the line reads as a reaction rather than a random
-barb. Each zone fires once.
+barb. A zone arms once; whether it speaks is up to the budget.
 
 ## Adding a new area
 

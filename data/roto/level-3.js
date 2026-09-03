@@ -30,7 +30,7 @@
     current: { push: 1.3, period: 7.5 },
 
     quips: {
-      '1': '@rt1', '2': '@rt2', '3': '@six2', '4': '@ru6', '5': '@in8'
+      '1': '@rt1', '2': '@rt2', '3': '@six2', '4': '@?ru', '5': '@?in,cr'
     },
 
     segments: [

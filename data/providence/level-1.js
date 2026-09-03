@@ -17,7 +17,7 @@
     blurb: 'Everything here moves on the bell. Learn the bell.',
     diff: 1.25,
 
-    quips: { '1': '@pv4', '2': '@pv1', '3': '@ru9', '4': '@ru15' },
+    quips: { '1': '@pv4', '2': '@pv1', '3': '@?ru', '4': '@?ru' },
 
     segments: [
 

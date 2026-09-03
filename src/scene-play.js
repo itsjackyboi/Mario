@@ -1,9 +1,17 @@
 /* scene-play.js — the level runner. Owns the world, the player, the clock and
  * the transitions in and out of a run.
  *
- * TIMER RULE: the clock starts the instant control is handed over and runs
- * continuously until the tankard is touched. Dying does NOT reset it — only
- * the player's position resets. Checkpoint efficiency is the whole point.
+ * TIMER RULE: the clock is kept in two halves. `levelMs` is this attempt at
+ * this level; `baseMs` is everything banked before it (0 on a single level, the
+ * run's completed splits in a Drunken Speedrun). What the HUD shows, and what
+ * gets recorded, is the sum.
+ *
+ * DYING RESETS `levelMs` TO ZERO — a death puts you back at the start of the
+ * clock as well as at the flag, exactly as if you had walked out of the level
+ * and come back in. In a speedrun that means a death erases the current attempt
+ * at the current level but never touches the splits already banked, so the run
+ * clock can only ever move forward across levels. It is not a free reset: a
+ * death costs five grog, and an empty purse ends the attempt outright.
  */
 (function (PL) {
   'use strict';
@@ -26,6 +34,9 @@
     world.camera = this.camera = new PL.Camera(world.w, world.h);
     this.backdrop = PL.Backdrops.create(world);
     this.quips = new PL.QuipBox();
+    // Levels place more trigger zones than Corb gets to use. The budget picks
+    // which of them speak, and picks differently every attempt.
+    this.quipBudget = new PL.QuipBudget(world.quipZones.length);
 
     var p = (this.player = new PL.Player({ x: world.spawn.x, y: world.spawn.y }));
     world.player = p;
@@ -34,7 +45,9 @@
     // level's — grog is the life pool now, so starting every level on nothing
     // would make the first death of each one a game over.
     this.speedrun = !!this.meta.speedrun;
-    this.elapsedMs = this.speedrun ? PL.Speedrun.elapsedMs : 0;
+    this.baseMs = this.speedrun ? PL.Speedrun.elapsedMs : 0;
+    this.levelMs = 0;
+    this.elapsedMs = this.baseMs;
     if (this.speedrun) p.grog = PL.Speedrun.purse;
     this.finished = false;
     this.goalT = 0;
@@ -42,6 +55,7 @@
     this.introT = this.speedrun ? 1.3 : 2.1;
     this.fadeIn = 1;
     this.checkpointFlash = 0;
+    this.deathClockFlash = 0;
     this.trialActive = false;
     this.trialBonus = 0;
 
@@ -93,7 +107,8 @@
     }
 
     if (!this.finished) {
-      this.elapsedMs += dt * 1000;
+      this.levelMs += dt * 1000;
+      this.elapsedMs = this.baseMs + this.levelMs;
       if (this.speedrun) PL.Speedrun.elapsedMs = this.elapsedMs;
     }
 
@@ -198,10 +213,11 @@
       if (z.fired) continue;
       if (U.overlaps(p, z)) {
         z.fired = true;
-        this.quips.say(z.text, p);
+        if (this.quipBudget.take()) this.quips.say(z.text, p);
       }
     }
     this.quips.update(dt);
+    if (this.deathClockFlash > 0) this.deathClockFlash -= dt;
 
     // --- housekeeping -----------------------------------------------------
     for (var k = ents.length - 1; k >= 0; k--) {
@@ -222,6 +238,11 @@
     if (this.respawnT > 0) {
       this.respawnT -= dt;
       if (this.respawnT <= 0) {
+        // The clock goes back to the top of the level with you.
+        this.levelMs = 0;
+        this.elapsedMs = this.baseMs;
+        if (this.speedrun) PL.Speedrun.elapsedMs = this.elapsedMs;
+        this.deathClockFlash = 1.6;
         p.respawn(world);
         // Put the level back the way it was found — a spent spirit-light or a
         // wall of steam that walked on while you were dead would otherwise

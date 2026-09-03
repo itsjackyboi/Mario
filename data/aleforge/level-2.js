@@ -14,7 +14,7 @@
     blurb: 'Ride the updrafts. The shear comes right after.',
     diff: 1.15,
 
-    quips: { '1': '@af5', '2': '@af4', '3': '@af6', '4': '@ru4', '5': '@bonehardy3' },
+    quips: { '1': '@af5', '2': '@af4', '3': '@af6', '4': '@?ru', '5': '@bonehardy3' },
 
     segments: [
 

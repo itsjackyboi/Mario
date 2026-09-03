@@ -13,7 +13,7 @@
     blurb: 'Narrow boards, busy water, and hooks in every gap.',
     diff: 1.45,
 
-    quips: { '1': '@rt2', '2': '@rt3', '3': '@rt4', '4': '@ru4', '5': '@in2' },
+    quips: { '1': '@rt2', '2': '@rt3', '3': '@rt4', '4': '@?ru', '5': '@?in,cr' },
 
     segments: [
 
