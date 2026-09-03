@@ -13,8 +13,17 @@
  *   segments: [ seg, seg, ... ],   // each seg = array of strings, one per row.
  *   quips: { '1': 'spoken line', ... },  // digits 1-9 place a one-liner trigger
  *   diff: 1.25,                 // hazard tempo (1.0 = Shanty Town). See below.
- *   trial: 'plankPour'          // optional: trial gate glyph 'G' opens this
+ *   trial: 'plankPour',         // optional: trial gate glyph 'G' opens this
+ *   tide: { ... }               // optional: a level-wide mechanic, see below
  * }
+ *
+ * LEVEL-WIDE MECHANICS
+ * --------------------
+ * Four of the late-level mechanics are rules about the whole level rather than
+ * obstacles placed in it, so they are written as a field on the def instead of
+ * a glyph: `tide`, `boil`, `current` and `pulse`. Each one present spawns a
+ * single system entity of the same name (see mechanics.js). Adding another
+ * means adding its name to `PL.Mechanics.SYSTEMS` — nothing here changes.
  *
  * Segments are BOTTOM-ALIGNED and RIGHT-PADDED: a segment with fewer than
  * `height` rows gets empty sky added above it, and a row shorter than
@@ -81,10 +90,14 @@
     'u': 'stall'          // merchant stall (scenery / paid shortcut)
   };
 
-  /* The fourteen town items register their own glyphs (see items-town.js), so
-   * adding one never means editing this table. */
+  /* The town items and the placed late-level mechanics register their own
+   * glyphs (items-town.js, mechanics.js), so adding one never means editing
+   * this table. */
   if (PL.TownItems) {
     for (var ig in PL.TownItems.glyphs) MARKERS[ig] = PL.TownItems.glyphs[ig];
+  }
+  if (PL.Mechanics) {
+    for (var mg in PL.Mechanics.GLYPHS) MARKERS[mg] = PL.Mechanics.GLYPHS[mg];
   }
 
   function World(def) {
@@ -145,7 +158,7 @@
           this.spawn = { x: tx * T + 6, y: ty * T + 4 };
           continue;
         }
-        var opts = { tx: tx, ty: ty, x: tx * T, y: ty * T, world: this, def: def };
+        var opts = { tx: tx, ty: ty, x: tx * T, y: ty * T, world: this, def: def, glyph: ch };
         if (type === 'shard') opts.shardId = def.id + ':' + (shardIndex++);
         if (type === 'trialGate') opts.trial = def.trial;
         var ent = PL.Entities.create(type, opts);
@@ -157,6 +170,15 @@
       }
     }
     this.shardTotal = shardIndex;
+
+    // Level-wide mechanics: one system entity per field the def declares.
+    var systems = (PL.Mechanics && PL.Mechanics.SYSTEMS) || [];
+    for (var s = 0; s < systems.length; s++) {
+      if (!def[systems[s]]) continue;
+      this.add(PL.Entities.create(systems[s], {
+        tx: 0, ty: 0, x: 0, y: 0, world: this, def: def
+      }));
+    }
   }
 
   function repeat(ch, n) {

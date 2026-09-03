@@ -16,6 +16,19 @@
     this.sel = 0;
 
     this.next = PL.Towns.nextLevel(def.town, def.id);
+
+    // If this level's Red-Earth Shard is still in the ground, the next step in
+    // this town is shut. Break that news here rather than letting the player
+    // find out on the level-select screen.
+    this.shardGate = null;
+    var town = PL.Towns.get(def.town);
+    var at = PL.Towns.indexOf(def.town, def.id);
+    if (town && at >= 0 && at + 1 < town.levels.length) {
+      var after = town.levels[at + 1];
+      if (PL.Towns.gatedBehind(after) === def && !PL.Towns.isUnlocked(after)) {
+        this.shardGate = after;
+      }
+    }
     this.options = [];
     if (this.next) this.options.push({ label: 'Next level', act: 'next' });
     this.options.push({ label: 'Run it again', act: 'retry' });
@@ -106,6 +119,12 @@
     PL.gfx.text(ctx, 'Town purse: ' + purse + ' grog', 42, y + 2, {
       font: PL.FONT.tiny, color: 'rgba(242,227,196,0.5)'
     });
+    if (this.shardGate) {
+      y += 18;
+      PL.gfx.text(ctx, U.fit(ctx, this.shardGate.name + ' stays shut — no shard.',
+                             PL.FONT.tiny, 236),
+                  42, y + 2, { font: PL.FONT.tiny, color: C.coral });
+    }
 
     // ---- leaderboard -----------------------------------------------------
     PL.gfx.panel(ctx, 308, 68, 306, 210, { r: 6 });

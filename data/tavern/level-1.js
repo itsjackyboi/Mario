@@ -1,13 +1,16 @@
 /* Sackbeard's Tavern — the capstone.
  *
- * Inside the shell of the Great Shelled Beast. Every town's hazard shows up
- * here at once: Shanty Town's loose planks and wretches, Aleforge's kegs and
- * gears, Providence's Apostles, Fenwick's vines and phantoms, Roto's bobbers,
- * and an Owe Block pair still settling their argument in the corner.
+ * THE MECHANIC: the beast is not as dead as the sign outside says. `pulse`
+ * gives the room a heartbeat — the whole shell throbs red — and every `,` on
+ * the map is a socket in the bone that a spine comes out of on the beat. The
+ * sockets are drawn all the time, so the map tells you where; the throb tells
+ * you when. Being on the wrong tile at the wrong moment costs you grog, and an
+ * empty purse in here costs you the run.
  *
- * It is also the fastest level in the game — `diff` runs everything here well
- * above the pace of the town it was borrowed from — and the only two drinks
- * worth the name are both hidden in it.
+ * Everything else is still the whole isles at once: Shanty Town's loose planks
+ * and wretches, Aleforge's kegs and gears, Providence's Apostles, Fenwick's
+ * vines and phantoms, Roto's bobbers, and an Owe Block pair still settling
+ * their argument in the corner. The pulse runs under all of it.
  *
  * `ending: true` sends the results to the ending screen instead of the usual
  * level-complete card; `tankardScale` makes the last cup the biggest in the
@@ -19,10 +22,20 @@
   PL.Towns.addLevel('tavern', {
     id: 'tavern-1',
     name: "Sackbeard's Tavern",
-    blurb: 'The great shell, the whole isles, and the biggest cup ever poured.',
+    blurb: 'The great shell, the whole isles, and a heartbeat under the floor.',
     ending: true,
     tankardScale: 1.7,
-    diff: 1.7,
+    diff: 1.8,
+
+    // The only level in its area, so the in-town shard chain has nothing to
+    // hang it on. It hangs off the end of the previous area instead — the
+    // whole point of the chain is that the finale is walked to, not jumped to.
+    unlockAfter: 'roto-3',
+    unlockAfterTown: 'roto',
+    unlockNote: "Bring back The Undertow's Red-Earth Shard.",
+
+    // seconds per heartbeat, and how long a spine stays out.
+    pulse: { period: 2.5, up: 0.6 },
 
     quips: {
       '1': '@tv1', '2': '@tv4', '3': '@tv2', '4': '@tv3', '5': '@tv5',
@@ -31,10 +44,10 @@
 
     segments: [
 
-      /* 0 — in under the ribs. */
+      /* 0 — in under the ribs, and the first thing the floor does. */
       [
         '..............................',
-        '.@...o....o....l......1.......',
+        '.@.,.o..,.o..,.l...,..1...,...',
         '##############################',
         '##############################',
         '##############################'
@@ -50,15 +63,15 @@
         '####~~~~~~~~~~~~~~~~~~~~~~####'
       ],
 
-      /* 2 — Aleforge sends the kegs down the long table. */
+      /* 2 — Aleforge sends the kegs down a table that bites back. */
       [
-        '..p.....o....p...q..o......k..',
+        '..p.,...o..,.p,..q..o...,..k..',
         '#######...#########...########',
         '#######...#########...########',
         '#######...#########...########'
       ],
 
-      /* 3 — the flag by the hearth. */
+      /* 3 — the flag by the hearth. The only quiet boards in the room. */
       [
         '..............................',
         '...F...$..o....l..o.....b...2.',
@@ -73,7 +86,7 @@
         '.......e.........e............',
         '............==................',
         '..a......................a.6..',
-        '..............................',
+        '.,..........................,.',
         '####.....................#####',
         '####.....................#####',
         '####.....................#####'
@@ -101,21 +114,24 @@
         '####~~~~~~~~~~~~~~~~~~~~~~####'
       ],
 
-      /* 7 — the long table. Kegs one way, a clock hand the other. */
+      /* 7 — the long table. Kegs one way, a clock hand the other, bone under. */
       [
         '.....o.....o.....o.....o......',
         '.....==....==....==....==..k..',
-        '..a.........n............a.7..',
+        '..a,.....,..n....,.......a,7..',
         '####....####....####....######',
         '####....####....####....######',
         '####....####....####....######'
       ],
 
-      /* 8 — the last floor, everything at once. */
+      /* 8 — the last floor. A rib shelf overhead, and spines off both. */
       [
+        '##############################',
+        '.....,.....,.....,.....,......',
+        '..............................',
         '.......o......o.......o.......',
         '......====...====....====.....',
-        '..a....U.....p...z...n....4...',
+        '..a...,U....,p.....z,..n...,4.',
         '###xxx###xxx###xxx############',
         '##############################',
         '##############################'

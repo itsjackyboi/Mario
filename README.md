@@ -49,34 +49,48 @@ The title screen offers both:
 
 ## The levels
 
-Sixteen levels across six areas. Everything is selectable from the start except Owe Block.
+Sixteen levels across six areas. The last level of each area is built on a mechanic that
+appears nowhere else, and is a long way harder than the two before it.
 
-| Area | # | Level | Trial |
-| --- | --- | --- | --- |
-| **Shanty Town** | I | The Crash Cliffs | |
-| | II | The Bone Stair | |
-| | III | The Windsunk Steps | The Plank Pour |
-| **Aleforge** | I | Brewers Lane | |
-| | II | Wolendi Wind Farm | |
-| | III | CockPowers Clock Tower | The Golden Taps |
-| **Providence** | I | The Ordered Stair | |
-| | II | The Tithe Walk | |
-| | III | The Chime Vault | The Order of Chimes |
-| | ★ | **Owe Block** (bonus, brutal) | the gauntlet itself |
-| **Fenwick** | I | Brandywine Brush | |
-| | II | The Root Lantern | The Lantern of Roots |
-| **Roto Kaiishi** | I | The Long Pier | |
-| | II | Netmenders' Row | |
-| | III | Under the Boards | The Haggle |
-| **Sackbeard's Tavern** | — | Sackbeard's Tavern (finale) | |
+| Area | # | Level | Trial | New mechanic |
+| --- | --- | --- | --- | --- |
+| **Shanty Town** | I | The Crash Cliffs | | |
+| | II | The Bone Stair | | |
+| | III | **The Drowning Tide** | The Plank Pour | the sea rises and falls |
+| **Aleforge** | I | Brewers Lane | | |
+| | II | Wolendi Wind Farm | | |
+| | III | **The Rolling Boil** | The Golden Taps | a wall of steam that never stops |
+| **Providence** | I | The Ordered Stair | | |
+| | II | The Tithe Walk | | |
+| | III | **The Half Beat** | The Order of Chimes | floor on every other chime |
+| | ★ | **Owe Block** (bonus, brutal) | the gauntlet itself | |
+| **Fenwick** | I | Brandywine Brush | | |
+| | II | **The Overturned Wood** | The Lantern of Roots | gravity flips |
+| **Roto Kaiishi** | I | The Long Pier | | |
+| | II | Netmenders' Row | | |
+| | III | **The Undertow** | The Haggle | a current that shoves and reverses |
+| **Sackbeard's Tavern** | — | **Sackbeard's Tavern** (finale) | | bone spines on a heartbeat |
 
-**Owe Block unlocks when Providence III — The Chime Vault — is cleared.** That is the
-documented rule, chosen over "collect every Providence shard" because a missed collectible
-should not be able to lock a player out of the hardest level in the game. It is drawn on
-the level-select screen as an indented branch off Providence, in Crimson Cutter red.
+## Getting in: the shard chain
 
-The finale is always selectable, but the ending screen totals every level's best time, so
-it reads as a summary of the whole tryout rather than one run.
+**The first level of every area is open from the start. Every level after it needs the
+Red-Earth Shard out of the level before it.** Clearing a level is not enough — you have to
+have found its shard. A level you cannot enter says which shard it wants.
+
+That makes each area a road rather than a menu, and it makes the shard the thing it always
+should have been: not a completionist tick, but the key to the next door.
+
+Two consequences worth knowing:
+
+- **Owe Block** wants Providence III's shard. It is last in Providence's list, so the same
+  chain covers it; `bonus: true` only decides that the level-select draws it as an indented
+  branch in Crimson Cutter red rather than a step.
+- **The finale** is the only level in its area, so the in-town chain has nothing to hang it
+  on. It hangs off the previous area instead (`unlockAfter: 'roto-3'`), because a finale you
+  can jump straight to would undo the point of the chain.
+
+The **Drunken Speedrun** ignores all of it and runs every level in order, because a route
+that changed with your save state would not be comparable.
 
 ### Recurring conventions
 
@@ -92,6 +106,32 @@ Implemented once, reused by every area without modification:
 - **Trials.** A gate (glyph `G`) opens the trial named by `trial:` on the level def. The
   level clock keeps running through it. Pass and the gate opens; fail and you die and
   respawn at the checkpoint.
+
+### One mechanic per area
+
+The last level of every area is built on a mechanic that appears nowhere else in the game.
+They live together in `src/mechanics.js` rather than in the town files, because they are all
+the same *kind* of thing — a rule about the whole level rather than an obstacle placed in it
+— and because reading them side by side is the only way to be sure none of them repeat.
+
+| Area | Level | What it does |
+| --- | --- | --- |
+| **Shanty Town** | The Drowning Tide | A moving waterline across the whole level. It rests below the boards, floods to row 12, holds, and goes back out on a fourteen-second cycle. Ground that was fine ten seconds ago is twelve feet under. The dashed line drawn while the tide is out is the mark it will reach. |
+| **Aleforge** | The Rolling Boil | A wall of live steam moving right at a constant speed from before the spawn point. It does not slow down and there is nothing you can do to it — it scours the rival crews off the boards as it passes. It does stop for a Trial, because a Trial is a scene of its own. |
+| **Providence** | The Half Beat | `(` is stone that exists on even chimes, `)` on odd ones. They write themselves into the tile grid, so they collide from every side like real terrain. A block flashes for the last third of a beat before it leaves; standing where one returns is a death. |
+| **Fenwick** | The Overturned Wood | Walk through a veil gate (`%`) and down changes direction — gravity, your jump and the sprite all invert, and you land on the underside of the canopy. Walk through another and it turns back. |
+| **Roto Kaiishi** | The Undertow | A tidal race that shoves you sideways every frame, holds, goes slack, then runs the other way. On the boards you can lean into it; in the air you cannot. Mossbound Boots are the only counter, and they are two towns back. |
+| **Sackbeard's Tavern** | the finale | The beast has a heartbeat. Every `,` is a socket in the bone that a spine comes out of on the beat — the sockets are drawn all the time, so the map says where and the throb says when. |
+
+Four of them (`tide`, `boil`, `current`, `pulse`) are written as a **field on the level def**
+rather than placed as a glyph, because they apply to the whole level and there is nowhere
+sensible to put a marker. `PL.Mechanics.SYSTEMS` lists them and `level.js` spawns one system
+entity per field it finds; adding a fifth means adding its name to that array and nothing
+else. The other two are placed: `(` `)` and `%`, plus `,` for a spine socket.
+
+Only one of them needed anything from the engine: gravity inversion added `gsign` to the
+player and four lines to `Physics.moveY`, so an inverted body grounds on ceilings. Nothing
+else in the engine knows the mechanic exists.
 
 ### Items
 
@@ -201,19 +241,25 @@ reading `(opts.def && opts.def.diff) || 1` in its constructor.
 
 | Area | `diff` |
 | --- | --- |
-| Shanty Town | 0.95 → 1.05 |
-| Aleforge | 1.10 → 1.20 |
-| Providence | 1.25 → 1.35 |
-| Fenwick | 1.30 → 1.40 |
-| Roto Kaiishi | 1.40 → 1.50 |
+| Shanty Town | 0.95 → 1.15 |
+| Aleforge | 1.10 → 1.30 |
+| Providence | 1.25 → 1.45 |
+| Fenwick | 1.30 → 1.50 |
+| Roto Kaiishi | 1.40 → 1.60 |
 | Owe Block (bonus) | 1.60 |
-| Sackbeard's Tavern | 1.70 |
+| Sackbeard's Tavern | 1.80 |
 
 The geometry rises with it. Shanty Town gaps are two or three tiles with something to land
 on; Providence onward the terraces break into pillars with four-tile drops and no floor
 under them; Roto's last crossings are bobbing platforms with no fixed deck anywhere in
 them. Nothing exceeds the jump budget — a level's every column is audited for footing —
 but from Providence on, most of it is at the edge of it.
+
+**The shard is a key, not a trophy.** Gating each level on the previous level's Red-Earth
+Shard is one function — `Store.hasShardFrom`, a prefix test on the shard ids that were
+already being stored — plus `Towns.gatedBehind`, which walks backwards past bonus levels so
+a branch can never become a step. No new save field, so no migration. (`src/storage.js`,
+`data/towns.js`)
 
 **The letter is the reason he came.** A small envelope on the title screen (click it, or
 press `L`) opens the letter from Corb's uncle that got him on the boat. It is a
@@ -251,6 +297,7 @@ src/
   items-town.js                the fourteen area-local items, as one table
   enemies.js                   Enemy base, rival crew, coral-eyed sea-wretch
   props.js                     loose planks, movers, checkpoint, tankard, trial gate, scenery
+  mechanics.js                 the six late-level mechanics, one per area
   player.js                    movement, powerups, damage, rendering
   quips.js                     the one-liner pool and the speech bubble
   backdrop.js                  backdrop registry + Shanty Town's parallax
@@ -304,10 +351,11 @@ PL.Towns.addLevel('aleforge', {
   height: 20,                    // rows per segment (default 20)
   segWidth: 30,                  // columns per segment (default 30)
   diff: 1.2,                     // hazard tempo; 1.0 is Shanty Town pace
+  boil: { speed: 33 },           // optional — a level-wide mechanic (mechanics.js)
   trial: 'goldenTaps',           // optional — what the `G` glyph opens
   theme: 'oweblock',             // optional — use another area's palette/backdrop
   bonus: true,                   // optional — draws as a branch, needs unlocking
-  unlockAfter: 'providence-3',   // required with `bonus`
+  unlockAfter: 'providence-3',   // optional — needs that level's shard first
   unlockNote: 'Clear ... first.',
   ending: true,                  // optional — finishes to the ending screen
   tankardScale: 1.7,             // optional — a bigger cup
@@ -385,6 +433,9 @@ beast's own plating in the Tavern:
 | `w` `M` `*` | Spiritweed / Mossbound Boots / Veilwalker's Draught | Fenwick |
 | `D` `O` `^` | Goldcoral Chit / Albatross Ballast / Tide-Reader's Glass | Roto |
 | `q` `z` `$` | The Pour Eternal / Leviathan Marrow / Sackbeard's Own Cup | Tavern |
+| `(` `)` | phase block: stone on even / odd chimes | Providence III |
+| `%` | veil gate: flips gravity | Fenwick II |
+| `,` | bone socket: a spine erupts on the heartbeat | the finale |
 | `1`–`9` | quip trigger zone, text from the level's `quips` map | any |
 
 **Placement rules that will save you time:**

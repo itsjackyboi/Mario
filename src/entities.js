@@ -94,7 +94,12 @@
       } else {
         var tyU = Math.floor(a.y / T);
         for (var tx4 = x0; tx4 <= x1 && !hit; tx4++) {
-          if (world.solidAt(tx4, tyU)) { a.y = (tyU + 1) * T; hit = true; }
+          if (world.solidAt(tx4, tyU)) {
+            a.y = (tyU + 1) * T; hit = true;
+            // A body under inverted gravity lands on ceilings. This is the
+            // only thing the engine has to know about Fenwick's veil gates.
+            if (a.invert) a.grounded = true;
+          }
         }
       }
     }

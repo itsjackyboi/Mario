@@ -150,6 +150,20 @@
       return this.townProgress(townId).completed.indexOf(levelId) !== -1;
     },
 
+    /**
+     * Has any Red-Earth Shard from this level been banked? Shard ids are
+     * "levelId:index", so the prefix is the whole test — which is what lets the
+     * unlock chain work without storing a second thing alongside it.
+     */
+    hasShardFrom: function (townId, levelId) {
+      var shards = this.townProgress(townId).shards;
+      var prefix = levelId + ':';
+      for (var i = 0; i < shards.length; i++) {
+        if (shards[i].indexOf(prefix) === 0) return true;
+      }
+      return false;
+    },
+
     clearProgress: function () { write(PR_KEY, { version: VERSION, towns: {} }); },
 
     // ------------------------------------------------------------ aggregates

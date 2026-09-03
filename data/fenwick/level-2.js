@@ -1,99 +1,162 @@
-/* Fenwick II — "The Root Lantern"
+/* Fenwick II — "The Overturned Wood"
  *
- * Deeper in, where the ground stops being reliable. Ends with the Lantern of
- * Roots — a puzzle rather than a reflex test, because Fenwick does not throw
- * anybody in the water.
+ * THE MECHANIC: down changes direction. Walk through a veil gate (`%`) and
+ * gravity, your jump and the way you are drawn all invert — you fall up, you
+ * land on the underside of the canopy, and the bog that was below you is over
+ * your head. Walk through another and it turns back.
  *
- * It will let you throw yourself in, mind. The phantom spans here are longer
- * than one spirit-light burns, so the crossings have to be planned before
- * they are started.
+ * It is the one thing in the game that changes the rules rather than the
+ * furniture, which is why it is here: Fenwick is where the Veilwalkers live ten
+ * lifetimes to our one, and none of it is meant to make sense to a pirate.
+ *
+ * HOW THE LEVEL IS BUILT, since the geometry is the whole puzzle:
+ *   rows 10-11   the canopy — the ceiling, and the floor when you are inverted
+ *   rows 12-17   open air
+ *   rows 18-19   the ground, or the bog
+ * A gate you meet the right way up goes on row 17; one you meet upside down
+ * goes on row 13. That is the only rule, and it is the same in every segment.
+ *
+ * One-way planks hold only from above, so every inverted stretch is built from
+ * solid ground. Ends with the Lantern of Roots, the right way up.
  */
 (function (PL) {
   'use strict';
 
   PL.Towns.addLevel('fenwick', {
     id: 'fenwick-2',
-    name: 'The Root Lantern',
-    blurb: 'Half the path is only there when the lights are.',
+    name: 'The Overturned Wood',
+    blurb: 'Walk through the veil and down is the other way.',
     trial: 'lanternOfRoots',
-    diff: 1.4,
+    diff: 1.5,
 
-    quips: { '1': '@fw3', '2': '@fw1', '3': '@six3', '4': '@ru11', '5': '@in7' },
+    quips: {
+      '1': '@fw3', '2': '@fw1', '3': '@six3', '4': '@ru11', '5': '@in7'
+    },
 
     segments: [
 
-      /* 0 — the trailhead. */
+      /* 0 — the trailhead, still obeying the usual arrangement. */
       [
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
         '.@...o....o....i....1.........',
         '##############################',
+        '##############################'
+      ],
+
+      /* 1 — the canopy closes over, and the first gate is under it. */
+      [
+        '##############################',
+        '##############################',
+        '..........o....w..o...........',
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
+        '.....%........................',
         '##############################',
         '##############################'
       ],
 
-      /* 1 — a phantom bridge with the light at the wrong end. */
+      /* 2 — the ground is bog. The canopy is the only road. */
       [
-        '.....o..o..o..o..o..o..o..o...',
-        '.....h..h..h..h..h..h..h..h...',
-        '..i...........................',
-        '####~~~~~~~~~~~~~~~~~~~~~~####',
+        '##############################',
+        '##############################',
+        '....o....o....o....o....o.....',
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
         '####~~~~~~~~~~~~~~~~~~~~~~####',
         '####~~~~~~~~~~~~~~~~~~~~~~####'
       ],
 
-      /* 2 — vines over deep bog, no lights at all. */
+      /* 3 — a gate in the canopy drops you onto the flag. */
       [
-        '.....o......o......o.....o....',
-        '.....t......t......t.....t....',
-        '#####~~~~~~~~~~~~~~~~~~~~~####',
-        '#####~~~~~~~~~~~~~~~~~~~~~####',
-        '#####~~~~~~~~~~~~~~~~~~~~~####'
-      ],
-
-      /* 3 — the flag on an island of dry root. */
-      [
+        '##############################',
+        '##############################',
+        '....o.....o...................',
+        '..........%...................',
         '..............................',
-        '...F...*..o....w..o.....l...2.',
+        '..............................',
+        '..............................',
+        '...F......o....M..o.....l...2.',
         '########xxx#######xxx#########',
-        '##############################',
         '##############################'
       ],
 
-      /* 4 — light, vine, phantom, shard. All four at once. */
+      /* 4 — dry root, the right way up, with the bramble back in the path. */
       [
-        '.................R............',
-        '................hhh...........',
-        '......o....o...o...o..........',
-        '.....t.....h.h.h.h......t.....',
-        '..i...................i...4...',
-        '#####~~~~~~~~~~~~~~~~~~~~#####',
-        '#####~~~~~~~~~~~~~~~~~~~~#####',
-        '#####~~~~~~~~~~~~~~~~~~~~#####'
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
+        '......o....o......o....o......',
+        '......t....t......t....t......',
+        '..............................',
+        '######~~~~~~######~~~~~~######',
+        '######~~~~~~######~~~~~~######'
       ],
 
-      /* 5 — the last bog. Vine to phantom to vine, on three clocks. */
+      /* 5 — the shard is nailed to the underside of the wood. */
       [
-        '.....o...o...o...o...o...o....',
-        '.....t...h...t...h...t...h....',
+        '##############################',
+        '##############################',
+        '.........o....R....o.......w..',
         '..............................',
-        '####~~~~~~~~~~~~~~~~~~~~~~####',
+        '..............................',
+        '..............................',
+        '..............................',
+        '..%...........................',
         '####~~~~~~~~~~~~~~~~~~~~~~####',
         '####~~~~~~~~~~~~~~~~~~~~~~####'
       ],
 
-      /* 6 — the Lantern of Roots. */
+      /* 6 — the canopy is broken. Upside down, over bog, with holes in it. */
       [
-        '..........o.......o...........',
-        '.......G....M..i.....S....3...',
-        '##############################',
+        '#####....#####....#####....###',
+        '#####....#####....#####....###',
+        '....o.......o.......o.........',
+        '..........................%...',
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
+        '####~~~~~~~~~~~~~~~~~~~~~~####',
+        '####~~~~~~~~~~~~~~~~~~~~~~####'
+      ],
+
+      /* 7 — back on your feet, and the Lantern of Roots. */
+      [
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
+        '..........o.......o.......4...',
+        '.......G....M..i..*..S....3...',
         '##############################',
         '##############################'
       ],
 
-      /* 7 — the cup under the canopy. */
+      /* 8 — the cup under the canopy. */
       [
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
+        '..............................',
         '........====..................',
         '.....o.....o....5..Z..........',
-        '##############################',
         '##############################',
         '##############################'
       ]

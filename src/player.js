@@ -16,6 +16,10 @@
  *     urn instead, sets you back down on the last safe ground you stood on and
  *     gives you a long mercy window. It is a spare life, not a state.
  *
+ * GRAVITY: `gsign` is +1 normally and -1 after a Fenwick veil gate. It scales
+ * gravity, the jump impulse and the sprite; Physics.moveY reads `invert` to
+ * ground an upside-down body on ceilings. Nothing else in the engine cares.
+ *
  * BUFFS: timed effects live in `this.buffs` as name -> seconds remaining, set
  * by `buff(name, secs)` and read by `has(name)`. Every town item is one of
  * these; see items-town.js. Carried single-use items queue in `this.items` and
@@ -49,6 +53,7 @@
     this.bandana = null;    // Owe Block: 'red' | 'blue' — who lets you pass
     this.deaths = 0;
 
+    this.gsign = 1;         // +1 down, -1 after a veil gate (Fenwick)
     this.urn = 0;           // Hollow Urns carried — each one is a spare life
     this.urnFlash = 0;      // the moment one breaks
     this.tonic = 0;         // ClockHeart Tonic timer
@@ -165,23 +170,27 @@
     if (this.coyote > 0) this.coyote -= dt;
 
     if (this.buffer > 0) {
+      var g = this.gsign;
       if (this.grounded || this.coyote > 0) {
-        this.doJump(world, JUMP_V * this.jumpMul(), false);
+        this.doJump(world, JUMP_V * this.jumpMul() * g, false);
       } else if (this.airJumpsLeft > 0) {
         this.airJumpsLeft--;
-        this.doJump(world, JUMP_V * 0.92 * this.jumpMul(), true);
+        this.doJump(world, JUMP_V * 0.92 * this.jumpMul() * g, true);
       } else if (this.pouch > 0) {
         this.pouch--;
-        this.doJump(world, JUMP_V * 0.94 * this.jumpMul(), true);
+        this.doJump(world, JUMP_V * 0.94 * this.jumpMul() * g, true);
         world.fx.label(this.cx(), this.y - 6, 'WOLENDI GUST', C.seaFoam);
       }
     }
 
     // Variable jump height: let go early and the arc is cut short.
-    if (!In.down('jump') && this.vy < 0) this.vy *= (1 - (1 - JUMP_CUT) * 0.55);
+    if (!In.down('jump') && this.vy * this.gsign < 0) {
+      this.vy *= (1 - (1 - JUMP_CUT) * 0.55);
+    }
 
-    // Drop through a one-way plank.
-    if (In.down('down') && In.pressed('jump') && this.grounded) {
+    // Drop through a one-way plank. Planks only hold from above, so there is
+    // nothing to drop through while you are upside down.
+    if (In.down('down') && In.pressed('jump') && this.grounded && this.gsign > 0) {
       var below = Math.floor((this.y + this.h + 2) / T);
       var lx = Math.floor((this.x + 2) / T), rx = Math.floor((this.x + this.w - 2) / T);
       if ((world.oneWayAt(lx, below) || world.oneWayAt(rx, below)) &&
@@ -200,9 +209,13 @@
     if (In.pressed('item')) this.useItem(world);
 
     // --- integrate ----------------------------------------------------------
-    this.vy = Math.min(this.vy + GRAV * this.gravMul(), MAXFALL);
+    this.vy += GRAV * this.gravMul() * this.gsign;
+    this.vy = U.clamp(this.vy, -MAXFALL, MAXFALL);
     // Albatross Ballast: hold JUMP on the way down and you barely fall at all.
-    if (this.has('glide') && this.vy > 2.2 && In.down('jump')) this.vy = 2.2;
+    if (this.has('glide') && this.vy * this.gsign > 2.2 && In.down('jump')) {
+      this.vy = 2.2 * this.gsign;
+    }
+    this.invert = this.gsign < 0;
 
     var ride = this.riding;
     this.riding = null;
@@ -218,10 +231,11 @@
     PL.Physics.moveX(this, world, this.vx);
     var hitY = PL.Physics.moveY(this, world, this.vy);
     if (hitY) {
-      if (this.vy > 0) {
-        if (!wasGrounded && this.vy > 6) {
+      if (this.vy * this.gsign > 0) {
+        if (!wasGrounded && this.vy * this.gsign > 6) {
           this.landSquash = 0.12;
-          world.fx.burst(this.cx(), this.y + this.h, 'rgba(216,198,156,0.5)', 4,
+          world.fx.burst(this.cx(), this.gsign > 0 ? this.y + this.h : this.y,
+                         'rgba(216,198,156,0.5)', 4,
                          { speed: 1.2, life: 0.3, size: 2, grav: 0.1 });
         }
         this.vy = 0;
@@ -238,7 +252,7 @@
       this.safeT -= dt;
       if (this.safeT <= 0) {
         this.safeT = 0.25;
-        if (!PL.Physics.lethalOverlap(world, this)) {
+        if (this.gsign > 0 && !PL.Physics.lethalOverlap(world, this)) {
           this.safe = { x: this.x, y: this.y };
         }
       }
@@ -253,7 +267,7 @@
     } else if (lethal === PL.Tiles.SPIKE && !this.invulnerable()) {
       this.hurt(world, this.facing * -1, true);
     }
-    if (this.y > world.h + 40) this.kill(world, 'pit');
+    if (this.y > world.h + 40 || this.y < -120) this.kill(world, 'pit');
   };
 
   Player.prototype.doJump = function (world, v, isAir) {
@@ -409,6 +423,7 @@
       this.x = back.x; this.y = back.y;
       this.vx = 0; this.vy = 0;
       this.dropThrough = 0;
+      this.setGravity(1);       // wherever it puts you back, down is down again
       world.fx.ring(this.cx(), this.cy(), 'rgba(198,211,216,0.95)', 78);
       world.fx.burst(this.cx(), this.cy(), PL.C.pale, 22, { speed: 3.2, life: 0.8 });
       world.fx.label(this.cx(), this.y - 10, 'THE URN TAKES IT', PL.C.pale);
@@ -444,6 +459,24 @@
     this.airJumpsLeft = 0;
     this.dropThrough = 0;
     this.safe = null;
+    this.setGravity(1);
+  };
+
+  /** Set which way is down. Kept in one place so nothing forgets `invert`. */
+  Player.prototype.setGravity = function (sign) {
+    this.gsign = sign;
+    this.invert = sign < 0;
+  };
+
+  /** A Fenwick veil gate turns the wood — and Corb — over. */
+  Player.prototype.flipGravity = function (world) {
+    this.setGravity(-this.gsign);
+    this.vy = 0;
+    this.grounded = false;
+    this.coyote = 0;
+    this.riding = null;
+    this.safe = null;         // the old footing is a ceiling now
+    if (world) world.fx.label(this.cx(), this.cy(), 'OVER YOU GO', '#c9a8f0');
   };
 
   // ------------------------------------------------------------------- render
@@ -465,8 +498,15 @@
 
     // squash on landing, stretch while rising
     var sy = 1, sx = 1;
+    var rise = this.vy * this.gsign;
     if (this.landSquash > 0) { sy = 0.86; sx = 1.12; }
-    else if (airborne) { sy = this.vy < -2 ? 1.08 : (this.vy > 6 ? 1.05 : 1); sx = 2 - sy; }
+    else if (airborne) { sy = rise < -2 ? 1.08 : (rise > 6 ? 1.05 : 1); sx = 2 - sy; }
+    // Under a veil gate the whole sprite turns over, feet to the ceiling.
+    if (this.gsign < 0) {
+      ctx.translate(x + this.w / 2, y + this.h / 2);
+      ctx.scale(1, -1);
+      ctx.translate(-(x + this.w / 2), -(y + this.h / 2));
+    }
     ctx.translate(x + this.w / 2, y + this.h);
     ctx.scale(sx, sy);
     if (this.dead) ctx.rotate(Math.sin(this.t * 12) * 0.25);

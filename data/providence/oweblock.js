@@ -27,7 +27,7 @@
     difficulty: 'BRUTAL',
     diff: 1.6,
     unlockAfter: 'providence-3',
-    unlockNote: 'Clear The Chime Vault to open the Owe Block road.',
+    unlockNote: "Bring back The Half Beat's Red-Earth Shard to open the road.",
 
     quips: {
       '1': '@ob1', '2': '@ob4', '3': '@ob2', '4': '@ob3',

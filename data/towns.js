@@ -1,11 +1,14 @@
 /* data/towns.js — the area registry the level-select screen reads.
  *
- * Six areas, in the order the tryout is meant to be taken. Everything is
- * selectable from the start except Owe Block, which is a *bonus branch* off
- * Providence: it unlocks once Providence's final level has been cleared
- * (documented in the README — the alternative rule, all Providence shards,
- * would have let a player lock themselves out of the game's hardest level by
- * missing a collectible, which is a worse deal).
+ * Six areas, in the order the tryout is meant to be taken. The first level of
+ * every area is open from the start; every level after it needs the *Red-Earth
+ * Shard* out of the level before it, so a town has to be walked rather than
+ * skipped around. Clearing a level is not enough — you have to have found the
+ * shard in it.
+ *
+ * Owe Block is the same rule wearing a different hat: it sits last in
+ * Providence's list, so it wants Providence III's shard, and it is additionally
+ * flagged `bonus` so the level-select draws it as a branch rather than a step.
  *
  * Adding an area later:
  *   1. Add an entry to `list` below.
@@ -117,15 +120,41 @@
       };
     },
 
-    /** A bonus level stays shut until its prerequisite level is cleared. */
+    /**
+     * The level whose shard this one is gated behind, or null for the first
+     * level of an area. Bonus levels are skipped when looking backwards, so a
+     * branch can never become a step on the main road.
+     */
+    gatedBehind: function (def) {
+      var t = this.get(def.town);
+      var i = this.indexOf(def.town, def.id);
+      if (!t || i <= 0) return null;
+      for (var j = i - 1; j >= 0; j--) {
+        if (!t.levels[j].bonus) return t.levels[j];
+      }
+      return null;
+    },
+
+    /** Open only once the previous level in this area has given up its shard. */
     isUnlocked: function (def) {
-      if (!def.bonus || !def.unlockAfter) return true;
-      return PL.Store.cleared(def.unlockAfterTown || def.town, def.unlockAfter);
+      var prev = this.gatedBehind(def);
+      if (prev && !PL.Store.hasShardFrom(def.town, prev.id)) return false;
+      // An explicit `unlockAfter` gates on its own — `bonus` only decides how
+      // the level-select draws the row. Owe Block uses both; the finale uses
+      // just this, to hang itself off the end of the previous area.
+      if (def.unlockAfter &&
+          !PL.Store.hasShardFrom(def.unlockAfterTown || def.town, def.unlockAfter)) {
+        return false;
+      }
+      return true;
     },
 
     unlockNote: function (def) {
       if (this.isUnlocked(def)) return '';
-      return def.unlockNote || 'Clear this town first.';
+      if (def.unlockNote) return def.unlockNote;
+      var prev = this.gatedBehind(def);
+      return prev ? 'Bring back the Red-Earth Shard from ' + prev.name + '.'
+                  : 'Locked.';
     },
 
     /**

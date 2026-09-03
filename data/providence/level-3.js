@@ -1,55 +1,66 @@
-/* Providence III — "The Chime Vault"
+/* Providence III — "The Half Beat"
  *
- * The town's core: Apostles, Friars and moving stone all on one clock. Ends
- * with the Order of Chimes, and clearing it opens the Owe Block branch.
+ * THE MECHANIC: half the floor is not there. `(` is stone that exists on even
+ * chimes; `)` is stone that exists on odd ones. They are written straight into
+ * the tile grid, so they are real terrain while they are there — walls, floors,
+ * ceilings — and empty air when they are not.
  *
- * The hardest level outside the Block. Nothing here is unfair — every hazard
- * is still on the bell — but the vault expects you to have learned the bell.
+ * The town's whole promise is that its hazards are countable, and this keeps
+ * it: a block flashes for the last third of a beat before it leaves, and the
+ * ghost of the one coming back is drawn the whole time. Nothing is hidden. What
+ * is hard is that the ground you want is never the ground you are on, and
+ * standing where a block returns is a death.
+ *
+ * Clearing this still opens the Owe Block road — which now wants the shard out
+ * of it, not just the clear.
  */
 (function (PL) {
   'use strict';
 
   PL.Towns.addLevel('providence', {
     id: 'providence-3',
-    name: 'The Chime Vault',
-    blurb: 'Every hazard on the same beat. Count, or be counted.',
+    name: 'The Half Beat',
+    blurb: 'Half the floor is on the beat. The other half is on the next one.',
     trial: 'orderOfChimes',
-    diff: 1.35,
+    diff: 1.45,
 
-    quips: { '1': '@pv1', '2': '@pv5', '3': '@six1', '4': '@ru2', '5': '@in7' },
+    quips: {
+      '1': '@pv1', '2': '@pv5', '3': '@six1', '4': '@ru2', '5': '@in7'
+    },
 
     segments: [
 
-      /* 0 — the vault door. */
+      /* 0 — the vault door, and one block of each, side by side. */
       [
         '..............................',
-        '.@...o....b....o......1.......',
-        '##############################',
-        '##############################',
-        '##############################'
-      ],
-
-      /* 1 — a marching stair, two Apostles deep, iron on the risers. */
-      [
-        '..............a...............',
-        '..............######..........',
-        '.......a......######..o.......',
-        '####xx#####xx#####xx##########',
+        '..............................',
+        '.@...o....b........o......1...',
+        '#################(((()))######',
         '##############################',
         '##############################'
       ],
 
-      /* 2 — the ledges are the road. The floor is not there. */
+      /* 1 — the first crossing. Two steps, and only one of them is now. */
       [
-        '......o.......o.......o.......',
-        '.....====....====....====.....',
+        '.......o.......o.......o......',
+        '..............................',
+        '..............................',
+        '####((((####))))####((((######',
+        '####((((####))))####((((######',
+        '####((((####))))####((((######'
+      ],
+
+      /* 2 — alternating piers over a drop with no bottom. */
+      [
+        '.....o.....o.....o.....o......',
+        '..............................',
         '..f...........................',
-        '####....####....####....######',
-        '####....####....####....######',
-        '####....####....####....######'
+        '####(((.))))(((.))))(((.))####',
+        '####(((.))))(((.))))(((.))####',
+        '####(((.))))(((.))))(((.))####'
       ],
 
-      /* 3 — the flag, under the loudest bell in the isles. */
+      /* 3 — the flag, on stone that is always there. */
       [
         '..............................',
         '..............................',
@@ -59,29 +70,33 @@
         '##############################'
       ],
 
-      /* 4 — stone on rails, over a drop with no bottom to it. */
+      /* 4 — a stair you can only climb on the half beat. */
       [
-        '.....o.......o.......o........',
-        '.....==...H......H....==......',
-        '..............................',
+        '......................((......',
+        '..................))))........',
+        '..............((((............',
+        '.....o....))))......o.........',
+        '.....==.......................',
         '#####....................#####',
         '#####....................#####',
         '#####....................#####'
       ],
 
-      /* 5 — two beams, an Apostle on the ledge you need, iron beneath. */
+      /* 5 — an Apostle on the ledge, and the ledge is not always a ledge. */
       [
         '..............R...............',
-        '............====..............',
-        '.....====.........a...........',
+        '............))))..............',
+        '.....((((.........a...........',
         '..f.....o.....o..Q....f.......',
         '###xx######xx######xx#####xx##',
         '##############################',
         '##############################'
       ],
 
-      /* 6 — the last walk before the bells. */
+      /* 6 — the ceiling comes down on the off beat. Do not be under it. */
       [
+        '######))))######((((##########',
+        '..............................',
         '.......o......o.......o.......',
         '......====...====....====.....',
         '..a..........a............a...',
@@ -90,13 +105,13 @@
         '##############################'
       ],
 
-      /* 7 — the crossing of chimes. Four piers, three of the Order. */
+      /* 7 — the long half-beat walk. Four piers, three of the Order. */
       [
         '....o.....o.....o.....o.......',
         '..a.......a.....a.........3...',
-        '####...####...####...####..###',
-        '####...####...####...####..###',
-        '####...####...####...####..###'
+        '####)))####(((####)))####((###',
+        '####)))####(((####)))####((###',
+        '####)))####(((####)))####((###'
       ],
 
       /* 8 — the Order of Chimes. */
