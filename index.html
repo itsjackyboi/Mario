@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pintland Isles: The Drunken Trials Tryout</title>
+<meta name="description" content="A side-scrolling platformer set in Shanty Town, Pintland Isles. No crew, no legend, no reputation — just a long climb and a full cup.">
+<meta name="theme-color" content="#140f14">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23140f14'/><rect x='7' y='11' width='16' height='17' fill='%237a5130'/><rect x='7' y='8' width='16' height='5' fill='%23fbf3dc'/><rect x='7' y='16' width='16' height='3' fill='%23a8926a'/></svg>">
+</head>
+<body>
+
+<div id="stage">
+  <canvas id="game" width="640" height="360" aria-label="Pintland Isles game canvas"></canvas>
+</div>
+
+<div id="loading">
+  PINTLAND ISLES
+  <small>Loading the Drunken Trials Tryout…<br>
+  If this message stays put, check the browser console.</small>
+</div>
+
+<noscript>This game needs JavaScript. There is no backend — it all runs in the page.</noscript>
+
+<!-- Engine. Plain scripts (not ES modules) so the game also runs from file:// -->
+<script src="src/util.js"></script>
+<script src="src/palette.js"></script>
+<script src="src/input.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/storage.js"></script>
+<script src="src/game.js"></script>
+<script src="src/camera.js"></script>
+<script src="src/tiles.js"></script>
+<script src="src/entities.js"></script>
+<script src="src/fx.js"></script>
+<script src="src/items.js"></script>
+<script src="src/enemies.js"></script>
+<script src="src/props.js"></script>
+<script src="src/player.js"></script>
+<script src="src/quips.js"></script>
+<script src="src/backdrop.js"></script>
+<script src="src/hud.js"></script>
+<script src="src/trials.js"></script>
+<script src="src/level.js"></script>
+
+<!-- Scenes -->
+<script src="src/scene-play.js"></script>
+<script src="src/scene-complete.js"></script>
+<script src="src/scene-title.js"></script>
+<script src="src/scene-levelselect.js"></script>
+<script src="src/scene-leaderboard.js"></script>
+
+<!-- Content: towns first, then that town's levels -->
+<script src="data/towns.js"></script>
+<script src="data/shantytown/level-1.js"></script>
+<script src="data/shantytown/level-2.js"></script>
+<script src="data/shantytown/level-3.js"></script>
+
+<script src="src/main.js"></script>
+</body>
+</html>

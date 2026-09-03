@@ -1,0 +1,81 @@
+/* Pintland Isles: The Drunken Trials Tryout
+   Page chrome only — everything inside the canvas is drawn in JS. */
+
+:root {
+  --ink: #140f14;
+  --ink-soft: #241a24;
+  --rope: #9c7c52;
+  --parchment: #f2e3c4;
+  --lantern: #ffb347;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: radial-gradient(circle at 50% 30%, #2b2038 0%, #140f14 70%);
+  color: var(--parchment);
+  font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  overflow: hidden;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+#game {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: var(--ink);
+  border: 2px solid rgba(156, 124, 82, 0.55);
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 1px rgba(20, 12, 18, 0.9),
+    0 18px 60px rgba(0, 0, 0, 0.65),
+    0 0 90px rgba(255, 179, 71, 0.12);
+  touch-action: none;
+}
+
+#loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  background: var(--ink);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: var(--lantern);
+  z-index: 10;
+  padding: 24px;
+}
+
+#loading small {
+  color: rgba(242, 227, 196, 0.55);
+  letter-spacing: 0;
+  font-size: 12px;
+  max-width: 42ch;
+  line-height: 1.5;
+}
+
+noscript {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink);
+  color: var(--parchment);
+  z-index: 20;
+}

@@ -1,0 +1,142 @@
+/* quips.js — the mouth on our unproven pirate.
+ *
+ * Levels place trigger zones with the digits 1-9 (see level.js) next to the
+ * thing being mocked: a shrine, a moored ship, a tavern door, a memorial.
+ * Walking into the zone fires the line once. Nothing fires at random.
+ *
+ * LINES is a shared pool so future towns can reuse or extend the material —
+ * level files may hold literal text or a `@key` reference into this table.
+ */
+(function (PL) {
+  'use strict';
+
+  var C = PL.C, U = PL.util;
+
+  PL.Quips = {
+    LINES: {
+      // --- Seamus Bonehardy, "King of Kegs" ---------------------------------
+      bonehardy1: "Seamus Bonehardy? King of Kegs, my ass — sounds like a King of Getting Robbed in his own mines.",
+      bonehardy2: "Mayor of Aleforge, they say. Ain't seen the inside of a town hall since they gave him the key to the cellar.",
+      bonehardy3: "Barrel Breakers. Six crews he's been on. Six. That ain't a legend, that's a work history.",
+
+      // --- Jack Anqoak, "Oracle of Aleforge" --------------------------------
+      anqoak1: "Anqoak's the 'Oracle of Aleforge.' Oracle of what, foretelling his own gang's beatdown?",
+      anqoak2: "Man saw the future so clear he walked into Hoegaarden and left his soul in it. Fine oracling.",
+      anqoak3: "Goldcoral Incorporated. Only pirate alive who needs a ledger to count his own plunder.",
+
+      // --- Jagerbauhm, "Drunken Angel" --------------------------------------
+      jager1: "They call Jagerbauhm the Drunken Angel. I've seen angels. He ain't got the wings for it.",
+      jager2: "Born on these docks, they say, then ran off to Providence to get holy. Grog didn't take, so he took the grog.",
+
+      // --- Guinnie ----------------------------------------------------------
+      guinnie1: "Guinnie slept through his own initiation. Man's a legend for napping.",
+      guinnie2: "Won the Trials so blackout he didn't know he was king for a year. That's not a crown, that's a hangover.",
+
+      // --- Buke -------------------------------------------------------------
+      buke1: "Buke — no middle name, no last name, no personality, from what I hear.",
+      buke2: "Found in an empty whiskey barrel. Explains the taste. Explains the conversation.",
+
+      // --- Jameson Pilsner --------------------------------------------------
+      jp1: "Jameson Pilsner, Captain of the Coors Golden Isles. Bet the ship's as hollow as his nickname.",
+      jp2: "Golden Isles. Golden. Nobody's ever seen 'em. Nobody's ever seen him win a fight, neither.",
+
+      // --- the six of them together -----------------------------------------
+      six1: "Six kings for one crown. That's not a dynasty, that's a bar tab nobody wants to settle.",
+      six2: "Ode to the Six. Six verses, six men, and not one of 'em could row a dinghy straight.",
+      six3: "Six kings, and every one of 'em crowned for drinking. I'm about to be crowned for climbing."
+    },
+
+    /** Resolve '@key' references; anything else is used verbatim. */
+    resolve: function (text) {
+      if (typeof text === 'string' && text.charAt(0) === '@') {
+        return this.LINES[text.slice(1)] || text;
+      }
+      return text;
+    }
+  };
+
+  // --------------------------------------------------------------- the bubble
+
+  function QuipBox() {
+    this.text = '';
+    this.timer = 0;
+    this.queue = [];
+    this.anchor = null;
+  }
+
+  QuipBox.prototype.say = function (text, anchor) {
+    text = PL.Quips.resolve(text);
+    if (this.timer > 0) {
+      if (this.queue.length < 2) this.queue.push({ text: text, anchor: anchor });
+      return;
+    }
+    this.text = text;
+    this.anchor = anchor;
+    this.timer = 2.0 + Math.min(3.4, text.length * 0.035);
+    PL.Audio.sfx('quip');
+  };
+
+  QuipBox.prototype.update = function (dt) {
+    if (this.timer > 0) {
+      this.timer -= dt;
+      if (this.timer <= 0 && this.queue.length) {
+        var next = this.queue.shift();
+        this.text = next.text;
+        this.anchor = next.anchor;
+        this.timer = 2.0 + Math.min(3.4, next.text.length * 0.035);
+        PL.Audio.sfx('quip');
+      }
+    }
+  };
+
+  QuipBox.prototype.draw = function (ctx, cam) {
+    if (this.timer <= 0 || !this.text) return;
+    var a = this.anchor;
+    var ax = a ? a.cx() - cam.ox() : PL.VIEW_W / 2;
+    var ay = a ? a.y - cam.oy() : PL.VIEW_H / 2;
+
+    ctx.save();
+    ctx.font = PL.FONT.body;
+    var maxW = 236;
+    var lines = U.wrapText(ctx, this.text, maxW);
+    var lh = 14;
+    var w = 0;
+    for (var i = 0; i < lines.length; i++) w = Math.max(w, ctx.measureText(lines[i]).width);
+    w = Math.min(maxW, w) + 18;
+    var h = lines.length * lh + 14;
+
+    var bx = U.clamp(ax - w / 2, 6, PL.VIEW_W - w - 6);
+    var by = ay - h - 16;
+    var flip = false;
+    if (by < 34) { by = ay + 40; flip = true; }
+
+    var fade = Math.min(1, this.timer / 0.35);
+    ctx.globalAlpha = fade;
+
+    // weathered parchment scrap nailed to the air
+    PL.gfx.panel(ctx, bx, by, w, h, {
+      fill: 'rgba(242,227,196,0.95)', stroke: 'rgba(90,68,54,0.9)', r: 3, alpha: 1
+    });
+    // tail
+    ctx.fillStyle = 'rgba(242,227,196,0.95)';
+    ctx.beginPath();
+    var tx = U.clamp(ax, bx + 12, bx + w - 12);
+    if (flip) {
+      ctx.moveTo(tx - 6, by + 1); ctx.lineTo(tx + 6, by + 1); ctx.lineTo(tx, by - 9);
+    } else {
+      ctx.moveTo(tx - 6, by + h - 1); ctx.lineTo(tx + 6, by + h - 1); ctx.lineTo(tx, by + h + 9);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    for (var j = 0; j < lines.length; j++) {
+      PL.gfx.text(ctx, lines[j], bx + 9, by + 17 + j * lh, {
+        font: PL.FONT.body, color: '#3a2a20', shadow: false
+      });
+    }
+    ctx.restore();
+  };
+
+  PL.QuipBox = QuipBox;
+
+})(window.PL = window.PL || {});
