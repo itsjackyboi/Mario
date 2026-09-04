@@ -267,7 +267,14 @@
   /** Outfits and hats have no sprite of their own, so show the colours. */
   function swatch(ctx, it, slot, s, x, y) {
     x = x || 0; y = y || 0;
-    if (slot === 'outfit') {
+    if (slot === 'outfit' && it.bare) {
+      // Nothing to swatch, so show what you are actually buying: bare skin and
+      // the mosaic. The cell scales with the box so the shelf icon and the big
+      // preview are the same picture rather than two different textures.
+      PL.gfx.rect(ctx, x + s * 0.10, y + s * 0.14, s * 0.80, s * 0.78, it.skin);
+      PL.Bank.censor(ctx, x + s * 0.10, y + s * 0.44, s * 0.80, s * 0.28,
+                     it.skin, Math.max(2, s * 0.10));
+    } else if (slot === 'outfit') {
       PL.gfx.rect(ctx, x + s * 0.10, y + s * 0.14, s * 0.80, s * 0.56, it.coat);
       PL.gfx.rect(ctx, x + s * 0.10, y + s * 0.62, s * 0.80, s * 0.14, it.trim);
       PL.gfx.rect(ctx, x + s * 0.34, y + s * 0.76, s * 0.32, s * 0.16, it.skin);

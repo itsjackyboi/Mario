@@ -615,7 +615,15 @@
     // Whatever is on him from the Beer Bank. Cosmetic only — every colour
     // here, and the shape of the hat below, changes nothing about a run.
     var fit = PL.Bank.worn('outfit'), lid = PL.Bank.worn('hat');
-    var boot = tint('#3a2a1e'), skin = tint(fit.skin), shirt = tint(fit.trim);
+    // "Nothing At All" is an outfit made of no outfit: the coat, sash and boots
+    // are simply not drawn and everything they covered comes out in skin. The
+    // sprite is twenty pixels wide, so decency is one mosaic and the rest is
+    // left to the imagination it does not reward.
+    var bare = !!fit.bare;
+    var skin = tint(fit.skin);
+    var boot = bare ? skin : tint('#3a2a1e');
+    var sole = tint(bare ? U.mix(fit.skin, '#000000', 0.16) : '#241a14');
+    var shirt = bare ? skin : tint(fit.trim);
     var coat = tint(U.mix(fit.coat, '#000000', 0.32)), sash = tint(fit.coat);
 
     // legs
@@ -623,15 +631,23 @@
     var legB = airborne ? 3 : -step * 4;
     PL.gfx.rect(ctx, 3 + legA * 0.4, 20, 6, 8, boot);
     PL.gfx.rect(ctx, 11 - legB * 0.4, 20, 6, 8, boot);
-    PL.gfx.rect(ctx, 3 + legA * 0.4, 26, 7, 2, tint('#241a14'));
-    PL.gfx.rect(ctx, 11 - legB * 0.4, 26, 7, 2, tint('#241a14'));
+    PL.gfx.rect(ctx, 3 + legA * 0.4, 26, 7, 2, sole);
+    PL.gfx.rect(ctx, 11 - legB * 0.4, 26, 7, 2, sole);
 
     // ragged shirt + open coat: no crew colours, nothing earned yet
     PL.gfx.rect(ctx, 4, 10, 12, 11, shirt);
-    PL.gfx.rect(ctx, f > 0 ? 2 : 14, 10, 4, 12, coat);
-    PL.gfx.rect(ctx, 4, 17, 12, 3, sash);
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fillRect(4, 14, 12, 1);
+    if (!bare) {
+      PL.gfx.rect(ctx, f > 0 ? 2 : 14, 10, 4, 12, coat);
+      PL.gfx.rect(ctx, 4, 17, 12, 3, sash);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(4, 14, 12, 1);
+    } else {
+      // ribs, and then the part the Bank is charging for
+      ctx.fillStyle = U.mix(fit.skin, '#000000', 0.14);
+      ctx.fillRect(5, 13, 10, 1);
+      ctx.fillRect(5, 15, 10, 1);
+      PL.Bank.censor(ctx, 5, 18, 10, 5, skin, 2);
+    }
 
     // arm
     var armY = airborne ? 9 : 13 + step * 2;

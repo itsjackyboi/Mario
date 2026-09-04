@@ -26,7 +26,28 @@
 (function (PL) {
   'use strict';
 
-  var C = PL.C;
+  var C = PL.C, U = PL.util;
+
+  /**
+   * The censor mosaic. Chunky blocks of the colour underneath, jittered light
+   * and dark, drawn over whatever is not for public viewing.
+   *
+   * The jitter is a function of the cell's own position rather than a random
+   * number, so the mosaic is the same every frame. A boiling one would drag the
+   * eye straight to the part of the sprite it is there to keep it off, which is
+   * the opposite of the joke — this is meant to be noticed once and then read
+   * as a texture.
+   */
+  function censor(ctx, x, y, w, h, base, cell) {
+    cell = cell || 3;
+    for (var cy = 0; cy < h; cy += cell) {
+      for (var cx = 0; cx < w; cx += cell) {
+        var n = ((cx * 7 + cy * 13) % 5) / 4;
+        ctx.fillStyle = U.mix(base, n > 0.5 ? '#ffffff' : '#2b1d16', 0.16 + n * 0.30);
+        ctx.fillRect(x + cx, y + cy, Math.min(cell, w - cx), Math.min(cell, h - cy));
+      }
+    }
+  }
 
   /* The shared quadruped. Every horse, mule and hornse starts here and then
    * does something of its own on top — the silhouette is what makes them read
@@ -198,6 +219,14 @@
     { id: 'ship', name: 'Ship Clothes', price: 0,
       blurb: 'What he rowed in wearing.',
       coat: '#b0453e', trim: '#f2e3c4', skin: '#d9a173' },
+    // The cheapest thing in the Bank, because it is not a thing. `bare` tells
+    // the sprite to skip the coat, sash and boots and paint the lot in skin,
+    // and to put a mosaic where one is wanted; the colours below are still
+    // filled in so the shelf swatch and anything else reading an outfit does
+    // not have to know this one is special.
+    { id: 'bare', name: 'Nothing At All', price: 100,
+      blurb: 'Lost the shirt, the coat and the boots in one hand of cards. Mercifully pixelated.',
+      bare: true, coat: '#c88f61', trim: '#d9a173', skin: '#d9a173' },
     { id: 'saltcrust', name: 'Salt-Crusted', price: 1200,
       blurb: 'Been in the water more than out of it.',
       coat: '#4c6d63', trim: '#cfe6e4', skin: '#c08e63' },
@@ -256,6 +285,7 @@
     PETS: PETS,
     OUTFITS: OUTFITS,
     HATS: HATS,
+    censor: censor,
 
     get: function (id) { return byId[id] || null; },
 

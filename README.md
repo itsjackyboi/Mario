@@ -103,9 +103,21 @@ steering toward you. Steering makes an animal that cuts corners and walks throug
 trail makes one that goes where you went, takes the same jumps a moment later, and catches
 up when you stop. Its name is drawn above it at all times.
 
-Eight outfits and seven hats mix freely — Cutter Crimson under a Friar's Hood if you like.
+Nine outfits and seven hats mix freely — Cutter Crimson under a Friar's Hood if you like.
 The Liquor King's Crown is 20,000, which is the joke: nine pounds of nothing on a man's
 head, and now it is yours.
+
+The cheapest thing on the shelf is **Nothing At All**, 100 grog, which is an outfit made
+of no outfit: the coat, sash and boots are simply not drawn and everything they covered
+comes out in skin, with a **censor mosaic** where one is wanted. It is the first thing
+almost anyone can afford, and it is meant to be — a joke you can reach after one decent
+run rather than one you unlock at the end.
+
+The mosaic's jitter is a function of each cell's own position, not a random number, so it
+is identical every frame. A boiling mosaic drags the eye straight to the part of the
+sprite it exists to keep the eye off, which is the opposite of the joke; this one is meant
+to be noticed once and then read as a texture. `PL.Bank.censor()` draws it, so the sprite
+and the shelf swatch are the same picture at two scales.
 
 ## Practice mode
 
