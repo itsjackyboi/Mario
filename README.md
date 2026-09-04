@@ -257,6 +257,13 @@ The title screen offers both:
   Town splits are recorded the moment a town's last level is cleared, so a run that later
   dies still leaves its town times behind.
 
+  **The shard is the level.** Touching the tankard without the Red-Earth Shard sends you back
+  to the start of that level with the run clock still running, and says so on the way in. A run
+  that could skip shards would be a different, shorter game than the one the towns are gated
+  on, and every split on the board would mean two things. The failed attempt costs exactly the
+  time it took — including the second of cup-raising at the tankard, which is otherwise the one
+  moment the clock is stopped, and which should not be free on the attempt that failed.
+
 ## The levels
 
 Sixteen levels across six areas. The last level of each area is built on a mechanic that
@@ -316,7 +323,9 @@ Implemented once, reused by every area without modification:
   dresses its checkpoint as the Stank Tank (glyph `Y`) instead; any entity that sets
   `isCheckpoint` joins the respawn set.
 - **Trials.** A gate (glyph `G`) opens the trial named by `trial:` on the level def. The
-  level clock keeps running through it. Pass and the gate opens; fail and you die and
+  level clock keeps running through it — really running: the trial adds to `levelMs`, which is
+  what `elapsedMs` is recomputed from, so the time is banked rather than discarded on the next
+  frame. Pass and the gate opens; fail and you die and
   respawn at the checkpoint.
 
 ### One mechanic per area

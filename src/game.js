@@ -16,7 +16,7 @@
    * Not to be confused with the save-schema version in storage.js, which is
    * about the shape of the stored JSON and only moves when that shape does.
    */
-  PL.VERSION = '1.10.0';
+  PL.VERSION = '1.11.0';
 
   PL.VIEW_W = 640;
   PL.VIEW_H = 360;

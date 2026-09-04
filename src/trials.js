@@ -38,8 +38,18 @@
     this.t += dt;
     this.stateT += dt;
     this.fade = Math.min(1, this.fade + dt * 4);
-    // The level clock keeps running through the trial.
-    this.play.elapsedMs += dt * 1000;
+    /* The level clock keeps running through the trial — and it has to be
+     * `levelMs` that runs, not `elapsedMs`.
+     *
+     * PlayScene recomputes `elapsedMs = baseMs + levelMs` on every frame it
+     * owns, so time added to `elapsedMs` here survived exactly until control
+     * came back and was then overwritten. The HUD showed the clock running,
+     * this comment said it ran, and none of it was ever banked: ten seconds in
+     * the Plank Pour moved the recorded time by a single frame. Adding to
+     * `levelMs` puts it where the recompute reads from, so the trial costs
+     * what it looks like it costs, on the board and in a speedrun alike. */
+    this.play.levelMs += dt * 1000;
+    this.play.elapsedMs = this.play.baseMs + this.play.levelMs;
 
     if (this.state === 'intro') {
       if (this.stateT > 1.5 || PL.Input.pressed('jump') || PL.Input.pressed('confirm')) {

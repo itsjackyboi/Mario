@@ -72,6 +72,9 @@
     this.goalT = 0;
     this.respawnT = 0;
     this.introT = this.speedrun ? 1.3 : 2.1;
+    // Sent back for walking past the shard. Says so, briefly, and then gets
+    // out of the way — you are already running and the clock never stopped.
+    this.shardMissT = this.meta.shardMiss ? 2.6 : 0;
     this.fadeIn = 1;
     this.checkpointFlash = 0;
     this.trialActive = false;
@@ -98,6 +101,11 @@
     this.shardNote = (opens && this.def.shardCount && !PL.Towns.isUnlocked(opens))
       ? 'Take the Red-Earth Shard to open ' + opens.name
       : '';
+    // A run ignores the unlock chain, so the usual note is often empty there —
+    // and a run is exactly where walking past the shard costs the most.
+    if (this.speedrun && world.shardTotal > 0) {
+      this.shardNote = 'The Red-Earth Shard is required — no shard, no split';
+    }
 
     this.camera.follow(p, true);
     if (this.pet) this.pet.reset(p);
@@ -119,6 +127,7 @@
     world.tickTimers(dt);
     this.fadeIn = Math.max(0, this.fadeIn - dt * 1.6);
     if (this.introT > 0) this.introT -= dt;
+    if (this.shardMissT > 0) this.shardMissT -= dt;
     if (this.checkpointFlash > 0) this.checkpointFlash -= dt;
 
     if (PL.Input.pressed('pause') || PL.Input.pressed('back')) {
@@ -381,8 +390,32 @@
       PL.Game.replace(new PL.LevelSelectScene(this.def.town));
       return;
     }
-    // A speedrun banks its own totals and goes straight into the next level.
-    if (this.speedrun) { PL.Speedrun.advance(this); return; }
+    // A speedrun banks its own totals and goes straight into the next level —
+    // but only if the shard came with you.
+    if (this.speedrun) {
+      /* THE SHARD IS THE LEVEL. Touching the tankard without the Red-Earth
+       * Shard sends you back to the start of this level with the run clock
+       * still running, which is the only honest price: a run that could skip
+       * the shard would be a different, shorter game than the one the towns
+       * are gated on, and every split on the board would mean two things.
+       *
+       * The clock survives because the new scene's baseMs is the run clock as
+       * it stands. A wasted attempt costs exactly the time it took. */
+      if (this.world.shardTotal > 0 && p.shards.length === 0) {
+        // Charge the goal flourish too. The clock stops the instant the
+        // tankard is touched, so without this the second and a bit of cup
+        // being raised would be the one free time in the whole run — and it
+        // would be free only on a failed attempt, which is backwards.
+        PL.Speedrun.elapsedMs = this.baseMs + this.levelMs + this.goalT * 1000;
+        var again = {};
+        for (var k in this.meta) again[k] = this.meta[k];
+        again.shardMiss = true;
+        PL.Game.replace(new PlayScene(this.def, again));
+        return;
+      }
+      PL.Speedrun.advance(this);
+      return;
+    }
     var run = {
       timeMs: this.elapsedMs,
       // What you picked up, not what survived the deaths — the board column
@@ -499,6 +532,22 @@
           font: PL.FONT.tiny, align: 'center', color: C.coral
         });
       }
+      ctx.restore();
+    }
+
+    // Sent back for reaching the tankard without the shard. Sits above the
+    // level card rather than over it, because both are on screen at once and
+    // this is the one that explains why you are here again.
+    if (this.shardMissT > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, this.shardMissT / 0.4);
+      PL.gfx.rect(ctx, W / 2 - 150, H / 2 - 78, 300, 30, 'rgba(212,87,78,0.20)');
+      PL.gfx.text(ctx, 'NO SHARD — RUN IT AGAIN', W / 2, H / 2 - 64, {
+        font: PL.FONT.small, align: 'center', color: C.coral
+      });
+      PL.gfx.text(ctx, 'the clock is still running', W / 2, H / 2 - 53, {
+        font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.7)'
+      });
       ctx.restore();
     }
 
