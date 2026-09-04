@@ -12,9 +12,11 @@
  *   hat     whatever is on his head
  *
  * THE PETS ARE FROM THE COMPENDIUM. Every one but Jigglet appears in Notable
- * Animals, and seven of the nine are the horses, mules and hornses the Six rode
+ * Animals, and seven of the ten are the horses, mules and hornses the Six rode
  * to Pintland on the Walk of Shame — which is why the tiers read as a stable
- * rather than a menagerie. PegButt tops it because he has to: "most trusted
+ * rather than a menagerie. Prejac is the exception that proves it: not Walk of
+ * Shame stock at all, but Quickety Cricket's mail horse, and the only animal in
+ * the Bank with a job. PegButt tops it because he has to: "most trusted
  * horse ridden by man", brutally murdered by Jameson Pilsner, "just like a
  * father to us all". You do not buy PegButt. You buy what is left of him.
  *
@@ -146,6 +148,25 @@
         ctx.save();
         ctx.globalAlpha = 0.45 + Math.sin(t * 2.2) * 0.25;
         PL.gfx.rect(ctx, x + s * 0.18, y + s * 0.36, s * 0.56, s * 0.05, '#8fa8d8');
+        ctx.restore();
+      }
+    },
+    {
+      id: 'prejac', name: 'Prejac', kind: 'horse', price: 10000,
+      blurb: "Quickety Cricket's mail horse. Delivers almost too fast.",
+      draw: function (ctx, x, y, s, t) {
+        // Built to read as speed even standing still: leaner than the rest,
+        // leaning forward, with the mail bag and a streak off the flank.
+        beast(ctx, x, y, s, '#b4643a', '#e8dcc4', { muzzle: '#e8dcc4' });
+        PL.gfx.rect(ctx, x + s * 0.26, y + s * 0.40, s * 0.22, s * 0.22, '#8a6a3c'); // satchel
+        PL.gfx.rect(ctx, x + s * 0.30, y + s * 0.44, s * 0.14, s * 0.06, '#e2c07a');
+        ctx.save();
+        ctx.globalAlpha = 0.30 + Math.sin(t * 14) * 0.18;
+        ctx.fillStyle = '#ffe2a8';
+        for (var i = 0; i < 3; i++) {
+          ctx.fillRect(x - s * (0.10 + i * 0.09), y + s * (0.36 + i * 0.12),
+                       s * (0.20 - i * 0.04), s * 0.04);
+        }
         ctx.restore();
       }
     },

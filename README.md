@@ -49,7 +49,7 @@ else. Nothing in the Bank changes a run: a cosmetic that did would put every tim
 shared board into a different category, and there is only one board.
 
 **The pets are out of the compendium.** Every one but Jigglet is in Notable Animals, and
-seven of the nine are the horses, mules and hornses the Six rode to Pintland on the Walk of
+seven of the ten are the horses, mules and hornses the Six rode to Pintland on the Walk of
 Shame — which is why the tiers read as a stable rather than a menagerie.
 
 | Grog | | |
@@ -58,6 +58,7 @@ Shame — which is why the tiers read as a stable rather than a menagerie.
 | **3,000** | **Max Trans** — Pilsner's parrot | **Dick Wacker** — a horse |
 | **5,000** | **Chi Ton Pissbulls** — a horse | **PegButt Jr.** — awfully large shoes to fill |
 | **10,000** | **Farty McShits** — a hornse | **Slick Dickless** — a horse |
+| **10,000** | **Prejac** — Quickety Cricket's mail horse | |
 | **20,000** | **PegButt** — the horse Pilsner murdered | |
 
 PegButt tops it because he has to: *"most trusted horse ridden by man… just like a father
