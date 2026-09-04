@@ -6,6 +6,13 @@
 
   var C = PL.C, U = PL.util;
 
+  /** A gap against a record, the way a split board writes one: -3.21 / +12.40 */
+  function delta(ms) {
+    var sign = ms < 0 ? '-' : '+';
+    var a = Math.abs(ms);
+    return sign + (a >= 60000 ? U.formatTime(a) : (a / 1000).toFixed(2));
+  }
+
   function chip(ctx, x, y, w, h) {
     ctx.save();
     ctx.globalAlpha = 0.55;
@@ -52,6 +59,9 @@
         PL.gfx.text(ctx, p.shards.length + '/' + scene.world.shardTotal, 114, 22,
                     { font: PL.FONT.small, color: C.coral });
       }
+
+      // ---- town split (left, under the purse) ------------------------------
+      if (scene.speedrun && PL.Speedrun.active) this.townSplit(ctx, scene);
 
       // ---- clock (top-centre) --------------------------------------------
       var tstr = U.formatTime(scene.elapsedMs);
@@ -144,6 +154,83 @@
           font: PL.FONT.small, align: 'center', color: C.lanternHi
         });
         ctx.restore();
+      }
+    },
+
+    /**
+     * The speedrun split counter, tucked under the purse on the left.
+     *
+     * A whole-game time tells you nothing while you are running it and a
+     * per-level one changes too often to read, so the unit here is the town —
+     * the six chunks a route is actually thought of in. Three short lines:
+     *
+     *     ALEFORGE            2/3      where you are
+     *     1:12.40      +3.21           this town, live
+     *     BEST 1:09.19                 the best you have ever done it in
+     *
+     * The live clock is parchment until it passes the record and coral after,
+     * so losing the town PB is something you feel rather than something you
+     * have to work out — and the gap only appears once there is a real one, to
+     * keep a number that changes every frame off the screen until it matters.
+     * A comparison against a partial best would be a lie: half a town in, you
+     * are always "ahead" of a whole-town time.
+     *
+     * For five seconds after a town closes the bottom line hands over to that
+     * town's result, which is the one moment the delta means everything and the
+     * one moment you are not looking at the box.
+     */
+    townSplit: function (ctx, scene) {
+      var sr = PL.Speedrun;
+      var townId = scene.def.town;
+      var now = sr.townMs(townId, scene.elapsedMs);
+      var best = sr.townBestMs(townId);
+      var town = PL.Towns.get(townId);
+      var count = town ? town.levels.length : 0;
+
+      var x = 6, y = 34, w = 116;
+      chip(ctx, x, y, w, 44);
+
+      // Where you are in the town.
+      PL.gfx.text(ctx, U.fit(ctx, (scene.meta.townName || townId).toUpperCase(),
+                             PL.FONT.tiny, w - 36), x + 6, y + 12, {
+        font: PL.FONT.tiny, color: 'rgba(242,227,196,0.55)'
+      });
+      if (count) {
+        PL.gfx.text(ctx, Math.min(sr.townDone(townId) + 1, count) + '/' + count,
+                    x + w - 6, y + 12, {
+          font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.4)'
+        });
+      }
+
+      // The town clock, and the gap once there is one.
+      var over = best > 0 && now > best;
+      PL.gfx.text(ctx, U.formatTime(now), x + 6, y + 27, {
+        font: PL.FONT.mono, color: over ? C.coral : C.parchment
+      });
+      if (over) {
+        PL.gfx.text(ctx, delta(now - best), x + w - 6, y + 27, {
+          font: PL.FONT.tiny, align: 'right', color: C.coral
+        });
+      }
+
+      // The record — or, briefly, the town you just finished.
+      var flash = sr.lastTown;
+      if (flash && scene.elapsedMs - flash.at < 5000) {
+        var col = flash.isBest ? C.lanternHi : C.coral;
+        PL.gfx.text(ctx, U.fit(ctx, flash.name.toUpperCase(), PL.FONT.tiny, w - 52),
+                    x + 6, y + 39, { font: PL.FONT.tiny, color: col });
+        PL.gfx.text(ctx, flash.best ? delta(flash.ms - flash.best) : 'FIRST',
+                    x + w - 6, y + 39, {
+          font: PL.FONT.tiny, align: 'right', color: col
+        });
+      } else if (best > 0) {
+        PL.gfx.text(ctx, 'BEST ' + U.formatTime(best), x + 6, y + 39, {
+          font: PL.FONT.tiny, color: 'rgba(242,227,196,0.5)'
+        });
+      } else {
+        PL.gfx.text(ctx, 'BEST  —  never timed', x + 6, y + 39, {
+          font: PL.FONT.tiny, color: 'rgba(242,227,196,0.35)'
+        });
       }
     },
 

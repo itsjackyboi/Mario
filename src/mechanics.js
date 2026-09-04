@@ -389,11 +389,13 @@
     }
     ctx.restore();
 
-    // Which way it is running. Top-left under the purse and shard chips: the
-    // middle belongs to the clock and the right to the buff countdowns.
+    // Which way it is running. Bottom-left, which is the last free corner: the
+    // top-left is the purse and the speedrun's town split, the middle is the
+    // clock, the right is the buff countdowns and their effect panel, and the
+    // bottom-centre is the practice hint.
     if (Math.abs(f) > 0.05) {
       var label = f > 0 ? 'RACE RUNNING  ' + arrows(1) : arrows(-1) + '  RACE RUNNING';
-      PL.gfx.text(ctx, label, 8, 46, {
+      PL.gfx.text(ctx, label, 8, H - 8, {
         font: PL.FONT.tiny,
         color: 'rgba(207,230,228,' + (0.4 + Math.abs(f) * 0.45).toFixed(2) + ')'
       });

@@ -24,6 +24,14 @@
  * because a personal best is a personal best however you got it — the board
  * shows which mode it came from rather than throwing the row away.
  *
+ * TOWN SPLITS. A whole-game time is too coarse to route against and a per-level
+ * one is too noisy, so the run is also cut at the town boundaries — the six
+ * places you actually think of the run in. A town's split is recorded the
+ * moment its last level is cleared, under '_speedrun' / 'town:<id>', which
+ * needs no schema change and stays out of both the per-level boards and the
+ * full-game one. The HUD reads it back to show the town you are in against the
+ * best you have ever done it in.
+ *
  * The purse carries between levels. Grog is the life pool now, so a run that
  * started every level on nothing would end on the first death of each one.
  */
@@ -34,10 +42,12 @@
 
   var SR_TOWN = '_speedrun';
   var SR_LEVEL = 'full-game';
+  var TOWN_KEY = 'town:';        // + town id, under SR_TOWN
 
   var Speedrun = (PL.Speedrun = {
     TOWN: SR_TOWN,
     LEVEL: SR_LEVEL,
+    TOWN_KEY: TOWN_KEY,
 
     active: false,
     levels: [],
@@ -48,6 +58,7 @@
     deaths: 0,
     shards: 0,
     splits: [],
+    lastTown: null, // the town just closed, for the HUD's delta flash
 
     /** Fresh run: rebuild the route and drop straight into the first level. */
     start: function () {
@@ -68,6 +79,7 @@
       this.deaths = 0;
       this.shards = 0;
       this.splits = [];
+      this.lastTown = null;
       var first = this.levels[0];
       PL.Game.reset(new PL.PlayScene(first.def, first.meta));
     },
@@ -95,6 +107,7 @@
         id: scene.def.id,
         name: scene.def.name,
         town: scene.meta.townName || scene.def.town,
+        townId: scene.def.town,
         totalMs: scene.elapsedMs,
         levelMs: levelMs,
         grog: p.grogEarned
@@ -120,12 +133,66 @@
       PL.Store.completeLevel(scene.def.town, scene.def.id, 0);
 
       this.index++;
-      if (this.index >= this.levels.length) {
+      // A town closes on the level that is its last one in the route, whether
+      // the run carries on into the next town or ends here.
+      var next = this.levels[this.index];
+      if (!next || next.def.town !== scene.def.town) {
+        this.closeTown(scene.def.town, scene.meta.townName || scene.def.town);
+      }
+      if (!next) {
         this.finish();
         return;
       }
-      var next = this.levels[this.index];
       PL.Game.replace(new PL.PlayScene(next.def, next.meta));
+    },
+
+    // ------------------------------------------------------------ town splits
+
+    /**
+     * The run clock as it stood when this town was entered. Found by walking
+     * back to the last split that belonged to a *different* town, which works
+     * because the route never leaves a town and comes back to it.
+     */
+    townStartMs: function (townId) {
+      for (var i = this.splits.length - 1; i >= 0; i--) {
+        if (this.splits[i].townId !== townId) return this.splits[i].totalMs;
+      }
+      return 0;
+    },
+
+    /** How long this town has taken, including the level in progress. */
+    townMs: function (townId, nowMs) {
+      if (nowMs == null) nowMs = this.elapsedMs;
+      return Math.max(0, nowMs - this.townStartMs(townId));
+    },
+
+    /** How many of this town's levels the run has already cleared. */
+    townDone: function (townId) {
+      var n = 0;
+      for (var i = 0; i < this.splits.length; i++) {
+        if (this.splits[i].townId === townId) n++;
+      }
+      return n;
+    },
+
+    /** Best recorded split for a town in ms, or 0 if it has never been timed. */
+    townBestMs: function (townId) {
+      var b = PL.Store.bestFor(SR_TOWN, TOWN_KEY + townId);
+      return b ? b.timeMs : 0;
+    },
+
+    /** Bank the finished town's split and remember it for the HUD's flash. */
+    closeTown: function (townId, townName) {
+      var ms = this.townMs(townId);
+      if (ms <= 0) return;
+      var prev = this.townBestMs(townId);       // read before it is written
+      PL.Store.recordRun(SR_TOWN, TOWN_KEY + townId, {
+        timeMs: ms, grog: 0, shards: 0, deaths: 0, speedrun: true
+      });
+      this.lastTown = {
+        id: townId, name: townName, ms: ms, best: prev,
+        isBest: !prev || ms < prev, at: this.elapsedMs
+      };
     },
 
     finish: function () {

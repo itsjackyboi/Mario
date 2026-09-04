@@ -197,6 +197,27 @@ The title screen offers both:
   different conditions — a carried purse, no chance to warm up — and the reader should be
   able to tell.
 
+  A run is also cut at the **town boundaries**, and a small split counter sits under the
+  purse on the left for the length of it:
+
+  ```
+  ALEFORGE            2/3     which town, and how far into it
+  1:12.40      +3.21          this town so far, live
+  BEST 1:09.19                the fastest you have ever done it
+  ```
+
+  The town is the unit because the whole-game time tells you nothing while you are still
+  running it and a per-level one changes too fast to read. The live clock is parchment
+  until it passes the record and **coral after**, so losing the town's best is something
+  you see rather than something you work out, and the gap only appears once there is a
+  real one — comparing a half-finished town against a whole-town best would say you were
+  ahead when you were not. For five seconds after a town closes the bottom line hands over
+  to that town's result and its delta, which is the one moment the number means
+  everything.
+
+  Town splits are recorded the moment a town's last level is cleared, so a run that later
+  dies still leaves its town times behind.
+
 ## The levels
 
 Sixteen levels across six areas. The last level of each area is built on a mechanic that
@@ -782,8 +803,11 @@ new areas are simply new keys under `towns`.
 `"<levelId>:<index>"`. Owe Block banks into `providence` (it is a Providence sublevel) while
 being themed separately. Whole-game speedruns use a synthetic area/level pair —
 `towns._speedrun.levels['full-game']` — which needed no schema change and keeps run times
-out of the per-level boards. `PL.Store.grandTotals()` rolls the per-level records up for the
-ending screen and the level-select header.
+out of the per-level boards. Per-town splits live beside it under the same synthetic area,
+one key per town (`towns._speedrun.levels['town:aleforge']`), for the same reason and at
+the same price: nothing. `PL.Store.grandTotals()` rolls the per-level records up for the
+ending screen and the level-select header, and walks `PL.Towns.list`, so neither synthetic
+key is ever counted as a level.
 
 If `localStorage` is unavailable the game says so on the title screen and stays fully
 playable — scores just aren't kept. There is no in-game wipe; clearing site data for the
