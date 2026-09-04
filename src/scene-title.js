@@ -12,7 +12,6 @@
       { label: 'Row ashore', hint: 'Pick a town and a level. Times logged per level.' },
       { label: 'Drunken speedrun', hint: 'Every level back to back on one unbroken clock.' },
       { label: 'Leaderboards', hint: "Top five per level, and every run behind it." },
-      { label: 'Beer Bank', hint: 'Spend what you have banked on pets and clothes.' },
       { label: 'Sign the book', hint: 'The name your runs go under on the shared board.' }
     ];
     this.stars = [];
@@ -41,6 +40,11 @@
       PL.Game.push(new PL.LetterScene());
       return;
     }
+    if (PL.BankIcon.clicked() || In.pressed('bank')) {
+      PL.Audio.sfx('select');
+      PL.Game.push(new PL.BankScene());
+      return;
+    }
     if (PL.NameChip.clicked()) {
       PL.Audio.sfx('select');
       PL.Game.push(new PL.NameScene());
@@ -51,7 +55,6 @@
       if (this.sel === 0) PL.Game.replace(new PL.LevelSelectScene('shantytown'));
       else if (this.sel === 1) PL.Speedrun.start();
       else if (this.sel === 2) PL.Game.push(new PL.LeaderboardScene());
-      else if (this.sel === 3) PL.Game.push(new PL.BankScene());
       else PL.Game.push(new PL.NameScene());
     }
   };
@@ -180,7 +183,7 @@
 
     // ---- menu ------------------------------------------------------------
     for (var m = 0; m < this.options.length; m++) {
-      var my = 214 + m * 22;
+      var my = 222 + m * 22;
       var on = m === this.sel;
       if (on) {
         PL.gfx.rect(ctx, W / 2 - 130, my - 14, 260, 21, 'rgba(255,179,71,0.16)');
@@ -195,12 +198,7 @@
     var hint = this.options[this.sel].hint;
     var srBest = this.sel === 1 ? PL.Speedrun.best() : null;
     if (srBest) hint += '   Best: ' + U.formatTime(srBest.timeMs);
-    if (this.sel === 3) {
-      var bk = PL.Store.bank();
-      hint = bk.grog + ' grog in the bank' +
-        (bk.owned.length ? '  ·  ' + bk.owned.length + ' bought' : '  ·  nothing bought yet');
-    }
-    if (this.sel === 4) hint = PL.Store.playerName()
+    if (this.sel === 3) hint = PL.Store.playerName()
       ? 'Signed as ' + PL.Store.playerName() + '. Pick something else if you like.'
       : hint;
     PL.gfx.text(ctx, hint, W / 2, 304, {
@@ -208,8 +206,9 @@
       color: srBest ? 'rgba(255,226,168,0.8)' : 'rgba(242,227,196,0.6)'
     });
 
-    // ---- the letter from Aleforge ----------------------------------------
+    // ---- the two things on the shelf, one either side --------------------
     PL.LetterIcon.draw(ctx, t, PL.LetterIcon.hot());
+    PL.BankIcon.draw(ctx, t, PL.BankIcon.hot());
 
     // ---- controls --------------------------------------------------------
     PL.gfx.panel(ctx, 20, 312, W - 40, 42, { r: 5, alpha: 0.9 });

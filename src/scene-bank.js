@@ -287,6 +287,57 @@
     }
   }
 
+  /* The keg on the title screen, mirroring the letter on the other side.
+   * Drawn and hit-tested from one place so the icon and its click target can
+   * never drift apart — same arrangement as PL.LetterIcon, and deliberately the
+   * same size and height so the two read as a pair. */
+  PL.BankIcon = {
+    box: { x: 18, y: 250, w: 48, h: 34 },
+
+    draw: function (ctx, t, hot) {
+      var b = this.box;
+      var lift = hot ? 3 : 0;
+      var x = b.x, y = b.y - lift + Math.sin(t * 1.6 + 1.1) * 1.5;
+
+      PL.gfx.glow(ctx, x + b.w / 2, y + b.h / 2, hot ? 42 : 28,
+                  'rgba(255,179,71,0.45)', hot ? 0.6 : 0.32);
+
+      // a keg on its side, banded, with a slot cut in the top
+      PL.gfx.rect(ctx, x + 2, y + 4, b.w - 4, b.h - 8, '#7d5334');
+      PL.gfx.rect(ctx, x, y + 8, b.w, b.h - 16, hot ? '#a06a41' : '#8d5c39');
+      PL.gfx.rect(ctx, x, y + 10, b.w, 3, '#c9a24a');
+      PL.gfx.rect(ctx, x, y + b.h - 13, b.w, 3, '#c9a24a');
+      ctx.fillStyle = 'rgba(20,12,10,0.55)';
+      ctx.fillRect(x + b.w / 2 - 8, y + 2, 16, 4);
+
+      // a coin going in
+      var drop = (t * 0.9) % 1;
+      ctx.save();
+      ctx.globalAlpha = drop < 0.7 ? 1 : (1 - drop) / 0.3;
+      ctx.fillStyle = '#f2dc9a';
+      ctx.beginPath();
+      ctx.ellipse(x + b.w / 2, y - 10 + drop * 14, 4, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      var bank = PL.Store.bank();
+      PL.gfx.text(ctx, hot ? 'spend it' : bank.grog + ' grog', x + b.w / 2, y + b.h + 12, {
+        font: PL.FONT.tiny, align: 'center',
+        color: hot ? C.lanternHi : 'rgba(242,227,196,0.55)'
+      });
+    },
+
+    hot: function () {
+      var b = this.box;
+      return PL.Input.hovering(b.x - 6, b.y - 6, b.w + 12, b.h + 24);
+    },
+
+    clicked: function () {
+      var b = this.box;
+      return PL.Input.clickedIn(b.x - 6, b.y - 6, b.w + 12, b.h + 24);
+    }
+  };
+
   PL.BankScene = BankScene;
 
 })(window.PL = window.PL || {});

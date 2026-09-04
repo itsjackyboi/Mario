@@ -34,6 +34,7 @@ Nothing is fetched at runtime, so it works offline.
 | Restart level | `R` |
 | Mute | `M` |
 | Read the letter (title screen) | click the envelope, or `L` |
+| Open the Beer Bank (title screen) | click the keg, or `B` |
 | Sign the book (your name) | click the name chip, or pick it from the title menu |
 | Practice a level | `C` on the level-select, then `C` in-level to drop a marker |
 | Menus | `↑` `↓` `←` `→`, `Enter` to confirm, `Esc` to back out |
@@ -42,6 +43,11 @@ There is no drop-item control. Carried items are a FIFO queue — `E` spends whi
 the front, and the HUD shows it plus a `+N` for whatever is stacked behind it.
 
 ## The Beer Bank
+
+Reached from the **keg on the title screen** — bottom-left, mirroring the letter on the
+other side, with your balance written under it. Or press `B`. It is an icon rather than a
+menu row for the same reason the letter is: the menu is for the three ways to play plus
+your name, and the two things on the shelf either side of it are objects you pick up.
 
 Whatever Corb walks out of a level with goes into the Bank, and it stays there across
 runs. It buys **pets, outfits and hats** — three slots, worn independently — and nothing
