@@ -6,7 +6,7 @@
 <title>Pintland Isles: The Drunken Trials Tryout</title>
 <meta name="description" content="A side-scrolling platformer set in Shanty Town, Pintland Isles. No crew, no legend, no reputation — just a long climb and a full cup.">
 <meta name="theme-color" content="#140f14">
-<link rel="stylesheet" href="styles.css?v=1.11.0">
+<link rel="stylesheet" href="styles.css?v=1.12.0">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23140f14'/><rect x='7' y='11' width='16' height='17' fill='%237a5130'/><rect x='7' y='8' width='16' height='5' fill='%23fbf3dc'/><rect x='7' y='16' width='16' height='3' fill='%23a8926a'/></svg>">
 </head>
 <body>
@@ -24,73 +24,73 @@
 <noscript>This game needs JavaScript. There is no backend — it all runs in the page.</noscript>
 
 <!-- Engine. Plain scripts (not ES modules) so the game also runs from file:// -->
-<script src="config.js?v=1.11.0"></script>
-<script src="src/util.js?v=1.11.0"></script>
-<script src="src/palette.js?v=1.11.0"></script>
-<script src="src/themes.js?v=1.11.0"></script>
-<script src="src/input.js?v=1.11.0"></script>
-<script src="src/audio.js?v=1.11.0"></script>
-<script src="src/storage.js?v=1.11.0"></script>
-<script src="src/cloud.js?v=1.11.0"></script>
-<script src="src/game.js?v=1.11.0"></script>
-<script src="src/camera.js?v=1.11.0"></script>
-<script src="src/tiles.js?v=1.11.0"></script>
-<script src="src/entities.js?v=1.11.0"></script>
-<script src="src/fx.js?v=1.11.0"></script>
-<script src="src/items.js?v=1.11.0"></script>
-<script src="src/items-town.js?v=1.11.0"></script>
-<script src="src/enemies.js?v=1.11.0"></script>
-<script src="src/props.js?v=1.11.0"></script>
-<script src="src/mechanics.js?v=1.11.0"></script>
-<script src="src/bank.js?v=1.11.0"></script>
-<script src="src/pet.js?v=1.11.0"></script>
-<script src="src/player.js?v=1.11.0"></script>
-<script src="src/quips.js?v=1.11.0"></script>
-<script src="src/backdrop.js?v=1.11.0"></script>
-<script src="src/hud.js?v=1.11.0"></script>
-<script src="src/trials.js?v=1.11.0"></script>
-<script src="src/level.js?v=1.11.0"></script>
+<script src="config.js?v=1.12.0"></script>
+<script src="src/util.js?v=1.12.0"></script>
+<script src="src/palette.js?v=1.12.0"></script>
+<script src="src/themes.js?v=1.12.0"></script>
+<script src="src/input.js?v=1.12.0"></script>
+<script src="src/audio.js?v=1.12.0"></script>
+<script src="src/storage.js?v=1.12.0"></script>
+<script src="src/cloud.js?v=1.12.0"></script>
+<script src="src/game.js?v=1.12.0"></script>
+<script src="src/camera.js?v=1.12.0"></script>
+<script src="src/tiles.js?v=1.12.0"></script>
+<script src="src/entities.js?v=1.12.0"></script>
+<script src="src/fx.js?v=1.12.0"></script>
+<script src="src/items.js?v=1.12.0"></script>
+<script src="src/items-town.js?v=1.12.0"></script>
+<script src="src/enemies.js?v=1.12.0"></script>
+<script src="src/props.js?v=1.12.0"></script>
+<script src="src/mechanics.js?v=1.12.0"></script>
+<script src="src/bank.js?v=1.12.0"></script>
+<script src="src/pet.js?v=1.12.0"></script>
+<script src="src/player.js?v=1.12.0"></script>
+<script src="src/quips.js?v=1.12.0"></script>
+<script src="src/backdrop.js?v=1.12.0"></script>
+<script src="src/hud.js?v=1.12.0"></script>
+<script src="src/trials.js?v=1.12.0"></script>
+<script src="src/level.js?v=1.12.0"></script>
 
 <!-- Town content: entities, backdrops and trials, one file per area -->
-<script src="src/town-aleforge.js?v=1.11.0"></script>
-<script src="src/town-providence.js?v=1.11.0"></script>
-<script src="src/town-oweblock.js?v=1.11.0"></script>
-<script src="src/town-fenwick.js?v=1.11.0"></script>
-<script src="src/town-roto.js?v=1.11.0"></script>
-<script src="src/town-tavern.js?v=1.11.0"></script>
+<script src="src/town-aleforge.js?v=1.12.0"></script>
+<script src="src/town-providence.js?v=1.12.0"></script>
+<script src="src/town-oweblock.js?v=1.12.0"></script>
+<script src="src/town-fenwick.js?v=1.12.0"></script>
+<script src="src/town-roto.js?v=1.12.0"></script>
+<script src="src/town-tavern.js?v=1.12.0"></script>
 
 <!-- Scenes -->
-<script src="src/scene-play.js?v=1.11.0"></script>
-<script src="src/scene-complete.js?v=1.11.0"></script>
-<script src="src/scene-ending.js?v=1.11.0"></script>
-<script src="src/scene-gameover.js?v=1.11.0"></script>
-<script src="src/speedrun.js?v=1.11.0"></script>
-<script src="src/scene-letter.js?v=1.11.0"></script>
-<script src="src/scene-name.js?v=1.11.0"></script>
-<script src="src/scene-bank.js?v=1.11.0"></script>
-<script src="src/scene-title.js?v=1.11.0"></script>
-<script src="src/scene-levelselect.js?v=1.11.0"></script>
-<script src="src/scene-leaderboard.js?v=1.11.0"></script>
+<script src="src/scene-play.js?v=1.12.0"></script>
+<script src="src/scene-complete.js?v=1.12.0"></script>
+<script src="src/scene-ending.js?v=1.12.0"></script>
+<script src="src/scene-gameover.js?v=1.12.0"></script>
+<script src="src/speedrun.js?v=1.12.0"></script>
+<script src="src/scene-letter.js?v=1.12.0"></script>
+<script src="src/scene-name.js?v=1.12.0"></script>
+<script src="src/scene-bank.js?v=1.12.0"></script>
+<script src="src/scene-title.js?v=1.12.0"></script>
+<script src="src/scene-levelselect.js?v=1.12.0"></script>
+<script src="src/scene-leaderboard.js?v=1.12.0"></script>
 
 <!-- Content: towns first, then that town's levels -->
-<script src="data/towns.js?v=1.11.0"></script>
-<script src="data/shantytown/level-1.js?v=1.11.0"></script>
-<script src="data/shantytown/level-2.js?v=1.11.0"></script>
-<script src="data/shantytown/level-3.js?v=1.11.0"></script>
-<script src="data/aleforge/level-1.js?v=1.11.0"></script>
-<script src="data/aleforge/level-2.js?v=1.11.0"></script>
-<script src="data/aleforge/level-3.js?v=1.11.0"></script>
-<script src="data/providence/level-1.js?v=1.11.0"></script>
-<script src="data/providence/level-2.js?v=1.11.0"></script>
-<script src="data/providence/level-3.js?v=1.11.0"></script>
-<script src="data/providence/oweblock.js?v=1.11.0"></script>
-<script src="data/fenwick/level-1.js?v=1.11.0"></script>
-<script src="data/fenwick/level-2.js?v=1.11.0"></script>
-<script src="data/roto/level-1.js?v=1.11.0"></script>
-<script src="data/roto/level-2.js?v=1.11.0"></script>
-<script src="data/roto/level-3.js?v=1.11.0"></script>
-<script src="data/tavern/level-1.js?v=1.11.0"></script>
+<script src="data/towns.js?v=1.12.0"></script>
+<script src="data/shantytown/level-1.js?v=1.12.0"></script>
+<script src="data/shantytown/level-2.js?v=1.12.0"></script>
+<script src="data/shantytown/level-3.js?v=1.12.0"></script>
+<script src="data/aleforge/level-1.js?v=1.12.0"></script>
+<script src="data/aleforge/level-2.js?v=1.12.0"></script>
+<script src="data/aleforge/level-3.js?v=1.12.0"></script>
+<script src="data/providence/level-1.js?v=1.12.0"></script>
+<script src="data/providence/level-2.js?v=1.12.0"></script>
+<script src="data/providence/level-3.js?v=1.12.0"></script>
+<script src="data/providence/oweblock.js?v=1.12.0"></script>
+<script src="data/fenwick/level-1.js?v=1.12.0"></script>
+<script src="data/fenwick/level-2.js?v=1.12.0"></script>
+<script src="data/roto/level-1.js?v=1.12.0"></script>
+<script src="data/roto/level-2.js?v=1.12.0"></script>
+<script src="data/roto/level-3.js?v=1.12.0"></script>
+<script src="data/tavern/level-1.js?v=1.12.0"></script>
 
-<script src="src/main.js?v=1.11.0"></script>
+<script src="src/main.js?v=1.12.0"></script>
 </body>
 </html>

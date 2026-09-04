@@ -175,6 +175,49 @@
       return n;
     },
 
+    // ----------------------------------------------------------- the splits
+
+    /**
+     * Your best recorded time for one level, in ms, or 0 if never cleared.
+     *
+     * This is the level's own board record, not a run-only figure, which is
+     * the right thing to compare a split against: it is the number you already
+     * know, the one on the leaderboard, and the one you are trying to beat.
+     */
+    levelBestMs: function (townId, levelId) {
+      var b = PL.Store.bestFor(townId, levelId);
+      return b ? b.timeMs : 0;
+    },
+
+    /**
+     * Sum of best: the run you would have if every level went as well as it
+     * ever has. It is not a time anyone has run — it is the target, and the
+     * gap between it and your best run is what is left on the table.
+     *
+     * Levels you have never cleared are counted as missing rather than as
+     * zero, so a partial sum reads as partial instead of as a fantasy.
+     */
+    sumOfBest: function () {
+      var rows = this.levels.length ? this.levels : PL.Towns.allLevels();
+      var total = 0, missing = 0;
+      for (var i = 0; i < rows.length; i++) {
+        var def = rows[i].def;
+        var ms = this.levelBestMs(def.town, def.id);
+        if (ms) total += ms; else missing++;
+      }
+      return { ms: total, missing: missing, count: rows.length };
+    },
+
+    /** A short label for a level in the split board's narrow column. */
+    shortLabel: function (def, indexInTown) {
+      var t = PL.Towns.get(def.town);
+      var name = (t && t.short) || def.town.toUpperCase();
+      if (def.bonus) return name + ' ★';
+      return name + ' ' + (this.ROMAN_FOR(indexInTown) || (indexInTown + 1));
+    },
+
+    ROMAN_FOR: function (i) { return PL.Towns.ROMAN[i]; },
+
     /** Best recorded split for a town in ms, or 0 if it has never been timed. */
     townBestMs: function (townId) {
       var b = PL.Store.bestFor(SR_TOWN, TOWN_KEY + townId);

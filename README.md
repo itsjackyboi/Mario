@@ -257,6 +257,21 @@ The title screen offers both:
   Town splits are recorded the moment a town's last level is cleared, so a run that later
   dies still leaves its town times behind.
 
+  Under the town counter, the **split board** runs the length of the left rail: all sixteen
+  levels, the one you are on lit and counting, and the sum of your best times in the header.
+  A finished split is **gold** if that level went faster than your record for it and **coral**
+  if it did not, with the gap beside it. The comparison is on the SEGMENT, not the running
+  total — a good level after a bad one should read as a good level, and a total-based
+  comparison would paint it red for a mistake you already paid for. A level you have not
+  reached yet shows nothing rather than its own record: a level PB sitting in a column of
+  running totals reads as a running total, and a board that lies about which number it is
+  showing is worse than one that shows less.
+
+  **Sum of best** is the run you would have if every level went as well as it ever has. It is
+  not a time anyone has run — it is the target, and the gap between it and your best run is
+  what is left on the table. Levels you have never cleared count as missing rather than zero,
+  so a partial sum reads as partial instead of as a fantasy.
+
   **The shard is the level.** Touching the tankard without the Red-Earth Shard sends you back
   to the start of that level with the run clock still running, and says so on the way in. A run
   that could skip shards would be a different, shorter game than the one the towns are gated

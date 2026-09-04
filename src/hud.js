@@ -8,10 +8,13 @@
 
   /** A gap against a record, the way a split board writes one: -3.21 / +12.40 */
   function delta(ms) {
-    var sign = ms < 0 ? '-' : '+';
+    var sign = ms < 0 ? '−' : '+';
     var a = Math.abs(ms);
     return sign + (a >= 60000 ? U.formatTime(a) : (a / 1000).toFixed(2));
   }
+
+  // The left rail is one column: the town counter and the split board share it.
+  var RAIL_W = 150;
 
   function chip(ctx, x, y, w, h) {
     ctx.save();
@@ -60,8 +63,11 @@
                     { font: PL.FONT.small, color: C.coral });
       }
 
-      // ---- town split (left, under the purse) ------------------------------
-      if (scene.speedrun && PL.Speedrun.active) this.townSplit(ctx, scene);
+      // ---- the left rail: town split, then the full split board ------------
+      if (scene.speedrun && PL.Speedrun.active) {
+        this.townSplit(ctx, scene);
+        this.splitBoard(ctx, scene);
+      }
 
       // ---- clock (top-centre) --------------------------------------------
       var tstr = U.formatTime(scene.elapsedMs);
@@ -187,7 +193,9 @@
       var town = PL.Towns.get(townId);
       var count = town ? town.levels.length : 0;
 
-      var x = 6, y = 34, w = 116;
+      // Same width as the split board below it, so the left rail is one column
+      // rather than two things that happen to be stacked.
+      var x = 6, y = 34, w = RAIL_W;
       chip(ctx, x, y, w, 44);
 
       // Where you are in the town.
@@ -232,6 +240,116 @@
           font: PL.FONT.tiny, color: 'rgba(242,227,196,0.35)'
         });
       }
+    },
+
+    /**
+     * The full split board, LiveSplit-style, down the left rail.
+     *
+     * The town counter above it answers "how is this town going". This answers
+     * the other question a runner has open at all times: where am I against
+     * myself, on every level, right now. Sixteen rows, the current one lit,
+     * the running clock on it live, and the sum of best under them.
+     *
+     * COLOUR IS THE WHOLE POINT. A split that beat your record for that level
+     * is gold and one that did not is coral, judged on the SEGMENT rather than
+     * the running total — a good level after a bad one should read as a good
+     * level, and a total-based comparison would paint it red for a mistake you
+     * already paid for.
+     *
+     * Deliberately quiet: 8px type on a 55%-alpha ground, no borders between
+     * rows. It sits over the left third of the screen for a whole run, so it
+     * has to be readable at a glance and invisible the rest of the time.
+     */
+    splitBoard: function (ctx, scene) {
+      var sr = PL.Speedrun;
+      if (!sr.levels.length) return;
+
+      var x = 6, y = 82, w = RAIL_W;
+      var ROW = 11, HEAD = 13, FOOT = 14;
+      var h = HEAD + sr.levels.length * ROW + FOOT;
+      chip(ctx, x, y, w, h);
+
+      var sob = sr.sumOfBest();
+      PL.gfx.text(ctx, 'SPLITS', x + 6, y + 9,
+                  { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.5)' });
+      PL.gfx.text(ctx, sob.missing ? 'SOB —' : 'SOB ' + U.formatTime(sob.ms),
+                  x + w - 6, y + 9, {
+        font: PL.FONT.tiny, align: 'right',
+        color: sob.missing ? 'rgba(242,227,196,0.3)' : C.lantern
+      });
+      PL.gfx.rect(ctx, x + 5, y + HEAD - 1, w - 10, 1, 'rgba(156,124,82,0.30)');
+
+      var townIndex = {};
+      for (var li = 0; li < sr.levels.length; li++) {
+        var row = sr.levels[li];
+        var def = row.def;
+        var ry = y + HEAD + li * ROW;
+        var n = (townIndex[def.town] = (townIndex[def.town] || 0));
+        townIndex[def.town] = n + 1;
+
+        var done = li < sr.index;
+        var here = li === sr.index;
+        var pb = sr.levelBestMs(def.town, def.id);
+
+        // The segment this row is worth, and what it is worth against.
+        var seg = null;
+        if (done) {
+          seg = sr.splits[li] ? sr.splits[li].levelMs : null;
+        } else if (here) {
+          var prev = li > 0 && sr.splits[li - 1] ? sr.splits[li - 1].totalMs : 0;
+          seg = Math.max(0, scene.elapsedMs - prev);
+        }
+
+        if (here) {
+          PL.gfx.rect(ctx, x + 3, ry - 1, w - 6, ROW, 'rgba(255,179,71,0.14)');
+        }
+
+        var col = 'rgba(242,227,196,0.34)';       // not run yet
+        if (done) col = (pb && seg > pb) ? C.coral : C.lanternHi;
+        else if (here) col = (pb && seg > pb) ? C.coral : C.parchment;
+
+        PL.gfx.text(ctx, U.fit(ctx, sr.shortLabel(def, n), PL.FONT.tiny, 58),
+                    x + 6, ry + 8, { font: PL.FONT.tiny, color: here ? C.lanternHi : col });
+
+        // The gap against your record for this level, once there is one to show.
+        if ((done || here) && pb && seg != null && (done || seg > pb)) {
+          PL.gfx.text(ctx, delta(seg - pb), x + w - 46, ry + 8, {
+            font: PL.FONT.tiny, align: 'right',
+            color: seg > pb ? C.coral : C.lanternHi
+          });
+        }
+
+        /* Running total at this split — the number you compare across runs.
+         * A level not yet reached shows nothing rather than its own record:
+         * a level PB in the same column as a set of running totals reads as a
+         * running total, and a board that lies about which number it is
+         * showing is worse than one that shows less. The target for the whole
+         * run is in the header as SOB. */
+        var shown = done ? (sr.splits[li] ? sr.splits[li].totalMs : null)
+                  : here ? scene.elapsedMs
+                  : null;
+        PL.gfx.text(ctx, shown == null ? '—' : U.formatTime(shown), x + w - 6, ry + 8, {
+          font: PL.FONT.tiny, align: 'right',
+          color: done ? col : (here ? C.parchment : 'rgba(242,227,196,0.28)')
+        });
+      }
+
+      // Last segment, the way a split board closes: the one number that says
+      // whether the level you just finished went well.
+      var fy = y + HEAD + sr.levels.length * ROW;
+      PL.gfx.rect(ctx, x + 5, fy, w - 10, 1, 'rgba(156,124,82,0.30)');
+      var last = sr.splits.length ? sr.splits[sr.splits.length - 1] : null;
+      var lastPb = last ? sr.levelBestMs(last.townId, last.id) : 0;
+      PL.gfx.text(ctx, 'LAST', x + 6, fy + 10,
+                  { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.45)' });
+      PL.gfx.text(ctx,
+        last && lastPb ? delta(last.levelMs - lastPb) : (last ? 'FIRST' : '—'),
+        x + w - 6, fy + 10, {
+          font: PL.FONT.tiny, align: 'right',
+          color: !last ? 'rgba(242,227,196,0.3)'
+               : !lastPb ? C.lanternHi
+               : (last.levelMs > lastPb ? C.coral : C.lanternHi)
+        });
     },
 
     /** The one ITEM button: shows what E will spend, and how many are queued. */

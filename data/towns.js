@@ -26,36 +26,42 @@
     list: [
       {
         id: 'shantytown',
+        short: 'SHANTY',   // for the run's split board, where the column is narrow
         name: 'Shanty Town',
         tagline: 'Crashed hulls, bone, grog for coin.',
         levels: []
       },
       {
         id: 'aleforge',
+        short: 'ALEFORGE',   // for the run's split board, where the column is narrow
         name: 'Aleforge',
         tagline: 'Brick, copper and steam. The real Trials.',
         levels: []
       },
       {
         id: 'providence',
+        short: 'PROV',   // for the run's split board, where the column is narrow
         name: 'Providence',
         tagline: 'Order, tonic, prayer. All on the beat.',
         levels: []
       },
       {
         id: 'fenwick',
+        short: 'FENWICK',   // for the run's split board, where the column is narrow
         name: 'Fenwick',
         tagline: 'Mud magic and moss monks.',
         levels: []
       },
       {
         id: 'roto',
+        short: 'ROTO',   // for the run's split board, where the column is narrow
         name: 'Roto Kaiishi',
         tagline: 'A market on stilts. Everything has a price.',
         levels: []
       },
       {
         id: 'tavern',
+        short: 'TAVERN',   // for the run's split board, where the column is narrow
         name: "Sackbeard's Tavern",
         tagline: 'Inside the beast. Where all of it ends.',
         levels: []
