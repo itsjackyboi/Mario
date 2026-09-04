@@ -157,7 +157,15 @@
     });
   };
 
-  /* Shared table renderer — used here and on the standalone leaderboard view.
+  /* Shared table renderer — used by the results card and both leaderboard
+   * pages. `opts` decides which optional columns are present, because the
+   * results card has 274px and the full-history page has most of the screen:
+   *
+   *   player   who set it (shared board only — a local board is all you)
+   *   version  which build it was set on, since the timer and damage rules
+   *            have changed between them and a mixed board would be wrong in
+   *            a way nobody could see
+   *   rankFrom what number the first row is, for a scrolled page
    *
    * The MODE column is why speedrun splits can share a board with single-level
    * runs: a time set on the way through a Drunken Speedrun is a real time on
@@ -165,40 +173,84 @@
    * conditions — a carried purse, no chance to warm up — and the reader needs
    * to be able to tell. */
   PL.LeaderboardTable = {
-    draw: function (ctx, x, y, w, runs, highlight) {
+    draw: function (ctx, x, y, w, runs, highlight, opts) {
+      opts = opts || {};
       var dim = 'rgba(242,227,196,0.45)';
+      var from = opts.rankFrom || 1;
+
+      // Columns are laid out from both ends — fixed ones from the left, numeric
+      // ones from the right — and PLAYER takes whatever is left in the middle.
+      // Which optional columns are on changes the arithmetic, so it is done
+      // here rather than with fixed offsets: the 274px results card and the
+      // 572px history page use the same code and neither one collides.
+      var showDate = opts.date !== false;
+      var cTime = x + 26;
+      var right = x + w;
+      var cDate = showDate ? right : null;
+      var cBuild = opts.version ? (showDate ? right - 56 : right) : null;
+      var numRight = cBuild != null ? cBuild - 54 : (showDate ? right - 58 : right);
+      var cDeaths = numRight;
+      var cGrog = cDeaths - 54;
+      var cPlayer = x + 92;
+      // MODE never rides back into TIME, however little room is left.
+      var cMode = Math.max(cGrog - 76, cPlayer + (opts.player ? 96 : 0));
+      var playerW = Math.max(40, cMode - cPlayer - 10);
+
       PL.gfx.text(ctx, '#', x, y + 12, { font: PL.FONT.tiny, color: dim });
-      PL.gfx.text(ctx, 'TIME', x + 26, y + 12, { font: PL.FONT.tiny, color: dim });
-      PL.gfx.text(ctx, 'MODE', x + 92, y + 12, { font: PL.FONT.tiny, color: dim });
-      PL.gfx.text(ctx, 'GROG', x + 168, y + 12, { font: PL.FONT.tiny, align: 'right', color: dim });
-      PL.gfx.text(ctx, 'DEATHS', x + 222, y + 12, { font: PL.FONT.tiny, align: 'right', color: dim });
-      PL.gfx.text(ctx, 'DATE', x + w, y + 12, { font: PL.FONT.tiny, align: 'right', color: dim });
+      PL.gfx.text(ctx, 'TIME', cTime, y + 12, { font: PL.FONT.tiny, color: dim });
+      if (opts.player) {
+        PL.gfx.text(ctx, 'PLAYER', cPlayer, y + 12, { font: PL.FONT.tiny, color: dim });
+      }
+      PL.gfx.text(ctx, 'MODE', cMode, y + 12, { font: PL.FONT.tiny, color: dim });
+      PL.gfx.text(ctx, 'GROG', cGrog, y + 12, { font: PL.FONT.tiny, align: 'right', color: dim });
+      PL.gfx.text(ctx, 'DEATHS', cDeaths, y + 12, { font: PL.FONT.tiny, align: 'right', color: dim });
+      if (cBuild != null) {
+        PL.gfx.text(ctx, 'BUILD', cBuild, y + 12, { font: PL.FONT.tiny, align: 'right', color: dim });
+      }
+      if (cDate != null) {
+        PL.gfx.text(ctx, 'DATE', cDate, y + 12, { font: PL.FONT.tiny, align: 'right', color: dim });
+      }
       ctx.fillStyle = 'rgba(156,124,82,0.4)';
       ctx.fillRect(x, y + 16, w, 1);
 
       if (!runs || !runs.length) {
-        PL.gfx.text(ctx, 'No runs logged yet. Get wet.', x, y + 38, {
+        PL.gfx.text(ctx, opts.empty || 'No runs logged yet. Get wet.', x, y + 38, {
           font: PL.FONT.body, color: 'rgba(242,227,196,0.5)'
         });
         return;
       }
-      for (var i = 0; i < runs.length && i < 10; i++) {
+      for (var i = 0; i < runs.length; i++) {
         var r = runs[i];
         var ry = y + 32 + i * 15;
         var me = highlight && r === highlight;
+        var rank = from + i;
         if (me) PL.gfx.rect(ctx, x - 4, ry - 11, w + 8, 15, 'rgba(255,179,71,0.16)');
-        var col = i === 0 ? PL.C.lanternHi : (me ? PL.C.parchment : 'rgba(242,227,196,0.72)');
-        PL.gfx.text(ctx, String(i + 1), x, ry, { font: PL.FONT.small, color: col });
-        PL.gfx.text(ctx, U.formatTime(r.timeMs), x + 26, ry, { font: PL.FONT.mono, color: col });
-        PL.gfx.text(ctx, r.speedrun ? 'SPEEDRUN' : 'single', x + 92, ry, {
+        var col = rank === 1 ? PL.C.lanternHi : (me ? PL.C.parchment : 'rgba(242,227,196,0.72)');
+        PL.gfx.text(ctx, String(rank), x, ry, { font: PL.FONT.small, color: col });
+        PL.gfx.text(ctx, U.formatTime(r.timeMs), cTime, ry, { font: PL.FONT.mono, color: col });
+        if (opts.player) {
+          var who = r.player || 'anonymous';
+          var mine = who === PL.Store.playerName();
+          PL.gfx.text(ctx, U.fit(ctx, who, PL.FONT.small, playerW), cPlayer, ry, {
+            font: PL.FONT.small, color: mine ? PL.C.lanternHi : col
+          });
+        }
+        PL.gfx.text(ctx, r.speedrun ? 'SPEEDRUN' : 'single', cMode, ry, {
           font: PL.FONT.tiny,
           color: r.speedrun ? PL.C.teal : 'rgba(242,227,196,0.55)'
         });
-        PL.gfx.text(ctx, String(r.grog), x + 168, ry, { font: PL.FONT.small, align: 'right', color: col });
-        PL.gfx.text(ctx, String(r.deaths || 0), x + 222, ry, { font: PL.FONT.small, align: 'right', color: col });
-        PL.gfx.text(ctx, r.date || '', x + w, ry, {
-          font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.45)'
-        });
+        PL.gfx.text(ctx, String(r.grog), cGrog, ry, { font: PL.FONT.small, align: 'right', color: col });
+        PL.gfx.text(ctx, String(r.deaths || 0), cDeaths, ry, { font: PL.FONT.small, align: 'right', color: col });
+        if (cBuild != null) {
+          PL.gfx.text(ctx, r.version ? 'v' + r.version : '—', cBuild, ry, {
+            font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.45)'
+          });
+        }
+        if (cDate != null) {
+          PL.gfx.text(ctx, String(r.date || '').slice(0, 10), cDate, ry, {
+            font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.45)'
+          });
+        }
       }
     }
   };

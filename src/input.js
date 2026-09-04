@@ -28,6 +28,31 @@
     // Pointer, in logical 640x360 space. `clicked` is latched like a key press.
     mouse: { x: -1, y: -1, down: false, clicked: false, over: false },
 
+    /* Text entry. While `typing` is on, keys are letters rather than actions —
+     * the action map is skipped entirely, so typing a name with a W in it does
+     * not also jump. Scenes drive it with beginText/endText and read `text`. */
+    typing: false,
+    text: '',
+    textMax: 16,
+    textDone: false,      // ENTER, latched
+    textCancel: false,    // ESC, latched
+
+    beginText: function (initial, max) {
+      this.typing = true;
+      this.text = String(initial == null ? '' : initial);
+      this.textMax = max || 16;
+      this.textDone = false;
+      this.textCancel = false;
+      this.state = {};
+    },
+
+    endText: function () {
+      this.typing = false;
+      this.textDone = false;
+      this.textCancel = false;
+      return this.text;
+    },
+
     down: function (a) { return !!this.state[a]; },
 
     /** True if the pointer is inside this logical rect. */
@@ -50,6 +75,8 @@
       this.hits = {};
       this.lifts = {};
       this.mouse.clicked = false;
+      this.textDone = false;
+      this.textCancel = false;
     },
 
     /** Forget everything — used on scene changes so a held key doesn't leak. */
@@ -62,6 +89,7 @@
     install: function () {
       var self = this;
       window.addEventListener('keydown', function (e) {
+        if (self.typing) { self.typeKey(e); return; }
         var a = MAP[e.code];
         if (a) {
           if (!e.repeat && !self.state[a]) self.hits[a] = true;
@@ -78,6 +106,22 @@
         }
       });
       window.addEventListener('blur', function () { self.clear(); });
+    },
+
+    /** One keystroke while a scene is taking text. Never reaches the action map. */
+    typeKey: function (e) {
+      if (e.key === 'Enter') { this.textDone = true; e.preventDefault(); return; }
+      if (e.key === 'Escape') { this.textCancel = true; e.preventDefault(); return; }
+      if (e.key === 'Backspace') {
+        this.text = this.text.slice(0, -1);
+        e.preventDefault();
+        return;
+      }
+      // Printable single characters only: no arrows, no F-keys, no modifiers.
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (this.text.length < this.textMax) this.text += e.key;
+        e.preventDefault();
+      }
     },
 
     /** Map real pointer positions onto the fixed 640x360 logical canvas. */

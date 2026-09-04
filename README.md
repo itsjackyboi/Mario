@@ -34,10 +34,60 @@ Nothing is fetched at runtime, so it works offline.
 | Restart level | `R` |
 | Mute | `M` |
 | Read the letter (title screen) | click the envelope, or `L` |
+| Sign the book (your name) | click the name chip, or pick it from the title menu |
 | Menus | `↑` `↓` `←` `→`, `Enter` to confirm, `Esc` to back out |
 
 There is no drop-item control. Carried items are a FIFO queue — `E` spends whichever is at
 the front, and the HUD shows it plus a `+N` for whatever is stacked behind it.
+
+## The shared board
+
+Records are local to your browser by default and the game makes no network calls at all.
+Point it at a Google Sheet and everyone's runs land on one board, readable in-game.
+
+**Setup — about ten minutes, no hosting of your own.**
+
+1. Make a new Google Sheet. Anywhere in your Drive; the script creates the tab it needs.
+2. **Extensions → Apps Script**. Delete the placeholder `myFunction`, paste the whole of
+   [`tools/leaderboard.gs`](tools/leaderboard.gs), and save.
+3. **Deploy → New deployment → Web app**, with:
+   - *Execute as* — **Me**
+   - *Who has access* — **Anyone**
+
+   Google will ask you to authorise it. The "unverified app" warning is expected for a
+   script you wrote yourself; take **Advanced → Go to (your project)**.
+4. Copy the **Web app URL** — it ends in `/exec` — and paste it into `leaderboardUrl` in
+   [`config.js`](config.js).
+5. Commit and deploy the game (GitHub Pages is fine). Everyone plays *that* copy, so
+   everyone posts to the same sheet.
+
+**Three things that will bite you otherwise:**
+
+- **It only works over http/https.** A `file://` page cannot make these requests, so a
+  local file open shows local records and nothing else. The game does not break — it just
+  has no shared board.
+- **Changing the script needs a redeploy, and how you redeploy matters.** *Manage
+  deployments → edit → New version* keeps the same URL. Creating a *new deployment* gives
+  you a different URL and everyone's `config.js` goes stale.
+- **The URL is public and is meant to be.** It is in the page source of anything you
+  publish. Anyone who has it can add rows to your sheet, which is exactly what makes it
+  work for a friend group and exactly why you should not point it at a sheet holding
+  anything else.
+
+**What lands in the sheet.** One append-only row per run — `date, player, town, level,
+timeMs, grog, deaths, shards, speedrun, version` — so you can sort, filter and chart it by
+hand without the game caring. `version` is on every row because the timer and damage rules
+have changed between builds, and a board that silently mixed them would be wrong in a way
+nobody could see.
+
+**These times are honour-system.** Anything a browser submits can be forged from the
+console in about ten seconds. The only real fix is replaying and verifying inputs
+server-side, which is far more machinery than a board for friends is worth, so the game
+does not pretend to check.
+
+**Losing the network loses nothing.** A run is written to `localStorage` first and posted
+second. If the post fails it waits in an outbox and goes out next time the game reaches the
+sheet; the leaderboard header says how many of yours are still queued.
 
 ## Two ways to play
 
@@ -341,6 +391,7 @@ pressure on your timing rather than a delayed death. (`src/town-roto.js`)
 
 ```
 index.html                     script order lives here; add new files to it
+config.js                      the shared board's URL — the only file you edit
 styles.css                     page chrome only — the game draws itself
 README.md
 
@@ -351,6 +402,7 @@ src/
   input.js                     keyboard + pointer → named actions, latched edges
   audio.js                     synthesised SFX (no asset files)
   storage.js                   localStorage leaderboard, progress, and aggregates
+  cloud.js                     the shared board: submit, fetch, offline outbox
   game.js                      canvas setup, fixed-timestep loop, scene stack
   camera.js                    dead-zone follow, clamping, screen shake
   tiles.js                     tile ids, the glyph legend, per-style tile painting
@@ -374,6 +426,7 @@ src/
   town-roto.js                  |
   town-tavern.js               /   (the finale reuses everyone else's entities)
   scene-letter.js              the letter from Mr. BBL + its title-screen envelope
+  scene-name.js                the one place in the game that takes typed text
   scene-title.js               title, premise, control legend, the envelope
   scene-levelselect.js         areas, levels, the Owe Block branch, shard indicators
   scene-leaderboard.js         standalone records view
@@ -382,6 +435,9 @@ src/
   scene-ending.js              the finale's whole-tryout summary
   scene-gameover.js            an empty purse ends the attempt
   speedrun.js                  Drunken Speedrun run state + its results card
+
+tools/
+  leaderboard.gs               paste into Apps Script; the whole server side
 
 data/
   towns.js                     the area registry and unlock rules
@@ -554,6 +610,15 @@ barb. A zone arms once; whether it speaks is up to the budget.
 Nothing in `src/` outside your own area file needs to change. Tiles, entities, items,
 trials, backdrops and themes each register themselves in one place and are then addressable
 from level data by glyph or by name.
+
+### Reading the board in the game
+
+The leaderboard is two pages. The first is the level list plus the **top five** for whatever
+is selected — five is what fits without shrinking the type, and it is the part anyone
+actually wants. `ENTER` opens the second page: that level's **full history**, scrolling,
+with the columns the first page has no room for (grog, deaths, the build it was set on).
+`←` `→` swap between the SHARED board and this browser's LOCAL one; with no endpoint
+configured there is only LOCAL and the scene never touches the network.
 
 ### Striking a record off
 

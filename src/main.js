@@ -9,6 +9,9 @@
     try {
       PL.Game.init(canvas);
       PL.Audio.init();
+      // Reads config.js. With no endpoint set this leaves the cloud switched
+      // off and the game makes no network calls at all.
+      PL.Cloud.init();
       // Fail loudly and early if any level file is malformed.
       validateLevels();
       PL.Game.start(new PL.TitleScene());

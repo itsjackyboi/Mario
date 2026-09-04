@@ -11,7 +11,8 @@
     this.options = [
       { label: 'Row ashore', hint: 'Pick a town and a level. Times logged per level.' },
       { label: 'Drunken speedrun', hint: 'Every level back to back on one unbroken clock.' },
-      { label: 'Leaderboards', hint: "This browser's records, per level and whole-game." }
+      { label: 'Leaderboards', hint: "Top five per level, and every run behind it." },
+      { label: 'Sign the book', hint: 'The name your runs go under on the shared board.' }
     ];
     this.stars = [];
     var rnd = U.rng(77);
@@ -20,7 +21,14 @@
     }
   }
 
-  TitleScene.prototype.enter = function () { PL.Theme.apply(null); };
+  TitleScene.prototype.enter = function () {
+    PL.Theme.apply(null);
+    // Warm the shared board so the leaderboard is not staring at a spinner, and
+    // push anything that was set while the network was away. Both no-op when no
+    // endpoint is configured.
+    PL.Cloud.load();
+    PL.Cloud.flush();
+  };
 
   TitleScene.prototype.update = function (dt) {
     this.t += dt;
@@ -32,11 +40,17 @@
       PL.Game.push(new PL.LetterScene());
       return;
     }
+    if (PL.NameChip.clicked()) {
+      PL.Audio.sfx('select');
+      PL.Game.push(new PL.NameScene());
+      return;
+    }
     if (In.pressed('confirm') || In.pressed('jump')) {
       PL.Audio.sfx('select');
       if (this.sel === 0) PL.Game.replace(new PL.LevelSelectScene('shantytown'));
       else if (this.sel === 1) PL.Speedrun.start();
-      else PL.Game.push(new PL.LeaderboardScene());
+      else if (this.sel === 2) PL.Game.push(new PL.LeaderboardScene());
+      else PL.Game.push(new PL.NameScene());
     }
   };
 
@@ -159,12 +173,15 @@
     PL.gfx.text(ctx, 'You are Corb. No crew, no legend, no reputation — just a long climb and a full cup.',
       W / 2, 96, { font: PL.FONT.small, align: 'center', color: 'rgba(242,227,196,0.65)' });
 
+    // ---- who is playing --------------------------------------------------
+    PL.NameChip.draw(ctx, PL.NameChip.hot());
+
     // ---- menu ------------------------------------------------------------
     for (var m = 0; m < this.options.length; m++) {
-      var my = 240 + m * 23;
+      var my = 222 + m * 22;
       var on = m === this.sel;
       if (on) {
-        PL.gfx.rect(ctx, W / 2 - 130, my - 14, 260, 22, 'rgba(255,179,71,0.16)');
+        PL.gfx.rect(ctx, W / 2 - 130, my - 14, 260, 21, 'rgba(255,179,71,0.16)');
         PL.gfx.text(ctx, '>', W / 2 - 122, my, { font: PL.FONT.hud, color: C.lantern });
       }
       PL.gfx.text(ctx, this.options[m].label, W / 2, my, {
@@ -176,6 +193,9 @@
     var hint = this.options[this.sel].hint;
     var srBest = this.sel === 1 ? PL.Speedrun.best() : null;
     if (srBest) hint += '   Best: ' + U.formatTime(srBest.timeMs);
+    if (this.sel === 3) hint = PL.Store.playerName()
+      ? 'Signed as ' + PL.Store.playerName() + '. Pick something else if you like.'
+      : hint;
     PL.gfx.text(ctx, hint, W / 2, 304, {
       font: PL.FONT.tiny, align: 'center',
       color: srBest ? 'rgba(255,226,168,0.8)' : 'rgba(242,227,196,0.6)'
@@ -198,9 +218,42 @@
       PL.gfx.text(ctx, cols[c][1], cx, 345, { font: PL.FONT.small, color: 'rgba(242,227,196,0.8)' });
     }
     if (!PL.Store.available) {
-      PL.gfx.text(ctx, 'localStorage unavailable — records will not be saved', W / 2, 232, {
+      PL.gfx.text(ctx, 'localStorage unavailable — records will not be saved', W / 2, 208, {
         font: PL.FONT.tiny, align: 'center', color: C.coral
       });
+    }
+  };
+
+  /* The signature in the corner. Drawn and hit-tested from one place so the
+   * chip and its click target cannot drift apart. */
+  PL.NameChip = {
+    box: { x: 454, y: 8, w: 178, h: 22 },
+
+    draw: function (ctx, hot) {
+      var b = this.box, name = PL.Store.playerName();
+      PL.gfx.panel(ctx, b.x, b.y, b.w, b.h, {
+        r: 4,
+        fill: hot ? 'rgba(255,179,71,0.18)' : 'rgba(18,12,17,0.75)',
+        stroke: hot ? C.lantern : 'rgba(156,124,82,0.5)', alpha: 1
+      });
+      PL.gfx.text(ctx, name ? 'SIGNED' : 'UNSIGNED', b.x + 8, b.y + 15, {
+        font: PL.FONT.tiny, color: name ? C.lantern : C.coral
+      });
+      PL.gfx.text(ctx, U.fit(ctx, name || 'click to sign', PL.FONT.small, b.w - 76),
+        b.x + 62, b.y + 15, {
+          font: PL.FONT.small,
+          color: name ? C.parchment : 'rgba(242,227,196,0.5)'
+        });
+    },
+
+    hot: function () {
+      var b = this.box;
+      return PL.Input.hovering(b.x, b.y, b.w, b.h);
+    },
+
+    clicked: function () {
+      var b = this.box;
+      return PL.Input.clickedIn(b.x, b.y, b.w, b.h);
     }
   };
 

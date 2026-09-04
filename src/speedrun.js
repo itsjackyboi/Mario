@@ -102,13 +102,17 @@
 
       // The split is a real time on a real level, so it goes on that level's
       // board too — tagged, not hidden.
-      PL.Store.recordRun(scene.def.town, scene.def.id, {
+      var split = {
         timeMs: levelMs,
         grog: p.grogEarned,
         shards: p.shards.length,
         deaths: p.deaths,
         speedrun: true
-      });
+      };
+      PL.Store.recordRun(scene.def.town, scene.def.id, split);
+      split.town = scene.def.town;
+      split.level = scene.def.id;
+      PL.Cloud.submit(split);
 
       // Shards are permanent, and clearing a level should still unlock what it
       // unlocks — but the run's grog belongs to the run, not the area purse.
@@ -133,6 +137,11 @@
         deaths: this.deaths
       };
       var result = PL.Store.recordRun(SR_TOWN, SR_LEVEL, run);
+      PL.Cloud.submit({
+        town: SR_TOWN, level: SR_LEVEL,
+        timeMs: run.timeMs, grog: run.grog, deaths: run.deaths,
+        shards: run.shards, speedrun: true
+      });
       PL.Game.replace(new SpeedrunEndScene(run, result, this.splits.slice()));
     },
 

@@ -1,9 +1,18 @@
-/* scene-leaderboard.js — the dedicated records view. Local to this browser;
- * nothing is ever sent anywhere.
+/* scene-leaderboard.js — the records view, in two pages.
  *
- * The level list scrolls inside its panel: with seventeen entries (sixteen
- * levels plus the whole-game speedrun) it will not fit, so only a window of
- * rows is drawn and the window follows the selection.
+ * PAGE ONE is the level list plus the TOP FIVE for whichever level is picked.
+ * Five is what fits without shrinking the type, and it is the part anyone
+ * actually wants to see.
+ *
+ * PAGE TWO is one level's full history — every run ever submitted, scrolling,
+ * with the columns that do not fit alongside the level list (grog, deaths,
+ * build). ENTER opens it, ESC comes back.
+ *
+ * Either page shows one of two boards, switched with LEFT/RIGHT:
+ *   SHARED — everyone's runs, from the Google Sheet (see src/cloud.js)
+ *   LOCAL  — this browser's own records, exactly as before
+ * With no endpoint configured there is only LOCAL, and this scene never touches
+ * the network.
  */
 (function (PL) {
   'use strict';
@@ -14,6 +23,9 @@
   var ROW_H = 34;
   var FIRST_ROW_Y = 84;
   var VISIBLE = Math.floor((LIST_H - (FIRST_ROW_Y - LIST_Y) - 8) / ROW_H);
+
+  var TOP_N = 5;          // rows on page one
+  var FULL_VISIBLE = 11;  // rows on page two
 
   function LeaderboardScene() {
     this.opaque = true;
@@ -43,15 +55,49 @@
     }
     this.sel = 0;
     this.scroll = 0;
+    this.page = 'top';      // 'top' | 'full'
+    this.fullScroll = 0;
+    this.shared = PL.Cloud.enabled();
   }
 
-  LeaderboardScene.prototype.enter = function () { PL.Theme.apply(null); };
+  LeaderboardScene.prototype.enter = function () {
+    PL.Theme.apply(null);
+    PL.Cloud.load();
+  };
+
+  /** Runs for the selected level, from whichever board is showing. */
+  LeaderboardScene.prototype.runs = function () {
+    var sel = this.rows[this.sel];
+    return this.shared ? PL.Cloud.runsFor(sel.townId, sel.def.id)
+                       : PL.Store.runsFor(sel.townId, sel.def.id);
+  };
 
   LeaderboardScene.prototype.update = function (dt) {
     this.t += dt;
     var In = PL.Input;
-    if (In.pressed('back') || In.pressed('confirm')) { PL.Game.pop(); return; }
+
+    if (this.page === 'full') {
+      if (In.pressed('back') || In.pressed('confirm')) {
+        this.page = 'top'; PL.Audio.sfx('menu'); return;
+      }
+      var all = this.runs();
+      var max = Math.max(0, all.length - FULL_VISIBLE);
+      if (In.pressed('up')) { this.fullScroll = Math.max(0, this.fullScroll - 1); PL.Audio.sfx('menu'); }
+      if (In.pressed('down')) { this.fullScroll = Math.min(max, this.fullScroll + 1); PL.Audio.sfx('menu'); }
+      if (In.pressed('left') || In.pressed('right')) this.flip();
+      this.fullScroll = U.clamp(this.fullScroll, 0, max);
+      return;
+    }
+
+    if (In.pressed('back')) { PL.Game.pop(); return; }
     if (!this.rows.length) return;
+    if (In.pressed('confirm')) {
+      this.page = 'full';
+      this.fullScroll = 0;
+      PL.Audio.sfx('select');
+      return;
+    }
+    if (In.pressed('left') || In.pressed('right')) this.flip();
     if (In.pressed('up')) { this.sel = (this.sel + this.rows.length - 1) % this.rows.length; PL.Audio.sfx('menu'); }
     if (In.pressed('down')) { this.sel = (this.sel + 1) % this.rows.length; PL.Audio.sfx('menu'); }
 
@@ -59,6 +105,15 @@
     if (this.sel < this.scroll) this.scroll = this.sel;
     if (this.sel > this.scroll + VISIBLE - 1) this.scroll = this.sel - VISIBLE + 1;
     this.scroll = U.clamp(this.scroll, 0, Math.max(0, this.rows.length - VISIBLE));
+  };
+
+  /** Swap boards. With no shared board configured there is nothing to swap to. */
+  LeaderboardScene.prototype.flip = function () {
+    if (!PL.Cloud.enabled()) return;
+    this.shared = !this.shared;
+    this.fullScroll = 0;
+    if (this.shared) PL.Cloud.load();
+    PL.Audio.sfx('menu');
   };
 
   LeaderboardScene.prototype.draw = function (ctx) {
@@ -70,8 +125,11 @@
     ctx.fillRect(0, 0, W, H);
 
     PL.gfx.text(ctx, 'THE BOOKS OF CAPTAINS', 20, 32, { font: PL.FONT.head, color: C.parchment });
-    PL.gfx.text(ctx, 'Local records for this browser only — no ledger leaves this machine.',
-      20, 48, { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.5)' });
+    PL.gfx.text(ctx, this.subtitle(), 20, 48, {
+      font: PL.FONT.tiny,
+      color: (this.shared && PL.Cloud.state === 'error') ? C.coral : 'rgba(242,227,196,0.5)'
+    });
+    this.boardTabs(ctx, W);
 
     if (!this.rows.length) {
       PL.gfx.text(ctx, 'No levels registered.', W / 2, H / 2, {
@@ -79,8 +137,41 @@
       });
       return;
     }
+    if (this.page === 'full') { this.drawFull(ctx, W, H); return; }
+    this.drawTop(ctx, W, H);
+  };
 
-    // ---- scrolling level list -------------------------------------------
+  LeaderboardScene.prototype.subtitle = function () {
+    if (!this.shared) {
+      return PL.Cloud.enabled()
+        ? "This browser's own records. ← → for the shared board."
+        : 'Local records for this browser only — no ledger leaves this machine.';
+    }
+    return PL.Cloud.status();
+  };
+
+  /** LOCAL / SHARED, top right of the header. */
+  LeaderboardScene.prototype.boardTabs = function (ctx, W) {
+    if (!PL.Cloud.enabled()) return;
+    var labels = ['SHARED', 'LOCAL'];
+    for (var i = 0; i < 2; i++) {
+      var on = (i === 0) === this.shared;
+      var w = 62, x = W - 20 - (2 - i) * (w + 6);
+      PL.gfx.panel(ctx, x, 18, w, 20, {
+        r: 4, alpha: 1,
+        fill: on ? 'rgba(255,179,71,0.22)' : 'rgba(18,12,17,0.7)',
+        stroke: on ? C.lantern : 'rgba(156,124,82,0.4)'
+      });
+      PL.gfx.text(ctx, labels[i], x + w / 2, 32, {
+        font: PL.FONT.tiny, align: 'center',
+        color: on ? C.lanternHi : 'rgba(242,227,196,0.5)'
+      });
+    }
+  };
+
+  // ------------------------------------------------------------- page one
+
+  LeaderboardScene.prototype.drawTop = function (ctx, W, H) {
     PL.gfx.panel(ctx, LIST_X, LIST_Y, LIST_W, LIST_H, { r: 6 });
     ctx.save();
     ctx.beginPath();
@@ -103,7 +194,7 @@
                              : (PL.Towns.ROMAN[r.index] || (r.index + 1)) + '.  ' + r.def.name;
       // The list scrolls, so a long name must end in an ellipsis inside the
       // panel rather than run under the scroll track and get sliced by the clip.
-      label = PL.util.fit(ctx, label, PL.FONT.hud, LIST_W - 34);
+      label = U.fit(ctx, label, PL.FONT.hud, LIST_W - 34);
       PL.gfx.text(ctx, label, LIST_X + 16, y + 10, {
         font: PL.FONT.hud, color: on ? C.lanternHi : 'rgba(242,227,196,0.8)'
       });
@@ -134,19 +225,75 @@
       font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.4)'
     });
 
-    // ---- table -----------------------------------------------------------
+    // ---- the top five ----------------------------------------------------
     var sel = this.rows[this.sel];
-    var runs = PL.Store.runsFor(sel.townId, sel.def.id);
+    var runs = this.runs();
     PL.gfx.panel(ctx, 226, LIST_Y, W - 246, LIST_H, { r: 6 });
-    PL.gfx.text(ctx, sel.def.name.toUpperCase(), 244, 84, {
+    PL.gfx.text(ctx, U.fit(ctx, sel.def.name.toUpperCase(), PL.FONT.head, W - 300), 244, 84, {
       font: PL.FONT.head, color: sel.speedrun ? C.lanternHi : C.lantern
     });
-    PL.gfx.text(ctx, sel.def.blurb || '', 244, 100, {
+    PL.gfx.text(ctx, U.fit(ctx, sel.def.blurb || '', PL.FONT.tiny, W - 290), 244, 100, {
       font: PL.FONT.tiny, color: 'rgba(242,227,196,0.5)'
     });
-    PL.LeaderboardTable.draw(ctx, 244, 108, W - 286, runs, null);
 
-    PL.gfx.text(ctx, '↑ ↓ pick a level · ESC / ENTER back', W / 2, 332, {
+    // No DATE here: alongside the level list there is only room for five
+    // columns, and who set it matters more than when. Page two has both.
+    PL.LeaderboardTable.draw(ctx, 244, 108, W - 286, runs.slice(0, TOP_N), null, {
+      player: this.shared,
+      date: false,
+      empty: this.shared ? 'Nobody has posted a run here yet.'
+                         : 'No runs logged yet. Get wet.'
+    });
+
+    if (runs.length > TOP_N) {
+      PL.gfx.text(ctx, '+ ' + (runs.length - TOP_N) + ' more — ENTER for every run',
+        244, LIST_Y + LIST_H - 12, {
+          font: PL.FONT.tiny, color: 'rgba(242,227,196,0.45)'
+        });
+    }
+
+    PL.gfx.text(ctx, '↑ ↓ pick a level · ENTER every run · ' +
+      (PL.Cloud.enabled() ? '← → board · ' : '') + 'ESC back', W / 2, 332, {
+      font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.5)'
+    });
+  };
+
+  // ------------------------------------------------------------- page two
+
+  LeaderboardScene.prototype.drawFull = function (ctx, W, H) {
+    var sel = this.rows[this.sel];
+    var runs = this.runs();
+
+    PL.gfx.panel(ctx, 16, LIST_Y, W - 32, LIST_H, { r: 6 });
+    PL.gfx.text(ctx, U.fit(ctx, sel.def.name.toUpperCase(), PL.FONT.head, 380), 34, 84, {
+      font: PL.FONT.head, color: sel.speedrun ? C.lanternHi : C.lantern
+    });
+    PL.gfx.text(ctx, (sel.speedrun ? 'Whole game' : sel.townName) +
+      '  ·  every run  ·  ' + runs.length, W - 34, 84, {
+        font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.5)'
+      });
+
+    var shown = runs.slice(this.fullScroll, this.fullScroll + FULL_VISIBLE);
+    PL.LeaderboardTable.draw(ctx, 34, 92, W - 68, shown, null, {
+      player: this.shared,
+      version: true,
+      rankFrom: this.fullScroll + 1,
+      empty: this.shared ? 'Nobody has posted a run here yet.'
+                         : 'No runs logged yet. Get wet.'
+    });
+
+    if (runs.length > FULL_VISIBLE) {
+      var trackX = W - 26;
+      var trackY = LIST_Y + 44, trackH = LIST_H - 58;
+      PL.gfx.rect(ctx, trackX, trackY, 3, trackH, 'rgba(242,227,196,0.12)');
+      var thumbH = Math.max(18, trackH * FULL_VISIBLE / runs.length);
+      var maxScroll = runs.length - FULL_VISIBLE;
+      var thumbY = trackY + (trackH - thumbH) * (maxScroll ? this.fullScroll / maxScroll : 0);
+      PL.gfx.rect(ctx, trackX, thumbY, 3, thumbH, C.lantern);
+    }
+
+    PL.gfx.text(ctx, '↑ ↓ scroll · ' + (PL.Cloud.enabled() ? '← → board · ' : '') +
+      'ESC back to the top five', W / 2, 332, {
       font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.5)'
     });
   };

@@ -319,6 +319,13 @@
     PL.Store.collectShards(this.def.town, p.shards);
     PL.Store.completeLevel(this.def.town, this.def.id, p.grog);
     var result = PL.Store.recordRun(this.def.town, this.def.id, run);
+    // Local first, shared second: the run is already safe on this machine
+    // before anything is sent, so a missing network costs nothing.
+    PL.Cloud.submit({
+      town: this.def.town, level: this.def.id,
+      timeMs: run.timeMs, grog: run.grog, deaths: run.deaths,
+      shards: run.shards, speedrun: false
+    });
     // The capstone level finishes the whole tryout rather than the town.
     if (this.def.ending) {
       PL.Game.replace(new PL.EndingScene(this.def, this.meta, run, result));

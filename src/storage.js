@@ -215,6 +215,21 @@
 
     clearProgress: function () { write(PR_KEY, { version: VERSION, towns: {} }); },
 
+    /**
+     * The name that goes on the shared board. Kept in the progress blob rather
+     * than a key of its own so a save is still one thing to move or clear.
+     */
+    playerName: function () {
+      return this.loadProgress().player || '';
+    },
+
+    setPlayerName: function (name) {
+      var p = this.loadProgress();
+      p.player = String(name || '').replace(/\s+/g, ' ').trim().slice(0, 24);
+      write(PR_KEY, p);
+      return p.player;
+    },
+
     // ------------------------------------------------------------ aggregates
 
     /**
