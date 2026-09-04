@@ -514,6 +514,50 @@
     if (world) world.fx.label(this.cx(), this.cy(), 'OVER YOU GO', '#c9a8f0');
   };
 
+  /**
+   * Whatever he bought to put on his head, drawn into the sprite's own
+   * coordinate space (origin at the top-left of a 20x28 Corb).
+   *
+   * The shapes are here rather than in bank.js because a hat has to sit on
+   * *this* head — the catalogue owns the colours and the name, the sprite owns
+   * where a brim goes.
+   */
+  function drawHat(ctx, lid, tint, f) {
+    var main = tint(lid.hat), band = tint(lid.band);
+    if (lid.hood) {
+      // a cowl, drawn over the skull rather than on top of it
+      PL.gfx.rect(ctx, 3, -1, 15, 8, main);
+      PL.gfx.rect(ctx, 4, 5, 13, 3, band);
+      PL.gfx.rect(ctx, f > 0 ? 2 : 16, 2, 3, 9, main);
+      return;
+    }
+    if (lid.low) {
+      // bandana or cap: tight to the skull, with a tail or a peak
+      PL.gfx.rect(ctx, 4, 1, 13, 4, main);
+      PL.gfx.rect(ctx, 4, 4, 13, 1, band);
+      PL.gfx.rect(ctx, f > 0 ? 2 : 16, 2, 3, 5, main);
+      return;
+    }
+    // the default silhouette: a brim with something on top
+    ctx.fillStyle = main;
+    ctx.beginPath();
+    ctx.moveTo(1, 3); ctx.lineTo(19, 3); ctx.lineTo(15, -1); ctx.lineTo(5, -1);
+    ctx.closePath(); ctx.fill();
+    PL.gfx.rect(ctx, 3, 2, 14, 2, band);
+    if (lid.spikes) {
+      for (var i = 0; i < 4; i++) {
+        var sx2 = 3 + i * 4;
+        ctx.fillStyle = lid.crown ? main : band;
+        ctx.beginPath();
+        ctx.moveTo(sx2, -1);
+        ctx.lineTo(sx2 + 2, lid.crown ? -6 : -5);
+        ctx.lineTo(sx2 + 4, -1);
+        ctx.closePath(); ctx.fill();
+      }
+      if (lid.crown) PL.gfx.rect(ctx, 3, -2, 14, 2, band);
+    }
+  }
+
   // ------------------------------------------------------------------- render
 
   Player.prototype.draw = function (ctx, cam) {
@@ -568,8 +612,11 @@
     }
     function tint(hex) { return tintTo ? U.mix(hex, tintTo, tintAmt) : hex; }
 
-    var boot = tint('#3a2a1e'), skin = tint('#d9a173'), shirt = tint('#e6d9b8');
-    var coat = tint('#7a4a3c'), sash = tint(C.coral);
+    // Whatever is on him from the Beer Bank. Cosmetic only — every colour
+    // here, and the shape of the hat below, changes nothing about a run.
+    var fit = PL.Bank.worn('outfit'), lid = PL.Bank.worn('hat');
+    var boot = tint('#3a2a1e'), skin = tint(fit.skin), shirt = tint(fit.trim);
+    var coat = tint(U.mix(fit.coat, '#000000', 0.32)), sash = tint(fit.coat);
 
     // legs
     var legA = airborne ? -3 : step * 4;
@@ -590,17 +637,13 @@
     var armY = airborne ? 9 : 13 + step * 2;
     PL.gfx.rect(ctx, f > 0 ? 14 : 3, armY, 4, 7, shirt);
 
-    // head, stubble, and a tricorn a size too big
+    // head and stubble
     PL.gfx.rect(ctx, 5, 2, 11, 9, skin);
     ctx.fillStyle = tint('#b07f55');
     ctx.fillRect(5, 8, 11, 2);
     ctx.fillStyle = C.ink;
     ctx.fillRect(f > 0 ? 12 : 6, 5, 2, 2);
-    ctx.fillStyle = tint('#40312a');
-    ctx.beginPath();
-    ctx.moveTo(1, 3); ctx.lineTo(19, 3); ctx.lineTo(15, -1); ctx.lineTo(5, -1);
-    ctx.closePath(); ctx.fill();
-    PL.gfx.rect(ctx, 3, 2, 14, 2, tint('#5a4436'));
+    drawHat(ctx, lid, tint, f);
 
     ctx.globalAlpha = 1;
     ctx.restore();

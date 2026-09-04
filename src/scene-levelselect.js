@@ -59,7 +59,11 @@
 
     if (In.pressed('up')) { this.levelIdx = (this.levelIdx + levels.length - 1) % levels.length; PL.Audio.sfx('menu'); }
     if (In.pressed('down')) { this.levelIdx = (this.levelIdx + 1) % levels.length; PL.Audio.sfx('menu'); }
-    if (In.pressed('confirm') || In.pressed('jump')) {
+    // PRACTICE. Same key that plants a marker in a level, so there is one
+    // thing to remember: C. Only ever offered on a level already unlocked —
+    // it is for drilling a crossing you keep missing, not a way in.
+    var wantPractice = In.pressed('mark');
+    if (In.pressed('confirm') || In.pressed('jump') || wantPractice) {
       var def = levels[this.levelIdx];
       if (!PL.Towns.isUnlocked(def)) {
         this.msg = 2.6;
@@ -68,7 +72,9 @@
         return;
       }
       PL.Audio.sfx('select');
-      PL.Game.replace(new PL.PlayScene(def, PL.Towns.metaFor(town.id, def.id)));
+      var meta = PL.Towns.metaFor(town.id, def.id);
+      if (wantPractice) meta.practice = true;
+      PL.Game.replace(new PL.PlayScene(def, meta));
     }
   };
 
@@ -249,7 +255,7 @@
     PL.gfx.text(ctx, 'Town purse: ' + PL.Store.townProgress(town.id).purse + ' grog', 18, 320, {
       font: PL.FONT.small, color: C.grogBand
     });
-    PL.gfx.text(ctx, '↑ ↓ select · ← → switch column · ENTER play · ESC title', W - 18, 320, {
+    PL.gfx.text(ctx, '↑ ↓ select · ← → column · ENTER play · C practice · ESC title', W - 18, 320, {
       font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.5)'
     });
     if (this.msg > 0) {

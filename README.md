@@ -35,10 +35,58 @@ Nothing is fetched at runtime, so it works offline.
 | Mute | `M` |
 | Read the letter (title screen) | click the envelope, or `L` |
 | Sign the book (your name) | click the name chip, or pick it from the title menu |
+| Practice a level | `C` on the level-select, then `C` in-level to drop a marker |
 | Menus | `↑` `↓` `←` `→`, `Enter` to confirm, `Esc` to back out |
 
 There is no drop-item control. Carried items are a FIFO queue — `E` spends whichever is at
 the front, and the HUD shows it plus a `+N` for whatever is stacked behind it.
+
+## The Beer Bank
+
+Whatever Corb walks out of a level with goes into the Bank, and it stays there across
+runs. It buys **pets, outfits and hats** — three slots, worn independently — and nothing
+else. Nothing in the Bank changes a run: a cosmetic that did would put every time on the
+shared board into a different category, and there is only one board.
+
+**The pets are out of the compendium.** Every one but Jigglet is in Notable Animals, and
+seven of the nine are the horses, mules and hornses the Six rode to Pintland on the Walk of
+Shame — which is why the tiers read as a stable rather than a menagerie.
+
+| Grog | | |
+| --- | --- | --- |
+| **1,000** | **Jigglet** — a chicken | **Skeet Budle** — a mule off the Walk of Shame |
+| **3,000** | **Max Trans** — Pilsner's parrot | **Dick Wacker** — a horse |
+| **5,000** | **Chi Ton Pissbulls** — a horse | **PegButt Jr.** — awfully large shoes to fill |
+| **10,000** | **Farty McShits** — a hornse | **Slick Dickless** — a horse |
+| **20,000** | **PegButt** — the horse Pilsner murdered | |
+
+PegButt tops it because he has to: *"most trusted horse ridden by man… just like a father
+to us all"*, killed by Jameson Pilsner. He is drawn as a ghost, because he is one. You are
+not buying a horse; you are buying what is left of the one that mattered.
+
+A pet follows by **walking a short trail of where you have recently been**, rather than
+steering toward you. Steering makes an animal that cuts corners and walks through walls; a
+trail makes one that goes where you went, takes the same jumps a moment later, and catches
+up when you stop. Its name is drawn above it at all times.
+
+Eight outfits and seven hats mix freely — Cutter Crimson under a Friar's Hood if you like.
+The Liquor King's Crown is 20,000, which is the joke: nine pounds of nothing on a man's
+head, and now it is yours.
+
+## Practice mode
+
+Press **C** on any *unlocked* level in the level-select to enter it in practice. Inside,
+**C** drops a marker where you stand and every death puts you back on it, so one crossing
+can be drilled without replaying the level to reach it. Press **C** on the marker again to
+lift it.
+
+**Nothing about a practice run is recorded** — no leaderboard row, no shared board, no grog
+banked, no shard kept — and an empty purse is just another death rather than a game over.
+That is what makes it safe to hand out: a mode that let you rehearse *and* score would make
+every time on the board mean something different.
+
+The marker refuses to plant in mid-air or upside down under a Fenwick veil gate, because a
+marker you respawn onto and immediately fall off is a trap rather than a tool.
 
 ## The shared board
 
@@ -307,6 +355,14 @@ the old deceleration carried you off ledges after you had already let go, which 
 game killing you rather than you missing. Air momentum is deliberately untouched: killing
 that too would make every jump uncontrollable. (`src/player.js`)
 
+**Corb's caption box is deliberately small.** At 420 wide it ate most of the bottom of the
+screen, which is exactly where you look to read the ground you are about to land on. It is
+292 now, with a smaller head and a size-down type, wrapping to three short lines instead of
+two long ones — the same words in a third less screen. The buff descriptions moved with it:
+they used to float 76px off the bottom, right in the same sightline, and now sit flush with
+the floor on the other side. Neither can reach the middle of the screen. (`src/quips.js`,
+`src/hud.js`)
+
 **Corb gets two lines a level.** A level places five to seven trigger zones next to the
 things worth mocking, and `QuipBudget` decides which two of them actually speak — weighted
 by how many zones are left, so the budget is always spent by the end of the level and a
@@ -446,6 +502,8 @@ src/
   items-town.js                the fourteen area-local items, as one table
   enemies.js                   Enemy base, rival crew, coral-eyed sea-wretch
   props.js                     loose planks, movers, checkpoint, tankard, trial gate, scenery
+  bank.js                      the cosmetics catalogue — pets, outfits, hats
+  pet.js                       the animal that walks your trail
   mechanics.js                 the six late-level mechanics, one per area
   player.js                    movement, powerups, damage, rendering
   quips.js                     the one-liner pool and the speech bubble
@@ -461,6 +519,7 @@ src/
   town-tavern.js               /   (the finale reuses everyone else's entities)
   scene-letter.js              the letter from Mr. BBL + its title-screen envelope
   scene-name.js                the one place in the game that takes typed text
+  scene-bank.js                the Beer Bank's three shelves
   scene-title.js               title, premise, control legend, the envelope
   scene-levelselect.js         areas, levels, the Owe Block branch, shard indicators
   scene-leaderboard.js         standalone records view

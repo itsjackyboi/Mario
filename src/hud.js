@@ -124,6 +124,18 @@
       }
       this.effects(ctx, live, W, H);
 
+      // ---- practice mode ---------------------------------------------------
+      if (scene.practice) {
+        PL.gfx.text(ctx, 'PRACTICE  ·  nothing is recorded', W / 2, 42, {
+          font: PL.FONT.tiny, align: 'center', color: C.teal
+        });
+        var hint = scene.mark ? 'C  lift the marker' : 'C  drop a marker where you stand';
+        PL.gfx.text(ctx, hint, W / 2, H - 8, {
+          font: PL.FONT.tiny, align: 'center',
+          color: scene.markFlash > 0 ? C.lanternHi : 'rgba(242,227,196,0.45)'
+        });
+      }
+
       // ---- checkpoint hint -------------------------------------------------
       if (scene.checkpointFlash > 0) {
         ctx.save();
@@ -189,16 +201,20 @@
     },
 
     /**
-     * What every live effect actually does, bottom-right, stacked upward.
-     * It sits clear of the quip caption (bottom-left, up to 420 wide) and of
-     * the countdown chips (top-right, down to y=160).
+     * What every live effect actually does, bottom-right, stacked upward off
+     * the floor of the screen.
+     *
+     * It used to float 76px up, which put it exactly where you look to read
+     * the ground ahead. Now it is flush with the bottom edge, and the caption
+     * box on the other side is only 292 wide, so the two never meet and the
+     * middle of the screen stays clear whatever is running.
      */
     effects: function (ctx, live, W, H) {
       if (!live.length) return;
       var rows = live.slice(0, 4);
       var w = 240, lh = 23;
       var h = 8 + rows.length * lh;
-      var x = W - w - 6, y = H - 76 - h;
+      var x = W - w - 6, y = H - 6 - h;
       PL.gfx.panel(ctx, x, y, w, h, {
         r: 4, fill: 'rgba(18,12,17,0.82)', stroke: 'rgba(156,124,82,0.55)', alpha: 1
       });

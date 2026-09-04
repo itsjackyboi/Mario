@@ -215,6 +215,62 @@
 
     clearProgress: function () { write(PR_KEY, { version: VERSION, towns: {} }); },
 
+    // ----------------------------------------------------------- beer bank
+
+    /**
+     * The Beer Bank: every barrel you have ever walked out of a level with,
+     * minus whatever you have spent in it. Kept on the progress blob beside
+     * the per-area purses rather than in a key of its own, so a save is still
+     * one thing to move or clear.
+     *
+     * `banked` is the running total ever earned and never goes down — it is
+     * the number worth bragging about, and it makes "spent" answerable.
+     */
+    bank: function () {
+      var p = this.loadProgress();
+      return {
+        grog: p.bank || 0,
+        banked: p.banked || 0,
+        owned: p.owned || [],
+        pet: p.pet || '',
+        outfit: p.outfit || '',
+        hat: p.hat || ''
+      };
+    },
+
+    /** Bank a finished run's purse. Returns the new balance. */
+    deposit: function (n) {
+      n = Math.max(0, n | 0);
+      var p = this.loadProgress();
+      p.bank = (p.bank || 0) + n;
+      p.banked = (p.banked || 0) + n;
+      write(PR_KEY, p);
+      return p.bank;
+    },
+
+    owns: function (id) { return this.bank().owned.indexOf(id) !== -1; },
+
+    /** Buy one catalogue item. False if it is already owned or unaffordable. */
+    buy: function (id, price) {
+      var p = this.loadProgress();
+      if (!p.owned) p.owned = [];
+      if (p.owned.indexOf(id) !== -1) return false;
+      if ((p.bank || 0) < price) return false;
+      p.bank -= price;
+      p.owned.push(id);
+      write(PR_KEY, p);
+      return true;
+    },
+
+    /** Wear something you own. Pass '' to take it off. Slots: pet, outfit, hat. */
+    equip: function (slot, id) {
+      if (id && !this.owns(id)) return false;
+      var p = this.loadProgress();
+      p[slot] = id || '';
+      write(PR_KEY, p);
+      return true;
+    },
+
     /**
      * The name that goes on the shared board. Kept in the progress blob rather
      * than a key of its own so a save is still one thing to move or clear.

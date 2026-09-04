@@ -17,7 +17,8 @@
     KeyP: 'pause',
     KeyM: 'mute',
     KeyR: 'restart',
-    KeyL: 'letter'
+    KeyL: 'letter',
+    KeyC: 'mark'
   };
 
   var Input = (PL.Input = {

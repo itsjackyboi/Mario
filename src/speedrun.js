@@ -137,6 +137,7 @@
         deaths: this.deaths
       };
       var result = PL.Store.recordRun(SR_TOWN, SR_LEVEL, run);
+      PL.Store.deposit(this.purse);      // the run's surviving purse, banked
       PL.Cloud.submit({
         town: SR_TOWN, level: SR_LEVEL,
         timeMs: run.timeMs, grog: run.grog, deaths: run.deaths,

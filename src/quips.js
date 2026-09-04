@@ -283,22 +283,25 @@
   };
 
   /* Fixed caption box, bottom-left. Never moves, never covers the player.
-   * Height grows with the line count and the type drops a size before it would
-   * ever need a fourth line, so nothing overlaps and nothing gets clipped. */
-  var BOX_W = 420, TEXT_X = 74, LINE_H = 13;
+   *
+   * Deliberately small: at 420 wide it ate most of the bottom of the screen,
+   * which is where you look to read the ground you are about to land on. The
+   * head shrank, the type dropped a size, and it wraps to three short lines
+   * rather than two long ones — the same words in a third less screen. */
+  var BOX_W = 292, TEXT_X = 54, LINE_H = 11;
 
   QuipBox.prototype.draw = function (ctx) {
     if (this.timer <= 0 || !this.text) return;
 
-    ctx.font = PL.FONT.body;
-    var font = PL.FONT.body;
-    var lines = U.wrapText(ctx, this.text, BOX_W - TEXT_X - 12);
-    if (lines.length > 2) {
-      ctx.font = font = PL.FONT.small;
-      lines = U.wrapText(ctx, this.text, BOX_W - TEXT_X - 12);
+    ctx.font = PL.FONT.small;
+    var font = PL.FONT.small;
+    var lines = U.wrapText(ctx, this.text, BOX_W - TEXT_X - 10);
+    if (lines.length > 3) {
+      ctx.font = font = PL.FONT.tiny;
+      lines = U.wrapText(ctx, this.text, BOX_W - TEXT_X - 10);
     }
-    var h = Math.max(42, 16 + lines.length * LINE_H + 8);
-    var x = 8, y = PL.VIEW_H - h - 8;
+    var h = Math.max(30, 10 + lines.length * LINE_H + 8);
+    var x = 8, y = PL.VIEW_H - h - 6;
     var fade = Math.min(1, this.timer / 0.3, (this.full - this.timer) / 0.18);
 
     ctx.save();
@@ -308,12 +311,16 @@
     });
 
     // Corb, in miniature, so it is obvious who is talking
-    drawCorbHead(ctx, x + 9, y + (h - 22) / 2);
-    PL.gfx.text(ctx, 'CORB', x + 38, y + h / 2 + 3, {
+    ctx.save();
+    ctx.translate(x + 6, y + (h - 15) / 2);
+    ctx.scale(0.7, 0.7);
+    drawCorbHead(ctx, 0, 0);
+    ctx.restore();
+    PL.gfx.text(ctx, 'CORB', x + 24, y + h / 2 + 3, {
       font: PL.FONT.tiny, color: C.lantern
     });
 
-    var top = y + (h - lines.length * LINE_H) / 2 + 10;
+    var top = y + (h - lines.length * LINE_H) / 2 + 9;
     for (var i = 0; i < lines.length; i++) {
       PL.gfx.text(ctx, lines[i], x + TEXT_X, top + i * LINE_H, {
         font: font, color: C.parchment

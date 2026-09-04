@@ -51,6 +51,18 @@
     // In a Drunken Speedrun the clock and the purse are the run's, not the
     // level's — grog is the life pool now, so starting every level on nothing
     // would make the first death of each one a game over.
+    // PRACTICE MODE. Drop a marker anywhere and every death puts you back on
+    // it, so a single crossing can be drilled without replaying the level to
+    // reach it. Nothing about a practice run is recorded: no leaderboard row,
+    // no shared board, no grog banked, no shard kept. That is the whole reason
+    // it is safe to hand out — a mode that let you rehearse *and* score would
+    // make every time on the board mean something different.
+    this.practice = !!this.meta.practice;
+    this.mark = null;
+    this.markFlash = 0;
+
+    this.pet = PL.makePet();
+
     this.speedrun = !!this.meta.speedrun;
     this.baseMs = this.speedrun ? PL.Speedrun.elapsedMs : 0;
     this.levelMs = 0;
@@ -67,7 +79,12 @@
 
     world.onGoal = function () { self.reachGoal(); };
     world.onDeath = function () { self.respawnT = 1.35; };
-    world.onGameOver = function () { self.gameOverT = 1.5; };
+    // An empty purse ends a real attempt. In practice it is just another
+    // death — the point of the mode is to keep repeating one bit.
+    world.onGameOver = function () {
+      if (self.practice) { self.player.grog = 0; self.respawnT = 1.0; return; }
+      self.gameOverT = 1.5;
+    };
     this.gameOverT = 0;
     world.onTrial = function (gate) {
       self.trialActive = true;
@@ -83,6 +100,7 @@
       : '';
 
     this.camera.follow(p, true);
+    if (this.pet) this.pet.reset(p);
   };
 
   PlayScene.prototype.resumed = function () {
@@ -213,6 +231,13 @@
       }
     }
 
+    // --- practice marker ---------------------------------------------------
+    if (this.practice && PL.Input.pressed('mark') && !p.dead && !p.frozen) {
+      this.setMark(p);
+    }
+    if (this.markFlash > 0) this.markFlash -= dt;
+    if (this.pet && !p.dead) this.pet.update(dt, p);
+
     // --- quips ------------------------------------------------------------
     for (var q = 0; q < world.quipZones.length; q++) {
       var z = world.quipZones[q];
@@ -244,6 +269,11 @@
       this.respawnT -= dt;
       if (this.respawnT <= 0) {
         p.respawn(world);
+        if (this.practice && this.mark) {
+          p.x = this.mark.x; p.y = this.mark.y;
+          p.vx = 0; p.vy = 0;
+        }
+        if (this.pet) this.pet.reset(p);
         // Put the level back the way it was found — a spent spirit-light or a
         // wall of steam that walked on while you were dead would otherwise
         // leave the level, and in a speedrun the whole run, unwinnable.
@@ -268,6 +298,30 @@
       shards: this.speedrun ? PL.Speedrun.shards + p.shards.length : p.shards.length,
       deaths: this.speedrun ? PL.Speedrun.deaths + p.deaths : p.deaths
     }));
+  };
+
+  /**
+   * Plant or lift the practice marker. Pressing it where the marker already is
+   * takes it away, so one key does both and there is nothing to remember.
+   *
+   * It refuses to plant in mid-air or on something lethal: a marker you
+   * respawn onto and immediately die on would be a trap rather than a tool.
+   */
+  PlayScene.prototype.setMark = function (p) {
+    if (this.mark && Math.abs(this.mark.x - p.x) < 20 && Math.abs(this.mark.y - p.y) < 24) {
+      this.mark = null;
+      this.markFlash = 1.1;
+      PL.Audio.sfx('menu');
+      return;
+    }
+    if (!p.grounded || p.gsign < 0) {
+      this.world.fx.label(p.cx(), p.y - 8, 'FEET ON THE GROUND', C.coral);
+      return;
+    }
+    this.mark = { x: p.x, y: p.y };
+    this.markFlash = 1.4;
+    this.world.fx.ring(p.cx(), p.cy(), C.lanternHi, 54);
+    PL.Audio.sfx('flag');
   };
 
   PlayScene.prototype.onTrialPassed = function (bonus) {
@@ -303,8 +357,30 @@
     setTimeout(function () { PL.Audio.sfx('trialWin'); }, 380);
   };
 
+  /** The practice marker: a chalk cross on the boards, and a small flag. */
+  PlayScene.prototype.drawMark = function (ctx, cam) {
+    var x = Math.round(this.mark.x - cam.ox()) + 10;
+    var y = Math.round(this.mark.y - cam.oy()) + 28;
+    if (x < -20 || x > PL.VIEW_W + 20) return;
+    ctx.save();
+    var pulse = 0.55 + Math.sin(this.world.time * 3) * 0.2;
+    PL.gfx.glow(ctx, x, y - 2, 30, 'rgba(255,179,71,0.5)', pulse * 0.5);
+    ctx.strokeStyle = C.lanternHi;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - 6, y - 6); ctx.lineTo(x + 6, y + 2);
+    ctx.moveTo(x + 6, y - 6); ctx.lineTo(x - 6, y + 2);
+    ctx.stroke();
+    ctx.restore();
+  };
+
   PlayScene.prototype.showResults = function () {
     var p = this.player;
+    // A practice run is not a run. Nothing is recorded, banked or unlocked.
+    if (this.practice) {
+      PL.Game.replace(new PL.LevelSelectScene(this.def.town));
+      return;
+    }
     // A speedrun banks its own totals and goes straight into the next level.
     if (this.speedrun) { PL.Speedrun.advance(this); return; }
     var run = {
@@ -318,6 +394,8 @@
     };
     PL.Store.collectShards(this.def.town, p.shards);
     PL.Store.completeLevel(this.def.town, this.def.id, p.grog);
+    // Whatever he walked out with goes to the Beer Bank.
+    PL.Store.deposit(p.grog);
     var result = PL.Store.recordRun(this.def.town, this.def.id, run);
     // Local first, shared second: the run is already safe on this machine
     // before anything is sent, so a missing network costs nothing.
@@ -355,6 +433,8 @@
       e.draw(ctx, cam);
     }
 
+    if (this.mark) this.drawMark(ctx, cam);
+    if (this.pet) this.pet.draw(ctx, cam);
     if (!this.finished || this.goalT < 0.45) p.draw(ctx, cam);
     world.fx.draw(ctx, cam);
 
