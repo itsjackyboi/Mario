@@ -14,5 +14,5 @@
  */
 window.PL = window.PL || {};
 window.PL.CONFIG = {
-  leaderboardUrl: ''
+  leaderboardUrl: 'https://script.google.com/macros/s/AKfycbwahTOUij2DBvA1bTeCJk4UKsNci991JZvat3eOhmKXmmR5q8xVjHmBYRbbk8hAsLbf/exec'
 };
