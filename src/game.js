@@ -8,6 +8,16 @@
 (function (PL) {
   'use strict';
 
+  /* The build, drawn faintly on the title screen and readable from the console
+   * as PL.VERSION. It is here so there is a way to tell at a glance which copy
+   * a browser has actually loaded — a stale cached script and a fresh pull look
+   * identical otherwise. Bump it when the game changes.
+   *
+   * Not to be confused with the save-schema version in storage.js, which is
+   * about the shape of the stored JSON and only moves when that shape does.
+   */
+  PL.VERSION = '1.6';
+
   PL.VIEW_W = 640;
   PL.VIEW_H = 360;
   PL.TILE = 32;

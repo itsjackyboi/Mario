@@ -52,6 +52,11 @@
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
 
+    // build number, top-left, faint enough to ignore and legible enough to read
+    PL.gfx.text(ctx, 'v' + PL.VERSION, 8, 16, {
+      font: PL.FONT.tiny, color: 'rgba(242,227,196,0.28)', shadow: false
+    });
+
     for (var s = 0; s < this.stars.length; s++) {
       var st = this.stars[s];
       ctx.globalAlpha = st.a * (0.5 + 0.5 * Math.sin(t * 1.5 + s));

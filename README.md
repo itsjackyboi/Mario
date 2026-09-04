@@ -7,6 +7,11 @@ a great deal to say about the six Liquor Kings who already have all three.
 Plain HTML/CSS/JS, Canvas 2D, **no build step and no backend**. Every sprite is drawn in
 code, every sound is synthesised with WebAudio, and the only persistence is `localStorage`.
 
+The build number is drawn faintly in the top-left of the title screen, and is readable from
+the console as `PL.VERSION`. It is there because a stale cached script and a fresh pull look
+identical otherwise — if the title says an older version than you expect, the browser is
+serving you a cached copy, not the one you just pulled.
+
 ## Running it
 
 - **Locally:** open `index.html` in a browser. That's it. (Scripts are classic `<script>`
