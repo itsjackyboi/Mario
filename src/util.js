@@ -48,6 +48,19 @@
 
   U.pad2 = function (n) { return (n < 10 ? '0' : '') + n; };
 
+  /**
+   * The same clock with the minutes zero-padded: 00:41.20 rather than 0:41.20.
+   * Used for the shared sheet, where a column of times should line up and sort
+   * as text; the HUD keeps the unpadded form, which reads better in play.
+   */
+  U.formatClock = function (ms) {
+    if (ms == null || !isFinite(ms)) return '--:--.--';
+    var total = Math.max(0, Math.floor(ms));
+    return U.pad2(Math.floor(total / 60000)) + ':' +
+           U.pad2(Math.floor((total % 60000) / 1000)) + '.' +
+           U.pad2(Math.floor((total % 1000) / 10));
+  };
+
   /** Short date stamp for leaderboard rows. */
   U.stamp = function (d) {
     d = d || new Date();

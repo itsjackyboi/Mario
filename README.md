@@ -75,8 +75,14 @@ Point it at a Google Sheet and everyone's runs land on one board, readable in-ga
   anything else.
 
 **What lands in the sheet.** One append-only row per run — `date, player, town, level,
-timeMs, grog, deaths, shards, speedrun, version` — so you can sort, filter and chart it by
-hand without the game caring. `version` is on every row because the timer and damage rules
+timeMs, grog, deaths, shards, speedrun, version, time` — so you can sort, filter and chart
+it by hand without the game caring.
+
+The time is there twice on purpose: `time` is written `00:41.20` so the sheet reads without
+arithmetic, and `timeMs` is the raw number, which is what sorts and charts correctly and
+what the game reads back. New columns are always **appended, never inserted**, so updating
+the script never shifts the values in rows you already have; `sheet_()` extends the header
+row on its own the next time it runs. `version` is on every row because the timer and damage rules
 have changed between builds, and a board that silently mixed them would be wrong in a way
 nobody could see.
 

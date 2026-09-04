@@ -9,6 +9,11 @@
  *   GET  ?board=1   -> { rows: [ ... ] }   every run on the board
  *   POST <json row> -> { ok: true }        add one run
  *
+ * The board carries the time twice: `timeMs` as a raw number, which is what
+ * sorts and charts correctly and what the game reads back, and `time` written
+ * 00:41.20 for anyone reading the sheet. New columns are always appended, never
+ * inserted, so a sheet with rows already in it keeps every value where it is.
+ *
  * Notes on why it is shaped like this:
  *
  * - The game POSTs with Content-Type: text/plain so the browser treats it as a
@@ -27,15 +32,25 @@
 
 var SHEET_NAME = 'runs';
 var HEADERS = ['date', 'player', 'town', 'level', 'timeMs', 'grog',
-               'deaths', 'shards', 'speedrun', 'version'];
+               'deaths', 'shards', 'speedrun', 'version', 'time'];
 
-/** The runs sheet, created with headers the first time it is needed. */
+/**
+ * The runs sheet, created with headers the first time it is needed and brought
+ * up to date if this script has grown a column since it was made. Only the
+ * header row is rewritten — existing rows keep every value in place, because
+ * new columns go on the end rather than being inserted.
+ */
 function sheet_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SHEET_NAME);
   if (!sh) {
     sh = ss.insertSheet(SHEET_NAME);
     sh.appendRow(HEADERS);
+    sh.setFrozenRows(1);
+    return sh;
+  }
+  if (sh.getLastColumn() < HEADERS.length) {
+    sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
     sh.setFrozenRows(1);
   }
   return sh;
@@ -69,7 +84,8 @@ function doGet(e) {
         deaths: Number(v[6]) || 0,
         shards: Number(v[7]) || 0,
         speedrun: v[8] === true || String(v[8]).toLowerCase() === 'true',
-        version: String(v[9] || '')
+        version: String(v[9] || ''),
+        time: String(v[10] || '')
       });
     }
     return json_({ rows: rows });
@@ -96,7 +112,8 @@ function doPost(e) {
       Number(body.deaths) || 0,
       Number(body.shards) || 0,
       body.speedrun === true,
-      String(body.version || '').slice(0, 16)
+      String(body.version || '').slice(0, 16),
+      String(body.time || '').slice(0, 16)
     ]);
     return json_({ ok: true });
   } catch (err) {

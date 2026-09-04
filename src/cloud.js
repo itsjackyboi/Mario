@@ -13,8 +13,11 @@
  * localStorage first and posted second, so losing the network loses nothing.
  *
  * A ROW IS:
- *   { player, town, level, timeMs, grog, deaths, shards, speedrun, version,
- *     date }
+ *   { player, town, level, timeMs, time, grog, deaths, shards, speedrun,
+ *     version, date }
+ * `time` is `timeMs` written 00:41.20, so the sheet is readable without doing
+ * arithmetic in your head. The raw milliseconds stay alongside it because that
+ * is what sorts and charts correctly, and what the game reads back.
  * `version` is PL.VERSION at the time the run was set. It is on every row
  * because the timer and damage rules have changed between builds and a board
  * that silently mixed them would be wrong in a way nobody could see.
@@ -74,6 +77,7 @@
         town: rec.town,
         level: rec.level,
         timeMs: Math.round(rec.timeMs),
+        time: PL.util.formatClock(rec.timeMs),
         grog: rec.grog | 0,
         deaths: rec.deaths | 0,
         shards: rec.shards | 0,
