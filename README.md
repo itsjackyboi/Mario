@@ -74,9 +74,37 @@ Point it at a Google Sheet and everyone's runs land on one board, readable in-ga
   work for a friend group and exactly why you should not point it at a sheet holding
   anything else.
 
-**What lands in the sheet.** One append-only row per run — `date, player, town, level,
-timeMs, grog, deaths, shards, speedrun, version, time` — so you can sort, filter and chart
-it by hand without the game caring.
+**Two tabs, on purpose.**
+
+- **`runs`** — every run ever posted, append-only, never sorted or trimmed:
+  `date, player, town, level, timeMs, grog, deaths, shards, speedrun, version, time`.
+  This is the record. The game reads it, your history lives in it, and nothing rewrites a
+  row of it.
+- **`leaderboard`** — the **top five per level** and for the whole-game speedrun, in play
+  order, rebuilt from `runs` after every post. Derived and disposable: delete the tab and
+  it comes straight back.
+
+Sorting the log in place would have been less code, but then the sheet could not answer
+"what did I actually run last Tuesday", and a bad row could not be found and removed by
+hand. Deriving a second tab costs one cheap rewrite per post and keeps both.
+
+The top five is five *runs*, not five players — the same thing the in-game board shows.
+Having the sheet and the game disagree about who is top would be worse than one person
+holding several places.
+
+To fill the tab in immediately rather than waiting for the next run: open the Apps Script
+editor, choose **`rebuildLeaderboard`** in the function dropdown, and press **Run**. Or hit
+`…/exec?rebuild=1` in a browser tab.
+
+**If you would rather not redeploy the script,** a formula does the same job for one level
+at a time — put this in an empty tab and change the level id:
+
+```
+=QUERY(runs!A:K, "select K,B,J,F,G where D='shantytown-1' order by E asc limit 5", 0)
+```
+
+That is `time, player, version, grog, deaths` ordered by `timeMs`. It updates live and
+needs no deployment, but it is one formula per level.
 
 The time is there twice on purpose: `time` is written `00:41.20` so the sheet reads without
 arithmetic, and `timeMs` is the raw number, which is what sorts and charts correctly and
