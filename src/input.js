@@ -19,7 +19,13 @@
     KeyR: 'restart',
     KeyL: 'letter',
     KeyC: 'mark',
-    KeyB: 'bank'
+    KeyB: 'bank',
+    /* TAS mode, inside practice. Frame-at-a-time playback needs keys of its
+     * own that no ordinary run touches. */
+    KeyT: 'tas',
+    Period: 'step',
+    Comma: 'rewind',
+    Slash: 'play'
   };
 
   var Input = (PL.Input = {
@@ -55,7 +61,20 @@
       return this.text;
     },
 
-    down: function (a) { return !!this.state[a]; },
+    /* While a TAS frame is being replayed, the buttons come from the log
+     * rather than the keyboard. Everything the scene asks about goes through
+     * down/pressed, so forcing them here means the replay drives the exact
+     * same code the player does — and every action the log does not carry
+     * (pause, restart, the TAS keys themselves) reads as up, which is what
+     * stops a replay from re-triggering the thing that started it. */
+    force: null,
+    forcePrev: null,
+    SHORT: { left: 'l', right: 'r', up: 'u', down: 'd', jump: 'j', item: 'i' },
+
+    down: function (a) {
+      if (this.force) { var k = this.SHORT[a]; return !!(k && this.force[k]); }
+      return !!this.state[a];
+    },
 
     /** True if the pointer is inside this logical rect. */
     hovering: function (x, y, w, h) {
@@ -70,7 +89,14 @@
 
     /* Latched rather than derived from last-frame state: a tap that starts and
      * ends inside a single frame would otherwise be swallowed entirely. */
-    pressed: function (a) { return !!this.hits[a]; },
+    pressed: function (a) {
+      if (this.force) {
+        var k = this.SHORT[a];
+        if (!k) return false;
+        return !!this.force[k] && !(this.forcePrev && this.forcePrev[k]);
+      }
+      return !!this.hits[a];
+    },
     released: function (a) { return !!this.lifts[a]; },
 
     endFrame: function () {

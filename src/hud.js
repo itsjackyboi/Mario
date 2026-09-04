@@ -13,8 +13,11 @@
     return sign + (a >= 60000 ? U.formatTime(a) : (a / 1000).toFixed(2));
   }
 
-  // The left rail is one column: the town counter and the split board share it.
-  var RAIL_W = 150;
+  /* The left rail is one column: the town counter and the split board share
+   * it. It is deliberately narrow — the board is on screen for a whole run, so
+   * every pixel it takes is a pixel of level you cannot see. Names are cut to
+   * one letter and a number so the times can sit hard against the edge. */
+  var RAIL_W = 104;
 
   function chip(ctx, x, y, w, h) {
     ctx.save();
@@ -145,11 +148,15 @@
         PL.gfx.text(ctx, 'PRACTICE  ·  nothing is recorded', W / 2, 42, {
           font: PL.FONT.tiny, align: 'center', color: C.teal
         });
-        var hint = scene.mark ? 'C  lift the marker' : 'C  drop a marker where you stand';
+        var hint = scene.tas
+          ? 'T  leave TAS   ·   .  step   ·   /  hold to run   ·   ,  rewind   ·   R  back to frame 0'
+          : (scene.mark ? 'C  lift the marker   ·   T  TAS mode'
+                        : 'C  drop a marker   ·   T  TAS mode');
         PL.gfx.text(ctx, hint, W / 2, H - 8, {
           font: PL.FONT.tiny, align: 'center',
           color: scene.markFlash > 0 ? C.lanternHi : 'rgba(242,227,196,0.45)'
         });
+        if (scene.tas) this.tasPanel(ctx, scene);
       }
 
       // ---- checkpoint hint -------------------------------------------------
@@ -270,14 +277,16 @@
       chip(ctx, x, y, w, h);
 
       var sob = sr.sumOfBest();
-      PL.gfx.text(ctx, 'SPLITS', x + 6, y + 9,
+      // The header says which record the colours are judged against, because a
+      // gold split means two different things depending on the answer.
+      PL.gfx.text(ctx, PL.Store.compareMode() === 'world' ? 'WORLD' : 'YOU', x + 5, y + 9,
                   { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.5)' });
       PL.gfx.text(ctx, sob.missing ? 'SOB —' : 'SOB ' + U.formatTime(sob.ms),
-                  x + w - 6, y + 9, {
+                  x + w - 4, y + 9, {
         font: PL.FONT.tiny, align: 'right',
         color: sob.missing ? 'rgba(242,227,196,0.3)' : C.lantern
       });
-      PL.gfx.rect(ctx, x + 5, y + HEAD - 1, w - 10, 1, 'rgba(156,124,82,0.30)');
+      PL.gfx.rect(ctx, x + 4, y + HEAD - 1, w - 8, 1, 'rgba(156,124,82,0.30)');
 
       var townIndex = {};
       for (var li = 0; li < sr.levels.length; li++) {
@@ -308,12 +317,12 @@
         if (done) col = (pb && seg > pb) ? C.coral : C.lanternHi;
         else if (here) col = (pb && seg > pb) ? C.coral : C.parchment;
 
-        PL.gfx.text(ctx, U.fit(ctx, sr.shortLabel(def, n), PL.FONT.tiny, 58),
-                    x + 6, ry + 8, { font: PL.FONT.tiny, color: here ? C.lanternHi : col });
+        PL.gfx.text(ctx, sr.shortLabel(def, n), x + 5, ry + 8,
+                    { font: PL.FONT.tiny, color: here ? C.lanternHi : col });
 
         // The gap against your record for this level, once there is one to show.
         if ((done || here) && pb && seg != null && (done || seg > pb)) {
-          PL.gfx.text(ctx, delta(seg - pb), x + w - 46, ry + 8, {
+          PL.gfx.text(ctx, delta(seg - pb), x + w - 38, ry + 8, {
             font: PL.FONT.tiny, align: 'right',
             color: seg > pb ? C.coral : C.lanternHi
           });
@@ -328,7 +337,7 @@
         var shown = done ? (sr.splits[li] ? sr.splits[li].totalMs : null)
                   : here ? scene.elapsedMs
                   : null;
-        PL.gfx.text(ctx, shown == null ? '—' : U.formatTime(shown), x + w - 6, ry + 8, {
+        PL.gfx.text(ctx, shown == null ? '—' : U.formatTime(shown), x + w - 4, ry + 8, {
           font: PL.FONT.tiny, align: 'right',
           color: done ? col : (here ? C.parchment : 'rgba(242,227,196,0.28)')
         });
@@ -337,19 +346,74 @@
       // Last segment, the way a split board closes: the one number that says
       // whether the level you just finished went well.
       var fy = y + HEAD + sr.levels.length * ROW;
-      PL.gfx.rect(ctx, x + 5, fy, w - 10, 1, 'rgba(156,124,82,0.30)');
+      PL.gfx.rect(ctx, x + 4, fy, w - 8, 1, 'rgba(156,124,82,0.30)');
       var last = sr.splits.length ? sr.splits[sr.splits.length - 1] : null;
       var lastPb = last ? sr.levelBestMs(last.townId, last.id) : 0;
-      PL.gfx.text(ctx, 'LAST', x + 6, fy + 10,
+      PL.gfx.text(ctx, 'LAST', x + 5, fy + 10,
                   { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.45)' });
       PL.gfx.text(ctx,
         last && lastPb ? delta(last.levelMs - lastPb) : (last ? 'FIRST' : '—'),
-        x + w - 6, fy + 10, {
+        x + w - 4, fy + 10, {
           font: PL.FONT.tiny, align: 'right',
           color: !last ? 'rgba(242,227,196,0.3)'
                : !lastPb ? C.lanternHi
                : (last.levelMs > lastPb ? C.coral : C.lanternHi)
         });
+    },
+
+    /**
+     * The TAS readout: frame number, exact clock, and the physics the route
+     * actually turns on.
+     *
+     * A frame-stepper is only as useful as what it lets you read between
+     * frames, and the numbers that decide a platformer route are the ones the
+     * game never shows: horizontal and vertical speed, whether this frame is
+     * the one you are still counted as grounded on, and how much coyote time
+     * is left. Position to two decimals, because a route can hang on a pixel.
+     */
+    tasPanel: function (ctx, scene) {
+      var p = scene.player;
+      var w = 168, h = 78, x = PL.VIEW_W - w - 6, y = PL.VIEW_H - h - 22;
+      chip(ctx, x, y, w, h);
+
+      PL.gfx.text(ctx, 'TAS', x + 6, y + 12, { font: PL.FONT.small, color: C.teal });
+      PL.gfx.text(ctx, 'FRAME ' + scene.tasFrame, x + w - 6, y + 12, {
+        font: PL.FONT.tiny, align: 'right', color: C.lanternHi
+      });
+      PL.gfx.text(ctx, U.formatTime(scene.elapsedMs), x + 34, y + 12,
+                  { font: PL.FONT.tiny, color: C.parchment });
+
+      var rows = [
+        ['x', p.x.toFixed(2), 'y', p.y.toFixed(2)],
+        ['vx', p.vx.toFixed(3), 'vy', p.vy.toFixed(3)],
+        ['grnd', p.grounded ? 'yes' : 'no',
+         'coyote', p.coyote > 0 ? p.coyote.toFixed(3) : '—']
+      ];
+      for (var i = 0; i < rows.length; i++) {
+        var ry = y + 26 + i * 12, r = rows[i];
+        PL.gfx.text(ctx, r[0], x + 6, ry, { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.45)' });
+        PL.gfx.text(ctx, r[1], x + 62, ry, { font: PL.FONT.tiny, align: 'right', color: C.parchment });
+        PL.gfx.text(ctx, r[2], x + 74, ry, { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.45)' });
+        PL.gfx.text(ctx, r[3], x + w - 6, ry, { font: PL.FONT.tiny, align: 'right', color: C.parchment });
+      }
+
+      // What is held right now — the input that the next step will record.
+      var In = PL.Input;
+      var keys = [['←', 'left'], ['→', 'right'], ['↑', 'up'], ['↓', 'down'],
+                  ['JMP', 'jump'], ['ITEM', 'item']];
+      var kx = x + 6;
+      for (var k = 0; k < keys.length; k++) {
+        var on = In.down(keys[k][1]);
+        ctx.font = PL.FONT.tiny;
+        var kw = ctx.measureText(keys[k][0]).width + 8;
+        PL.gfx.rect(ctx, kx, y + h - 15, kw, 11,
+                    on ? 'rgba(79,184,165,0.45)' : 'rgba(156,124,82,0.16)');
+        PL.gfx.text(ctx, keys[k][0], kx + kw / 2, y + h - 7, {
+          font: PL.FONT.tiny, align: 'center',
+          color: on ? C.parchment : 'rgba(242,227,196,0.4)'
+        });
+        kx += kw + 3;
+      }
     },
 
     /** The one ITEM button: shows what E will spend, and how many are queued. */

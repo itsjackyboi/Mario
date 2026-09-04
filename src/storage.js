@@ -279,6 +279,24 @@
       return this.loadProgress().player || '';
     },
 
+    /**
+     * What the split board measures you against: 'self' or 'world'.
+     *
+     * Personal is the default because it is the comparison that always exists
+     * — the shared board can be unreachable, empty, or switched off entirely,
+     * and a split board with nothing to compare to is just a list of numbers.
+     */
+    compareMode: function () {
+      return this.loadProgress().compare === 'world' ? 'world' : 'self';
+    },
+
+    setCompareMode: function (mode) {
+      var p = this.loadProgress();
+      p.compare = mode === 'world' ? 'world' : 'self';
+      write(PR_KEY, p);
+      return p.compare;
+    },
+
     setPlayerName: function (name) {
       var p = this.loadProgress();
       p.player = String(name || '').replace(/\s+/g, ' ').trim().slice(0, 24);

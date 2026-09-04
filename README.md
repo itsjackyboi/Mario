@@ -64,6 +64,7 @@ corner.
 | Open the Beer Bank (title screen) | click the keg, or `B` |
 | Sign the book (your name) | click the name chip, or pick it from the title menu |
 | Practice a level | `C` on the level-select, then `C` in-level to drop a marker |
+| TAS mode (in practice) | `T` to enter, `.` step a frame, `/` hold to run, `,` rewind, `R` back to frame 0 |
 | Menus | `↑` `↓` `←` `→`, `Enter` to confirm, `Esc` to back out |
 
 There is no drop-item control. Carried items are a FIFO queue — `E` spends whichever is at
@@ -119,6 +120,24 @@ sprite it exists to keep the eye off, which is the opposite of the joke; this on
 to be noticed once and then read as a texture. `PL.Bank.censor()` draws it, so the sprite
 and the shelf swatch are the same picture at two scales.
 
+## Music
+
+Six areas, six tunes, all of it WebAudio oscillators — no files, so it still works from
+`file://` and still weighs nothing. Each track is three voices on a grid of sixteenth notes:
+a square lead, a triangle bass and a noise kit, written in `src/music.js` as rows of MIDI
+numbers where `0` is a rest. A tune is something you can read down the page and edit a step
+at a time, which is the whole reason not to ship audio files.
+
+The areas are meant to be told apart with your eyes shut, so each has its own key, tempo and
+rhythm: Shanty Town a slow D-minor lilt, Aleforge fast straight eights in E minor, Providence
+square on the beat with a bell for a lead, Fenwick sparse and modal, Roto busy and pentatonic,
+Sackbeard's heavy in D harmonic minor. `M` mutes everything, music included.
+
+Scheduling uses the standard two-clock trick: a coarse timer wakes often and books every note
+that falls inside a short lookahead at an exact audio-clock time. Firing notes straight off a
+timer would put the rhythm at the mercy of whatever the frame is doing, and a tune that
+stumbles whenever the level gets busy is worse than no tune.
+
 ## Practice mode
 
 Press **C** on any *unlocked* level in the level-select to enter it in practice. Inside,
@@ -133,6 +152,30 @@ every time on the board mean something different.
 
 The marker refuses to plant in mid-air or upside down under a Fenwick veil gate, because a
 marker you respawn onto and immediately fall off is a trap rather than a tool.
+
+### TAS mode
+
+Press **T** inside practice and the world stops. From there `.` advances exactly one frame on
+whatever you are holding, `/` held runs it forward, `,` rewinds a frame, and `R` goes back to
+frame zero. A panel in the corner shows the frame number, the exact clock, position to two
+decimals, horizontal and vertical speed, whether you are still counted as grounded and how
+much coyote time is left — the numbers a route actually turns on, which the game otherwise
+never shows you.
+
+You cannot find a frame-perfect line at sixty frames a second. You find it by stepping into
+the gap and looking, which is what this is for: the strategies a machine search misses are
+the ones a person finds by watching one frame at a time.
+
+**Rewind is replay.** Every frame's input is logged, and rewinding rebuilds the level and
+replays the log up to the target frame. Replaying three thousand frames costs a few
+milliseconds, it cannot drift out of sync with a state-capture routine that forgot a field,
+and it means the input log *is* the route. Its one requirement is determinism, so TAS mode
+swaps in a seeded generator for the duration: camera shake is random, the shake moves the
+cull boundary, and the cull boundary decides whether an entity updates — leave that to chance
+and the same inputs stop landing on the same frame.
+
+It lives only in practice, where nothing is recorded. A mode that let you step frame by frame
+*and* post a time would make every time on the board meaningless.
 
 ## The shared board
 
@@ -266,6 +309,11 @@ The title screen offers both:
   reached yet shows nothing rather than its own record: a level PB sitting in a column of
   running totals reads as a running total, and a board that lies about which number it is
   showing is worse than one that shows less.
+
+  The header says which record the colours are judged against — **YOU** or **WORLD** — and
+  the title screen has the switch, because a gold split against your own record is a
+  different achievement from gold against the fastest anyone has managed. World falls back
+  to your own time on a level nobody has submitted, so the board never goes blank mid-run.
 
   **Sum of best** is the run you would have if every level went as well as it ever has. It is
   not a time anyone has run — it is the target, and the gap between it and your best run is

@@ -75,6 +75,14 @@
     // Sent back for walking past the shard. Says so, briefly, and then gets
     // out of the way — you are already running and the clock never stopped.
     this.shardMissT = this.meta.shardMiss ? 2.6 : 0;
+
+    /* TAS mode state. The seed is fixed per scene so a rewind rebuilds the
+     * same level down to the last particle, and the log is what a rewind
+     * replays. Both survive enter() being called again by the rewind itself. */
+    if (this.tasSeed === undefined) this.tasSeed = 20260904;
+    if (this.tas === undefined) this.tas = false;
+    if (!this.inputLog) this.inputLog = [];
+    if (this.tasFrame === undefined) this.tasFrame = 0;
     this.fadeIn = 1;
     this.checkpointFlash = 0;
     this.trialActive = false;
@@ -107,6 +115,10 @@
       this.shardNote = 'The Red-Earth Shard is required — no shard, no split';
     }
 
+    // Each area has its own tune; the music system no-ops on a town without
+    // one, so adding an area needs no change here.
+    PL.Audio.music.play(this.def.town);
+
     this.camera.follow(p, true);
     if (this.pet) this.pet.reset(p);
   };
@@ -121,7 +133,113 @@
 
   // ------------------------------------------------------------------ update
 
+  /* ---------------------------------------------------------------- TAS mode
+   *
+   * Practice already lets you restart from a marker. TAS mode is the other
+   * half: the world stops, and you advance it one frame at a time with
+   * whatever you are holding. That is the tool a route is actually found
+   * with — you cannot discover a frame-perfect line at sixty frames a second,
+   * you discover it by stepping into the gap and looking.
+   *
+   * REWIND IS REPLAY. Rather than snapshotting the world every frame, every
+   * frame's input is logged and rewinding rebuilds the level and replays the
+   * log up to the target frame. Replaying three thousand frames costs a few
+   * milliseconds, it cannot drift out of sync with a state-capture routine
+   * that forgot a field, and it hands you the input file for free. Its one
+   * requirement is determinism, which is why the seeded generator goes on with
+   * the mode.
+   *
+   * It lives only in practice, where nothing is recorded — a mode that let you
+   * step frame by frame *and* post a time would make every time meaningless.
+   */
+  PlayScene.prototype.toggleTas = function () {
+    if (!this.practice) return;
+    this.tas = !this.tas;
+    if (this.tas) {
+      PL.util.seedRandom(this.tasSeed);
+      this.inputLog = this.inputLog || [];
+      this.tasFrame = this.tasFrame || 0;
+    } else {
+      PL.util.restoreRandom();
+    }
+    PL.Audio.sfx('select');
+  };
+
+  /** The buttons held this frame, as a small record the log can keep. */
+  PlayScene.prototype.readHeld = function () {
+    var In = PL.Input;
+    return {
+      l: In.down('left') ? 1 : 0, r: In.down('right') ? 1 : 0,
+      u: In.down('up') ? 1 : 0, d: In.down('down') ? 1 : 0,
+      j: In.down('jump') ? 1 : 0, i: In.pressed('item') ? 1 : 0
+    };
+  };
+
+  /** Advance exactly one frame on the given held inputs, and log it. */
+  PlayScene.prototype.tasStep = function (held) {
+    var prev = this.inputLog[this.tasFrame - 1] || null;
+    this.inputLog[this.tasFrame] = held;
+    this.tasFrame++;
+    PL.Input.force = held;
+    PL.Input.forcePrev = prev;
+    this.step(1 / 60);
+    PL.Input.force = PL.Input.forcePrev = null;
+  };
+
+  /**
+   * Go back to `frame` by rebuilding the level and replaying the log.
+   * Everything that makes the level what it is comes back with it, because it
+   * is the same code path that built it the first time.
+   */
+  PlayScene.prototype.tasRewind = function (frame) {
+    frame = Math.max(0, Math.min(frame, this.tasFrame));
+    var log = this.inputLog;
+    var keepTas = this.tas, keepSeed = this.tasSeed, keepMark = this.mark;
+    PL.util.restoreRandom();
+    PL.util.seedRandom(keepSeed);
+    this.enter();                       // same build, same seed, same level
+    this.tas = keepTas;
+    this.tasSeed = keepSeed;
+    this.mark = keepMark;
+    this.inputLog = log;
+    this.tasFrame = 0;
+    this.introT = 0;                    // the card has been read
+    for (var f = 0; f < frame; f++) {
+      PL.Input.force = log[f] || {};
+      PL.Input.forcePrev = f > 0 ? (log[f - 1] || {}) : null;
+      this.tasFrame++;
+      this.step(1 / 60);
+    }
+    PL.Input.force = PL.Input.forcePrev = null;
+  };
+
   PlayScene.prototype.update = function (dt) {
+    // In TAS mode the world only moves when you tell it to.
+    if (this.tas) {
+      var In = PL.Input;
+      if (In.pressed('tas')) { this.toggleTas(); return; }
+      if (In.pressed('restart')) {
+        this.inputLog = [];
+        this.tasFrame = 0;
+        this.tasRewind(0);
+        return;
+      }
+      if (In.pressed('rewind')) { this.tasRewind(this.tasFrame - 1); return; }
+      if (In.down('rewind') && this.tasFrame > 0 && (this.tasHold = (this.tasHold || 0) + 1) > 12) {
+        this.tasRewind(this.tasFrame - 1);
+        return;
+      }
+      if (!In.down('rewind')) this.tasHold = 0;
+      // A single frame on tap; hold PLAY to run it forward at speed.
+      if (In.pressed('step')) this.tasStep(this.readHeld());
+      else if (In.down('play')) this.tasStep(this.readHeld());
+      return;
+    }
+    if (this.practice && PL.Input.pressed('tas')) { this.toggleTas(); return; }
+    this.step(dt);
+  };
+
+  PlayScene.prototype.step = function (dt) {
     var world = this.world, p = this.player;
     world.time += dt;
     world.tickTimers(dt);

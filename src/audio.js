@@ -69,6 +69,112 @@
       src.start(t);
     },
 
+    /* ------------------------------------------------------------- music
+     *
+     * Six towns, six tunes, all of it oscillators — no files, so it still
+     * works from file:// and still weighs nothing.
+     *
+     * Each track is three voices on a grid of sixteenth notes: a square lead,
+     * a triangle bass, and a noise kit. Notes are MIDI numbers and 0 is a
+     * rest, which makes a tune something you can read and edit as a row of
+     * numbers rather than a wall of frequencies.
+     *
+     * Scheduling is the standard WebAudio two-clock trick: a coarse timer
+     * wakes up often and books every note that falls inside a short lookahead
+     * window at an exact audio-clock time. Firing notes straight from
+     * setInterval would put the rhythm at the mercy of whatever else the frame
+     * is doing, and a tune that stumbles whenever the level gets busy is worse
+     * than no tune.
+     */
+    music: {
+      LOOKAHEAD: 0.14,      // seconds of notes booked in advance
+      TICK: 25,             // ms between scheduler wake-ups
+
+      track: null, id: null, timer: null, step: 0, nextAt: 0, gain: null,
+
+      /** MIDI note to frequency. 69 is A440, twelve steps to the octave. */
+      hz: function (m) { return 440 * Math.pow(2, (m - 69) / 12); },
+
+      play: function (id) {
+        if (this.id === id) return;              // already running this one
+        var def = PL.Music && PL.Music[id];
+        if (!def) { this.stop(); return; }
+        A.init();
+        this.stop();
+        if (!A.ctx) return;
+        this.gain = A.ctx.createGain();
+        this.gain.gain.value = 0.34;             // well under the sound effects
+        this.gain.connect(A.master);
+        this.id = id;
+        this.track = def;
+        this.step = 0;
+        this.nextAt = A.ctx.currentTime + 0.06;
+        var self = this;
+        this.timer = window.setInterval(function () { self.tick(); }, this.TICK);
+      },
+
+      stop: function () {
+        if (this.timer) { window.clearInterval(this.timer); this.timer = null; }
+        if (this.gain) { try { this.gain.disconnect(); } catch (e) {} this.gain = null; }
+        this.track = null;
+        this.id = null;
+      },
+
+      tick: function () {
+        if (!A.ctx || !this.track) return;
+        var t = this.track;
+        var spb = 60 / t.bpm / 4;                // seconds per sixteenth
+        while (this.nextAt < A.ctx.currentTime + this.LOOKAHEAD) {
+          var i = this.step % t.lead.length;
+          this.voice(t.lead[i], this.nextAt, spb * (t.leadLen || 3), t.leadWave || 'square', 0.22);
+          this.voice(t.bass[i % t.bass.length], this.nextAt, spb * 3.4, 'triangle', 0.30);
+          if (t.drums && t.drums[i % t.drums.length]) {
+            this.hit(t.drums[i % t.drums.length], this.nextAt);
+          }
+          this.nextAt += spb;
+          this.step++;
+        }
+      },
+
+      voice: function (midi, at, dur, wave, vol) {
+        if (!midi || A.muted) return;
+        var osc = A.ctx.createOscillator();
+        var g = A.ctx.createGain();
+        osc.type = wave;
+        osc.frequency.setValueAtTime(this.hz(midi), at);
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(vol, at + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+        osc.connect(g); g.connect(this.gain);
+        osc.start(at); osc.stop(at + dur + 0.02);
+      },
+
+      /** 1 = kick, 2 = hat. Enough of a kit for eight-bit. */
+      hit: function (kind, at) {
+        if (A.muted) return;
+        if (kind === 1) {
+          var osc = A.ctx.createOscillator(), g = A.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(150, at);
+          osc.frequency.exponentialRampToValueAtTime(48, at + 0.11);
+          g.gain.setValueAtTime(0.34, at);
+          g.gain.exponentialRampToValueAtTime(0.0001, at + 0.13);
+          osc.connect(g); g.connect(this.gain);
+          osc.start(at); osc.stop(at + 0.15);
+          return;
+        }
+        var len = Math.floor(A.ctx.sampleRate * 0.035);
+        var buf = A.ctx.createBuffer(1, len, A.ctx.sampleRate);
+        var d = buf.getChannelData(0);
+        for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+        var src = A.ctx.createBufferSource(); src.buffer = buf;
+        var f = A.ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 6000;
+        var hg = A.ctx.createGain(); hg.gain.value = 0.11;
+        src.connect(f); f.connect(hg); hg.connect(this.gain);
+        src.start(at);
+      }
+    },
+
     sfx: function (name) {
       switch (name) {
         case 'jump':     this.tone(330, 0.13, 'square', 0.35, 620); break;

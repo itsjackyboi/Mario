@@ -20,7 +20,12 @@
     this.msgText = '';
   }
 
-  LevelSelectScene.prototype.enter = function () { PL.Theme.apply(null); };
+  LevelSelectScene.prototype.enter = function () {
+    PL.Theme.apply(null);
+    // The area's own tune starts on the shelf you pick it from, so walking into
+    // a level is a continuation rather than a cut.
+    PL.Audio.music.play(this.town().id);
+  };
 
   LevelSelectScene.prototype.indexOfTown = function (id) {
     for (var i = 0; i < this.towns.length; i++) if (this.towns[i].id === id) return i;

@@ -178,13 +178,20 @@
     // ----------------------------------------------------------- the splits
 
     /**
-     * Your best recorded time for one level, in ms, or 0 if never cleared.
+     * The time a split is measured against, in ms, or 0 if there is none.
      *
-     * This is the level's own board record, not a run-only figure, which is
-     * the right thing to compare a split against: it is the number you already
-     * know, the one on the leaderboard, and the one you are trying to beat.
+     * Which time that is depends on what you set before the run. PERSONAL is
+     * your own record for the level; WORLD is the fastest anyone has put on the
+     * shared board. World falls back to personal for a level nobody has
+     * submitted yet, so the board never goes blank in the middle of a run just
+     * because one level is unclaimed — a comparison you can only half see is
+     * worse than one that quietly uses the best it has.
      */
     levelBestMs: function (townId, levelId) {
+      if (PL.Store.compareMode() === 'world' && PL.Cloud && PL.Cloud.byLevel) {
+        var rows = PL.Cloud.byLevel[levelId];
+        if (rows && rows.length && rows[0].timeMs) return rows[0].timeMs;
+      }
       var b = PL.Store.bestFor(townId, levelId);
       return b ? b.timeMs : 0;
     },
@@ -208,15 +215,20 @@
       return { ms: total, missing: missing, count: rows.length };
     },
 
-    /** A short label for a level in the split board's narrow column. */
+    /**
+     * A level's label on the split board: one letter and a number, "S 1".
+     *
+     * The column is the whole cost of the board — it sits over the left of the
+     * screen for an entire run — so the name is squeezed to nothing and the
+     * space goes to the times, which are what anyone is actually reading. Six
+     * towns, six distinct initials; the bonus level takes a star instead of a
+     * number because it is not the fourth of anything.
+     */
     shortLabel: function (def, indexInTown) {
       var t = PL.Towns.get(def.town);
-      var name = (t && t.short) || def.town.toUpperCase();
-      if (def.bonus) return name + ' ★';
-      return name + ' ' + (this.ROMAN_FOR(indexInTown) || (indexInTown + 1));
+      var code = (t && t.code) || def.town.charAt(0).toUpperCase();
+      return code + ' ' + (def.bonus ? '★' : (indexInTown + 1));
     },
-
-    ROMAN_FOR: function (i) { return PL.Towns.ROMAN[i]; },
 
     /** Best recorded split for a town in ms, or 0 if it has never been timed. */
     townBestMs: function (townId) {

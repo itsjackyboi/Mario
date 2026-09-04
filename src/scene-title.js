@@ -12,7 +12,11 @@
       { label: 'Row ashore', hint: 'Pick a town and a level. Times logged per level.' },
       { label: 'Drunken speedrun', hint: 'Every level back to back on one unbroken clock.' },
       { label: 'Leaderboards', hint: "Top five per level, and every run behind it." },
-      { label: 'Sign the book', hint: 'The name your runs go under on the shared board.' }
+      { label: 'Sign the book', hint: 'The name your runs go under on the shared board.' },
+      /* Set before a run, because it changes what every colour on the split
+       * board means: gold against your own record is a different achievement
+       * from gold against the fastest anyone has managed. */
+      { compare: true }
     ];
     this.stars = [];
     var rnd = U.rng(77);
@@ -21,6 +25,22 @@
     }
   }
 
+  /** Menu rows are fixed text except the comparison, which shows its state. */
+  TitleScene.prototype.optionLabel = function (i) {
+    var o = this.options[i];
+    if (!o.compare) return o.label;
+    return 'Splits compare: ' +
+      (PL.Store.compareMode() === 'world' ? 'WORLD BEST' : 'YOUR BEST');
+  };
+
+  TitleScene.prototype.optionHint = function (i) {
+    var o = this.options[i];
+    if (!o.compare) return o.hint;
+    return PL.Store.compareMode() === 'world'
+      ? 'Splits race the fastest time anyone has posted.  ← → to swap.'
+      : 'Splits race your own records.  ← → to swap.';
+  };
+
   TitleScene.prototype.enter = function () {
     PL.Theme.apply(null);
     // Warm the shared board so the leaderboard is not staring at a spinner, and
@@ -28,11 +48,26 @@
     // endpoint is configured.
     PL.Cloud.load();
     PL.Cloud.flush();
+    PL.Audio.music.play('title');
+  };
+
+  /** Swap the split board between your own records and the shared board's. */
+  TitleScene.prototype.flipCompare = function () {
+    var next = PL.Store.compareMode() === 'world' ? 'self' : 'world';
+    PL.Store.setCompareMode(next);
+    // World needs the board in memory to compare against, so ask for it now
+    // rather than at the moment the first split lands.
+    if (next === 'world') PL.Cloud.load(true);
   };
 
   TitleScene.prototype.update = function (dt) {
     this.t += dt;
     var In = PL.Input;
+    // Left/right flips the comparison without having to confirm it.
+    if (this.options[this.sel].compare && (In.pressed('left') || In.pressed('right'))) {
+      PL.Audio.sfx('menu');
+      this.flipCompare();
+    }
     if (In.pressed('up')) { this.sel = (this.sel + this.options.length - 1) % this.options.length; PL.Audio.sfx('menu'); }
     if (In.pressed('down')) { this.sel = (this.sel + 1) % this.options.length; PL.Audio.sfx('menu'); }
     if (PL.LetterIcon.clicked() || In.pressed('letter')) {
@@ -55,7 +90,8 @@
       if (this.sel === 0) PL.Game.replace(new PL.LevelSelectScene('shantytown'));
       else if (this.sel === 1) PL.Speedrun.start();
       else if (this.sel === 2) PL.Game.push(new PL.LeaderboardScene());
-      else PL.Game.push(new PL.NameScene());
+      else if (this.sel === 3) PL.Game.push(new PL.NameScene());
+      else this.flipCompare();
     }
   };
 
@@ -189,13 +225,13 @@
         PL.gfx.rect(ctx, W / 2 - 130, my - 14, 260, 21, 'rgba(255,179,71,0.16)');
         PL.gfx.text(ctx, '>', W / 2 - 122, my, { font: PL.FONT.hud, color: C.lantern });
       }
-      PL.gfx.text(ctx, this.options[m].label, W / 2, my, {
+      PL.gfx.text(ctx, this.optionLabel(m), W / 2, my, {
         font: PL.FONT.hud, align: 'center',
         color: on ? C.parchment : 'rgba(242,227,196,0.55)'
       });
     }
     // one line explaining whatever is highlighted, best time folded in
-    var hint = this.options[this.sel].hint;
+    var hint = this.optionHint(this.sel);
     var srBest = this.sel === 1 ? PL.Speedrun.best() : null;
     if (srBest) hint += '   Best: ' + U.formatTime(srBest.timeMs);
     if (this.sel === 3) hint = PL.Store.playerName()

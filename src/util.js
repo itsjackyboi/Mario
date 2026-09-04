@@ -49,6 +49,34 @@
   U.pad2 = function (n) { return (n < 10 ? '0' : '') + n; };
 
   /**
+   * A seeded generator that can stand in for Math.random.
+   *
+   * TAS mode rewinds by rebuilding the level and replaying the inputs, which
+   * only lands on the same frame if the level is deterministic — and it is
+   * not quite: camera shake is random, ox() includes the shake, and the entity
+   * loop skips anything the camera cannot see, so a random shake can decide
+   * whether an entity updates. Swapping in a seeded generator for the duration
+   * closes that hole without changing a line of the game's own code.
+   */
+  U.seedRandom = function (seed) {
+    if (U._realRandom) return;              // already swapped
+    U._realRandom = Math.random;
+    var s = seed | 0 || 1;
+    Math.random = function () {
+      s = (s + 0x6D2B79F5) | 0;
+      var t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  };
+
+  U.restoreRandom = function () {
+    if (!U._realRandom) return;
+    Math.random = U._realRandom;
+    U._realRandom = null;
+  };
+
+  /**
    * The same clock with the minutes zero-padded: 00:41.20 rather than 0:41.20.
    * Used for the shared sheet, where a column of times should line up and sort
    * as text; the HUD keeps the unpadded form, which reads better in play.

@@ -26,42 +26,48 @@
     list: [
       {
         id: 'shantytown',
-        short: 'SHANTY',   // for the run's split board, where the column is narrow
+        code: 'S',     // one letter, for the run's split board
+        short: 'SHANTY',   // for headings that have a little more room
         name: 'Shanty Town',
         tagline: 'Crashed hulls, bone, grog for coin.',
         levels: []
       },
       {
         id: 'aleforge',
-        short: 'ALEFORGE',   // for the run's split board, where the column is narrow
+        code: 'A',     // one letter, for the run's split board
+        short: 'ALEFORGE',   // for headings that have a little more room
         name: 'Aleforge',
         tagline: 'Brick, copper and steam. The real Trials.',
         levels: []
       },
       {
         id: 'providence',
-        short: 'PROV',   // for the run's split board, where the column is narrow
+        code: 'P',     // one letter, for the run's split board
+        short: 'PROV',   // for headings that have a little more room
         name: 'Providence',
         tagline: 'Order, tonic, prayer. All on the beat.',
         levels: []
       },
       {
         id: 'fenwick',
-        short: 'FENWICK',   // for the run's split board, where the column is narrow
+        code: 'F',     // one letter, for the run's split board
+        short: 'FENWICK',   // for headings that have a little more room
         name: 'Fenwick',
         tagline: 'Mud magic and moss monks.',
         levels: []
       },
       {
         id: 'roto',
-        short: 'ROTO',   // for the run's split board, where the column is narrow
+        code: 'R',     // one letter, for the run's split board
+        short: 'ROTO',   // for headings that have a little more room
         name: 'Roto Kaiishi',
         tagline: 'A market on stilts. Everything has a price.',
         levels: []
       },
       {
         id: 'tavern',
-        short: 'TAVERN',   // for the run's split board, where the column is narrow
+        code: 'T',     // one letter, for the run's split board
+        short: 'TAVERN',   // for headings that have a little more room
         name: "Sackbeard's Tavern",
         tagline: 'Inside the beast. Where all of it ends.',
         levels: []
