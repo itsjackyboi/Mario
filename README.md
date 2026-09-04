@@ -21,6 +21,33 @@ serving you a cached copy, not the one you just pulled.
 
 Nothing is fetched at runtime, so it works offline.
 
+### Cutting a release
+
+The version lives in one place — `PL.VERSION` in `src/game.js` — and is drawn faintly in
+the corner of the title screen so a player can read back which build they are actually on.
+Bump it, then run:
+
+```sh
+node tools/stamp.js
+```
+
+That rewrites every local `<script src>` and `<link href>` in `index.html` to carry
+`?v=<version>`. Nothing compiles, bundles or minifies; the output is the same plain files
+with a query string on the tags, `file://` still works, and someone who never runs it still
+gets a working game — just one that caches the old way.
+
+It matters because a browser that fetched `src/storage.js` last week will happily keep
+using it, and a player on a stale copy of one file next to fresh copies of the others gets
+errors that exist in no version of the game. Changing the version changes every asset URL,
+so there is nothing stale left to serve. The script skips absolute URLs and `data:` URIs
+and strips any existing `?v=`, so it is safe to run twice.
+
+The one file it cannot stamp is `index.html` itself, which has no URL of its own — but
+Pages serves HTML with a short max-age, so a stale index sorts itself out within minutes,
+and the moment it is fetched everything it points at is guaranteed fresh. To confirm a
+build reached you rather than a cache, open the title screen and read the version in the
+corner.
+
 ## Controls
 
 | Action | Keys |
