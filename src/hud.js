@@ -67,9 +67,13 @@
       }
 
       // ---- the left rail: town split, then the full split board ------------
+      // On a single level there is no route to draw, so the rail carries the
+      // one comparison that level has: the two records for it.
       if (scene.speedrun && PL.Speedrun.active) {
         this.townSplit(ctx, scene);
         this.splitBoard(ctx, scene);
+      } else if (!scene.practice) {
+        this.levelSplit(ctx, scene);
       }
 
       // ---- clock (top-centre) --------------------------------------------
@@ -149,7 +153,8 @@
           font: PL.FONT.tiny, align: 'center', color: C.teal
         });
         var hint = scene.tas
-          ? 'T  leave TAS   ·   .  step   ·   /  hold to run   ·   ,  rewind   ·   R  back to frame 0'
+          ? 'T  leave TAS  ·  .  step  ·  /  hold to run  ·  ,  rewind  ·  R  frame 0  ·  ' +
+            'finish it to post it to the TAS board'
           : (scene.mark ? 'C  lift the marker   ·   T  TAS mode'
                         : 'C  drop a marker   ·   T  TAS mode');
         PL.gfx.text(ctx, hint, W / 2, H - 8, {
@@ -250,12 +255,87 @@
     },
 
     /**
+     * The single-level split: both records for the level you are on, under the
+     * purse, in the same rail the run's board uses.
+     *
+     * A level played on its own has exactly one split, so a board of them would
+     * be one row — but the question is the same question a run asks, and it has
+     * two answers worth knowing at once: your own record for this level, and
+     * the fastest anyone has posted. Both are on screen, both go coral the
+     * moment the clock passes them, and the one your switches say you are
+     * racing carries the gap.
+     *
+     * Records do not change while you are inside a level, so they are read once
+     * a second rather than sixty times — every read is a localStorage parse.
+     */
+    levelSplit: function (ctx, scene) {
+      var b = this.levelBests(scene.def);
+      if (!b.you && !b.world) return;       // nothing to race, so nothing to draw
+
+      var x = 6, y = 34, w = RAIL_W;
+      var world = PL.Store.compareMode() === 'world';
+      var now = scene.elapsedMs;
+      chip(ctx, x, y, w, 44);
+
+      PL.gfx.text(ctx, PL.Store.splitMode() === 'speedrun' ? 'THIS LEVEL · RUN' : 'THIS LEVEL',
+                  x + 5, y + 12, { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.5)' });
+
+      // The gap against whichever record the switches picked, once it is real.
+      var target = world ? (b.world || b.you) : (b.you || b.world);
+      if (target && now > target) {
+        PL.gfx.text(ctx, delta(now - target), x + w - 5, y + 12, {
+          font: PL.FONT.tiny, align: 'right', color: C.coral
+        });
+      }
+
+      var rows = [['YOU', b.you, !world], ['WORLD', b.world, world]];
+      for (var i = 0; i < rows.length; i++) {
+        var label = rows[i][0], ms = rows[i][1], active = rows[i][2];
+        var ry = y + 26 + i * 12;
+        if (active && ms) PL.gfx.rect(ctx, x + 3, ry - 8, w - 6, 11, 'rgba(255,179,71,0.14)');
+        var lost = ms && now > ms;
+        var col = !ms ? 'rgba(242,227,196,0.3)'
+                : lost ? C.coral
+                : (active ? C.lanternHi : 'rgba(242,227,196,0.7)');
+        PL.gfx.text(ctx, label, x + 5, ry, { font: PL.FONT.tiny, color: col });
+        PL.gfx.text(ctx, ms ? U.formatTime(ms) : '—', x + w - 5, ry, {
+          font: PL.FONT.tiny, align: 'right', color: col
+        });
+      }
+    },
+
+    /** Both records for one level, cached for a second. */
+    levelBests: function (def) {
+      var kind = PL.Store.splitMode();
+      var key = def.town + '/' + def.id + '/' + kind;
+      var c = this._bests;
+      var now = (window.performance && performance.now()) || Date.now();
+      if (c && c.key === key && now - c.at < 1000) return c;
+      var mine = PL.Store.bestFor(def.town, def.id, kind) ||
+                 PL.Store.bestFor(def.town, def.id);
+      c = {
+        key: key, at: now,
+        you: mine ? mine.timeMs : 0,
+        world: (PL.Cloud && PL.Cloud.bestMs(def.id, kind)) ||
+               (PL.Cloud && PL.Cloud.bestMs(def.id)) || 0
+      };
+      this._bests = c;
+      return c;
+    },
+
+    /**
      * The full split board, LiveSplit-style, down the left rail.
      *
      * The town counter above it answers "how is this town going". This answers
      * the other question a runner has open at all times: where am I against
      * myself, on every level, right now. Sixteen rows, the current one lit,
      * the running clock on it live, and the sum of best under them.
+     *
+     * EVERY ROW CARRIES ITS TARGET FROM THE FIRST FRAME. A level you have not
+     * reached yet shows the running total the comparison would be at when you
+     * got there, dimmed. That is what makes the board answer "am I on pace"
+     * without arithmetic: the number under your live clock is the number you
+     * are racing, on the same line, from the moment the run starts.
      *
      * COLOUR IS THE WHOLE POINT. A split that beat your record for that level
      * is gold and one that did not is coral, judged on the SEGMENT rather than
@@ -276,11 +356,15 @@
       var h = HEAD + sr.levels.length * ROW + FOOT;
       chip(ctx, x, y, w, h);
 
+      var cmp = sr.comparison();
       var sob = sr.sumOfBest();
       // The header says which record the colours are judged against, because a
-      // gold split means two different things depending on the answer.
-      PL.gfx.text(ctx, PL.Store.compareMode() === 'world' ? 'WORLD' : 'YOU', x + 5, y + 9,
-                  { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.5)' });
+      // gold split means four different things depending on the answer: whose
+      // record, and which of that person's two records for the level.
+      PL.gfx.text(ctx,
+        (PL.Store.compareMode() === 'world' ? 'WORLD' : 'YOU') +
+        (PL.Store.splitMode() === 'speedrun' ? ' RUN' : ''),
+        x + 5, y + 9, { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.5)' });
       PL.gfx.text(ctx, sob.missing ? 'SOB —' : 'SOB ' + U.formatTime(sob.ms),
                   x + w - 4, y + 9, {
         font: PL.FONT.tiny, align: 'right',
@@ -298,7 +382,8 @@
 
         var done = li < sr.index;
         var here = li === sr.index;
-        var pb = sr.levelBestMs(def.town, def.id);
+        var target = cmp[li] || { segMs: 0, totalMs: 0 };
+        var pb = target.segMs;
 
         // The segment this row is worth, and what it is worth against.
         var seg = null;
@@ -328,18 +413,22 @@
           });
         }
 
-        /* Running total at this split — the number you compare across runs.
-         * A level not yet reached shows nothing rather than its own record:
-         * a level PB in the same column as a set of running totals reads as a
-         * running total, and a board that lies about which number it is
-         * showing is worse than one that shows less. The target for the whole
-         * run is in the header as SOB. */
+        /* The time column. Where you have been it is what the clock actually
+         * read; where you have not it is what the comparison would read there,
+         * dimmed to half the alpha of a real split so the two are never
+         * confused. Every row is filled in before the run starts, which is the
+         * point — the pace is on the board rather than in your head. */
         var shown = done ? (sr.splits[li] ? sr.splits[li].totalMs : null)
                   : here ? scene.elapsedMs
-                  : null;
+                  : (target.totalMs || null);
+        var timeCol = done ? col
+                    : here ? C.parchment
+                    : 'rgba(242,227,196,0.30)';
+        // The live row goes coral once the clock passes the total it is racing:
+        // being behind is something to notice on the row you are on.
+        if (here && target.totalMs && scene.elapsedMs > target.totalMs) timeCol = C.coral;
         PL.gfx.text(ctx, shown == null ? '—' : U.formatTime(shown), x + w - 4, ry + 8, {
-          font: PL.FONT.tiny, align: 'right',
-          color: done ? col : (here ? C.parchment : 'rgba(242,227,196,0.28)')
+          font: PL.FONT.tiny, align: 'right', color: timeCol
         });
       }
 
@@ -348,7 +437,8 @@
       var fy = y + HEAD + sr.levels.length * ROW;
       PL.gfx.rect(ctx, x + 4, fy, w - 8, 1, 'rgba(156,124,82,0.30)');
       var last = sr.splits.length ? sr.splits[sr.splits.length - 1] : null;
-      var lastPb = last ? sr.levelBestMs(last.townId, last.id) : 0;
+      var lastCmp = last ? cmp[sr.splits.length - 1] : null;
+      var lastPb = lastCmp ? lastCmp.segMs : 0;
       PL.gfx.text(ctx, 'LAST', x + 5, fy + 10,
                   { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.45)' });
       PL.gfx.text(ctx,

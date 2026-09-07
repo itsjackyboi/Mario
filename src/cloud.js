@@ -13,7 +13,7 @@
  * localStorage first and posted second, so losing the network loses nothing.
  *
  * A ROW IS:
- *   { player, town, level, timeMs, time, grog, deaths, shards, speedrun,
+ *   { player, town, level, timeMs, time, grog, deaths, shards, speedrun, tas,
  *     version, date }
  * `time` is `timeMs` written 00:41.20, so the sheet is readable without doing
  * arithmetic in your head. The raw milliseconds stay alongside it because that
@@ -55,6 +55,7 @@
     error: '',
     rows: [],
     byLevel: {},
+    tasByLevel: {},
     fetchedAt: 0,
     sending: 0,
 
@@ -82,6 +83,10 @@
         deaths: rec.deaths | 0,
         shards: rec.shards | 0,
         speedrun: !!rec.speedrun,
+        // Set by TAS mode, and the reason a frame-stepped time can be posted at
+        // all: flagged, it lives on its own board instead of drowning the
+        // level's.
+        tas: !!rec.tas,
         version: PL.VERSION,
         date: new Date().toISOString()
       };
@@ -129,6 +134,9 @@
         .then(function (data) {
           self.rows = (data && data.rows) || [];
           self.index();
+          // The split board may have been comparing against a stale copy of
+          // this, or against nothing at all.
+          if (PL.Speedrun) PL.Speedrun.invalidate();
           self.state = 'ready';
           self.error = '';
           self.fetchedAt = Date.now();
@@ -139,27 +147,64 @@
         });
     },
 
-    /** Group by level and sort each group by time. Ties break on the earlier date. */
+    /**
+     * Group by level and sort each group by time. Ties break on the earlier
+     * date.
+     *
+     * TAS rows are indexed apart from everything else. A tool-assisted time is
+     * a real answer to "how fast can this level go" and a meaningless answer to
+     * "how fast can it be played", so it gets its own board rather than the top
+     * of the human one — a frame-stepped 19.84 sitting above everybody would
+     * make the level's board useless to the people running it.
+     */
     index: function () {
-      var by = {};
+      var by = {}, tas = {};
       for (var i = 0; i < this.rows.length; i++) {
         var r = this.rows[i];
         if (!r || !r.level) continue;
         r.timeMs = Number(r.timeMs) || 0;
         r.speedrun = r.speedrun === true || r.speedrun === 'true' || r.speedrun === 1;
-        (by[r.level] = by[r.level] || []).push(r);
+        r.tas = r.tas === true || r.tas === 'true' || r.tas === 1;
+        var into = r.tas ? tas : by;
+        (into[r.level] = into[r.level] || []).push(r);
       }
-      for (var k in by) {
-        by[k].sort(function (a, b) {
-          return (a.timeMs - b.timeMs) || String(a.date).localeCompare(String(b.date));
-        });
+      function order(group) {
+        for (var k in group) {
+          group[k].sort(function (a, b) {
+            return (a.timeMs - b.timeMs) || String(a.date).localeCompare(String(b.date));
+          });
+        }
       }
+      order(by);
+      order(tas);
       this.byLevel = by;
+      this.tasByLevel = tas;
     },
 
-    /** Every submitted run for one level, best first. */
+    /** Every submitted run for one level, best first. Never TAS rows. */
     runsFor: function (townId, levelId) {
       return this.byLevel[levelId] || [];
+    },
+
+    /** The TAS board for one level, best first. */
+    tasFor: function (levelId) {
+      return (this.tasByLevel && this.tasByLevel[levelId]) || [];
+    },
+
+    /**
+     * The fastest posted time on a level in ms, or 0. `kind` narrows it to
+     * 'level' or 'speedrun' the same way the local board does — see
+     * PL.Store.bestFor for why those are two different records.
+     */
+    bestMs: function (levelId, kind) {
+      var rows = this.byLevel && this.byLevel[levelId];
+      if (!rows || !rows.length) return 0;
+      if (!kind || kind === 'any') return rows[0].timeMs || 0;
+      var want = kind === 'speedrun';
+      for (var i = 0; i < rows.length; i++) {
+        if (!!rows[i].speedrun === want && rows[i].timeMs) return rows[i].timeMs;
+      }
+      return 0;
     },
 
     /** How many runs are waiting to be posted. */

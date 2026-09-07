@@ -38,26 +38,99 @@
 
     /* Text entry. While `typing` is on, keys are letters rather than actions —
      * the action map is skipped entirely, so typing a name with a W in it does
-     * not also jump. Scenes drive it with beginText/endText and read `text`. */
+     * not also jump. Scenes drive it with beginText/endText and read `text`.
+     *
+     * The typing itself is done by a real, invisible <input> parked over the
+     * canvas rather than by reading keydown codes. Reading codes means
+     * re-implementing a text field, and every layout the author does not have
+     * on their desk is where that goes wrong: AltGr symbols arrive with
+     * ctrlKey and altKey both set, dead keys and IMEs compose across several
+     * events, and anything the browser would have handled — paste, a caret you
+     * can move, a mobile keyboard — has to be built by hand or lost. Handing
+     * the job to the element the browser already ships means every letter and
+     * every symbol on every layout works, because none of it is our code.
+     *
+     * The field is also what keeps a typed letter from being an action: the
+     * keystroke lands on an input, so the window handler below never sees it
+     * at all, and M is a letter in a name rather than the mute key. */
     typing: false,
     text: '',
     textMax: 16,
+    caret: 0,             // where the cursor is, for the scene to draw
     textDone: false,      // ENTER, latched
     textCancel: false,    // ESC, latched
+    textEl: null,
+    usingField: false,    // false falls back to reading keydowns
+
+    /** The hidden field, made once and reused. Null if there is no DOM. */
+    field: function () {
+      if (this.textEl) return this.textEl;
+      if (typeof document === 'undefined' || !document.body) return null;
+      var self = this;
+      var el = document.createElement('input');
+      el.type = 'text';
+      el.id = 'text-catcher';
+      el.setAttribute('autocomplete', 'off');
+      el.setAttribute('autocorrect', 'off');
+      el.setAttribute('autocapitalize', 'off');
+      el.setAttribute('spellcheck', 'false');
+      el.setAttribute('aria-label', 'Your name for the shared board');
+      el.addEventListener('input', function () { self.readField(); });
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { self.textDone = true; e.preventDefault(); }
+        else if (e.key === 'Escape') { self.textCancel = true; e.preventDefault(); }
+        // Never let a typed key reach the window handler as an action.
+        e.stopPropagation();
+      });
+      // The caret moves without the value changing — arrows, home, a click —
+      // and `input` does not fire for any of that, so it is read back here too.
+      el.addEventListener('keyup', function (e) { self.readField(); e.stopPropagation(); });
+      el.addEventListener('select', function () { self.readField(); });
+      document.body.appendChild(el);
+      this.textEl = el;
+      return el;
+    },
+
+    /** Take the field's value as the truth, clamped to the scene's limit. */
+    readField: function () {
+      var el = this.textEl;
+      if (!el) return;
+      if (el.value.length > this.textMax) el.value = el.value.slice(0, this.textMax);
+      this.text = el.value;
+      this.caret = el.selectionStart == null ? this.text.length : el.selectionStart;
+    },
 
     beginText: function (initial, max) {
       this.typing = true;
       this.text = String(initial == null ? '' : initial);
       this.textMax = max || 16;
+      this.caret = this.text.length;
       this.textDone = false;
       this.textCancel = false;
       this.state = {};
+      this.hits = {};
+      var el = this.field();
+      this.usingField = false;
+      if (el) {
+        el.maxLength = this.textMax;
+        el.value = this.text;
+        el.style.display = 'block';
+        try { el.focus(); el.setSelectionRange(this.text.length, this.text.length); }
+        catch (e) { /* focus refused */ }
+        // Somewhere that will not give a field focus — a sandboxed frame, say —
+        // has to fall back to reading keys, or nothing would type at all.
+        this.usingField = document.activeElement === el;
+        if (!this.usingField) el.style.display = 'none';
+      }
     },
 
     endText: function () {
       this.typing = false;
+      this.usingField = false;
       this.textDone = false;
       this.textCancel = false;
+      var el = this.textEl;
+      if (el) { el.blur(); el.style.display = 'none'; }
       return this.text;
     },
 
@@ -117,7 +190,14 @@
     install: function () {
       var self = this;
       window.addEventListener('keydown', function (e) {
-        if (self.typing) { self.typeKey(e); return; }
+        if (self.typing) {
+          // A key reaching the window while a field is up means focus has
+          // wandered off it (a click on the canvas, usually). Take it back
+          // rather than reading the keystroke as an action.
+          if (self.usingField) { try { self.textEl.focus(); } catch (err) {} return; }
+          self.typeKey(e);
+          return;
+        }
         var a = MAP[e.code];
         if (a) {
           if (!e.repeat && !self.state[a]) self.hits[a] = true;
@@ -127,6 +207,7 @@
         }
       });
       window.addEventListener('keyup', function (e) {
+        if (self.typing) return;
         var a = MAP[e.code];
         if (a) {
           if (self.state[a]) self.lifts[a] = true;
@@ -136,18 +217,33 @@
       window.addEventListener('blur', function () { self.clear(); });
     },
 
-    /** One keystroke while a scene is taking text. Never reaches the action map. */
+    /**
+     * One keystroke while a scene is taking text, for the case where no hidden
+     * field could be made. Never reaches the action map.
+     *
+     * "Printable" is deliberately generous. A character is anything that is one
+     * code point — which lets through the whole of anyone's layout, accents and
+     * currency signs included, and still keeps out ArrowLeft and F7, which
+     * arrive as words. AltGr is a character key on most of Europe and reports
+     * itself as Ctrl+Alt, so only Ctrl or Meta *alone* is treated as a
+     * shortcut; refusing anything with altKey set would quietly delete half the
+     * symbols on a German or Polish keyboard.
+     */
     typeKey: function (e) {
       if (e.key === 'Enter') { this.textDone = true; e.preventDefault(); return; }
       if (e.key === 'Escape') { this.textCancel = true; e.preventDefault(); return; }
       if (e.key === 'Backspace') {
         this.text = this.text.slice(0, -1);
+        this.caret = this.text.length;
         e.preventDefault();
         return;
       }
-      // Printable single characters only: no arrows, no F-keys, no modifiers.
-      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      var lone = (e.ctrlKey || e.metaKey) && !e.altKey;
+      var one = e.key.length === 1 ||
+                (e.key.length === 2 && e.key.charCodeAt(0) >= 0xD800 && e.key.charCodeAt(0) <= 0xDBFF);
+      if (one && !lone) {
         if (this.text.length < this.textMax) this.text += e.key;
+        this.caret = this.text.length;
         e.preventDefault();
       }
     },
@@ -169,6 +265,9 @@
         self.mouse.x = pt.x; self.mouse.y = pt.y; self.mouse.over = true;
       });
       canvas.addEventListener('pointerdown', function (e) {
+        // Clicking the canvas takes focus off the hidden field; put it back, or
+        // the next letter typed goes nowhere.
+        if (self.typing && self.usingField) { try { self.textEl.focus(); } catch (err) {} }
         var pt = toLogical(e);
         if (!pt) return;
         self.mouse.x = pt.x; self.mouse.y = pt.y;

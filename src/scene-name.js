@@ -1,9 +1,11 @@
 /* scene-name.js — who is signing the book.
  *
  * A small overlay over the title. It is the one place in the game that takes
- * typed text, so it drives `PL.Input.beginText()` — while that is on, the
- * action map is skipped entirely and keys are letters, which is why typing
- * "Wes" does not also make Corb jump.
+ * typed text, so it drives `PL.Input.beginText()` — while that is on, keys go
+ * to a real hidden input rather than the action map, which is why typing "Wes"
+ * does not also make Corb jump and why an M in a name is an M rather than the
+ * mute key. Every letter and symbol a keyboard can produce is allowed; the
+ * length is the only limit.
  *
  * The name is only ever used as a label on the shared board. There is no
  * account and nothing to prove: two people can pick the same name and the board
@@ -60,7 +62,7 @@
     PL.gfx.text(ctx, 'SIGN THE BOOK', x + w / 2, y + 26, {
       font: PL.FONT.head, align: 'center', color: C.parchment
     });
-    PL.gfx.text(ctx, 'The name your runs go under on the shared board.',
+    PL.gfx.text(ctx, 'Any letter, any symbol. It is only a label.',
       x + w / 2, y + 44, {
         font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.55)'
       });
@@ -77,10 +79,14 @@
       font: PL.FONT.hud,
       color: typed ? C.parchment : 'rgba(242,227,196,0.35)'
     });
-    // caret
+    // The caret sits where the field's cursor is, not at the end of the line —
+    // the arrow keys, home/end and a click all move it, and a caret that
+    // ignored them would be lying about where the next letter lands.
     if (Math.floor(this.t * 2) % 2 === 0) {
       ctx.font = PL.FONT.hud;
-      var cw = ctx.measureText(typed).width;
+      var at = Math.max(0, Math.min(PL.Input.caret == null ? typed.length : PL.Input.caret,
+                                    typed.length));
+      var cw = ctx.measureText(typed.slice(0, at)).width;
       PL.gfx.rect(ctx, fx + 11 + cw, fy + 7, 1, 15, C.lanternHi);
     }
     PL.gfx.text(ctx, PL.Input.textMax - typed.length + ' left', fx + fw - 8, fy + 19, {

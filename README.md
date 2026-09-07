@@ -63,6 +63,7 @@ corner.
 | Read the letter (title screen) | click the envelope, or `L` |
 | Open the Beer Bank (title screen) | click the keg, or `B` |
 | Sign the book (your name) | click the name chip, or pick it from the title menu |
+| Split-board switches (title screen) | click a slider beside the keg, or `↓` past the menu and `←` `→` |
 | Practice a level | `C` on the level-select, then `C` in-level to drop a marker |
 | TAS mode (in practice) | `T` to enter, `.` step a frame, `/` hold to run, `,` rewind, `R` back to frame 0 |
 | Menus | `↑` `↓` `←` `→`, `Enter` to confirm, `Esc` to back out |
@@ -174,8 +175,21 @@ swaps in a seeded generator for the duration: camera shake is random, the shake 
 cull boundary, and the cull boundary decides whether an entity updates — leave that to chance
 and the same inputs stop landing on the same frame.
 
-It lives only in practice, where nothing is recorded. A mode that let you step frame by frame
-*and* post a time would make every time on the board meaningless.
+It lives only in practice, where nothing is recorded on the ordinary boards.
+
+**The TAS board.** Reach the tankard with the frame-stepper on and the level ends on an offer:
+post the time to the TAS board, under your name. That board is a separate board with its own
+rules — a frame-stepped time answers a different question from every other row on the screen,
+not how well the level was played but how fast it can physically go, and one sitting on top of
+the human top five would make a level's board useless to the people running it. So TAS times
+are flagged on the way in, kept out of every ordinary board and every comparison the split
+board makes, and shown in their own strip under each level's top five, in-game and in the
+sheet. Nothing posted from in here touches the level's records, the area purse, the unlock
+chain or the Beer Bank.
+
+That offer is the point of the mode. The fastest a level can go is worth knowing, and it is
+better found by a person with a frame-stepper and a strategy nobody has thought of than
+asserted by a search that never presses the item key.
 
 ## The shared board
 
@@ -214,12 +228,17 @@ Point it at a Google Sheet and everyone's runs land on one board, readable in-ga
 **Two tabs, on purpose.**
 
 - **`runs`** — every run ever posted, append-only, never sorted or trimmed:
-  `date, player, town, level, timeMs, grog, deaths, shards, speedrun, version, time`.
+  `date, player, town, level, timeMs, grog, deaths, shards, speedrun, version, time, tas`.
   This is the record. The game reads it, your history lives in it, and nothing rewrites a
   row of it.
 - **`leaderboard`** — the **top five per level** and for the whole-game speedrun, in play
-  order, rebuilt from `runs` after every post. Derived and disposable: delete the tab and
-  it comes straight back.
+  order, then a **TAS section** for tool-assisted times, rebuilt from `runs` after every
+  post. Derived and disposable: delete the tab and it comes straight back.
+
+`tas` is what keeps a frame-stepped time off the board people run against: those rows are
+indexed apart, excluded from every top five and every split-board comparison, and listed on
+their own instead. Rows posted before the column existed read as `false`, which is right —
+nothing before it could have been tool-assisted.
 
 Sorting the log in place would have been less code, but then the sheet could not answer
 "what did I actually run last Tuesday", and a bad row could not be found and removed by
@@ -259,6 +278,16 @@ does not pretend to check.
 **Losing the network loses nothing.** A run is written to `localStorage` first and posted
 second. If the post fails it waits in an outbox and goes out next time the game reaches the
 sheet; the leaderboard header says how many of yours are still queued.
+
+**Signing the book** takes any letter and any symbol a keyboard can produce, up to sixteen
+characters. The typing is done by a real hidden `<input>` parked over the canvas rather than
+by reading key codes, because reading codes means re-implementing a text field and every
+layout the author does not own is where that goes wrong: AltGr symbols arrive with `ctrlKey`
+and `altKey` both set, dead keys and IMEs compose across several events, and paste, a caret
+you can move and a mobile keyboard all have to be rebuilt by hand or lost. Handing the job
+to the element the browser already ships means none of that is our code — and it is also
+what keeps a typed letter from being an action, so an `M` in a name is a letter rather than
+the mute key.
 
 ## Two ways to play
 
@@ -302,18 +331,39 @@ The title screen offers both:
 
   Under the town counter, the **split board** runs the length of the left rail: all sixteen
   levels, the one you are on lit and counting, and the sum of your best times in the header.
-  A finished split is **gold** if that level went faster than your record for it and **coral**
-  if it did not, with the gap beside it. The comparison is on the SEGMENT, not the running
-  total — a good level after a bad one should read as a good level, and a total-based
-  comparison would paint it red for a mistake you already paid for. A level you have not
-  reached yet shows nothing rather than its own record: a level PB sitting in a column of
-  running totals reads as a running total, and a board that lies about which number it is
-  showing is worse than one that shows less.
+  A finished split is **gold** if that level went faster than the record it is racing and
+  **coral** if it did not, with the gap beside it. The comparison is on the SEGMENT, not the
+  running total — a good level after a bad one should read as a good level, and a total-based
+  comparison would paint it red for a mistake you already paid for.
 
-  The header says which record the colours are judged against — **YOU** or **WORLD** — and
-  the title screen has the switch, because a gold split against your own record is a
-  different achievement from gold against the fastest anyone has managed. World falls back
-  to your own time on a level nobody has submitted, so the board never goes blank mid-run.
+  **Every row carries its target from the first frame.** A level you have not reached yet
+  shows, dimmed, the running total the comparison would be at when you got there. That is what
+  makes the board answer *am I on pace* without arithmetic: the number under your live clock is
+  the number you are racing, on the same line, from the moment the run starts. The live row
+  goes coral the moment your clock passes the total it is chasing.
+
+  Two switches on the title screen decide what the board races, and the header says which pair
+  is on:
+
+  | Switch | Sides | What it changes |
+  |---|---|---|
+  | Whose | `YOU` / `WORLD` | your own records, or the fastest anyone has posted |
+  | Which | `LEVEL` / `SPEEDRUN` | times set on the level alone, or splits out of a run |
+
+  Neither is more correct than the other, which is why both are a choice. A gold split against
+  your own solo record is a different achievement from gold against the fastest split anyone
+  has managed — a solo attempt starts on a fresh purse with nothing riding on it, and a
+  speedrun split is run with whatever the last level left you and a whole game still ahead.
+  When the exact record asked for does not exist, the board falls back rather than showing
+  nothing: your own time in the same category, then either board's best of any category.
+
+  The switches are sliders on the shelf beside the Beer Bank rather than rows in the menu.
+  They are states, not destinations — and a fifth menu row landed on top of the hint line and
+  the control legend, which is the screen space the board was shrunk to save.
+
+  **On a single level** the same rail carries the one comparison that level has: your record
+  and the world record for it, side by side, each going coral the moment the clock passes it,
+  with the gap on whichever one your switches say you are racing.
 
   **Sum of best** is the run you would have if every level went as well as it ever has. It is
   not a time anyone has run — it is the target, and the gap between it and your best run is

@@ -2,7 +2,8 @@
  *
  * PAGE ONE is the level list plus the TOP FIVE for whichever level is picked.
  * Five is what fits without shrinking the type, and it is the part anyone
- * actually wants to see.
+ * actually wants to see. Under it, a strip of the fastest TOOL-ASSISTED times
+ * on that level — a separate board, because it answers a different question.
  *
  * PAGE TWO is one level's full history — every run ever submitted, scrolling,
  * with the columns that do not fit alongside the level list (grog, deaths,
@@ -252,10 +253,57 @@
         });
     }
 
+    this.tasStrip(ctx, sel, 244, 226, W - 286);
+
     PL.gfx.text(ctx, '↑ ↓ pick a level · ENTER every run · ' +
       (PL.Cloud.enabled() ? '← → board · ' : '') + 'ESC back', W / 2, 332, {
       font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.5)'
     });
+  };
+
+  /**
+   * The TAS strip: the fastest tool-assisted times on this level, and who set
+   * them.
+   *
+   * Small, and under a rule of its own. A frame-stepped time answers a
+   * different question from every other row on this screen — not how well the
+   * level was played but how fast it can physically go — so it is kept out of
+   * the board above rather than allowed to sit on top of it. It is here at all
+   * because that question is worth an answer, and because the answer is now
+   * found by players with the frame-stepper rather than asserted by me.
+   */
+  LeaderboardScene.prototype.tasStrip = function (ctx, sel, x, y, w) {
+    if (sel.speedrun) return;              // no frame-stepping a whole run
+    var runs = this.shared ? PL.Cloud.tasFor(sel.def.id)
+                           : PL.Store.runsFor(PL.Store.TAS_TOWN, sel.def.id);
+
+    PL.gfx.rect(ctx, x, y, w, 1, 'rgba(79,184,165,0.35)');
+    PL.gfx.text(ctx, 'TAS RECORDS', x, y + 14, { font: PL.FONT.tiny, color: C.teal });
+    PL.gfx.text(ctx, 'tool-assisted · practice mode · own board',
+      x + w, y + 14, {
+        font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.35)'
+      });
+
+    if (!runs.length) {
+      PL.gfx.text(ctx, this.shared ? 'Nobody has posted a tool-assisted time here yet.'
+                                   : 'None on this browser. Practice mode, then T.',
+        x, y + 30, { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.4)' });
+      return;
+    }
+    for (var i = 0; i < Math.min(3, runs.length); i++) {
+      var r = runs[i], ry = y + 30 + i * 13;
+      var col = i === 0 ? C.teal : 'rgba(242,227,196,0.6)';
+      PL.gfx.text(ctx, String(i + 1), x, ry, { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.4)' });
+      PL.gfx.text(ctx, U.formatTime(r.timeMs), x + 14, ry, { font: PL.FONT.mono, color: col });
+      PL.gfx.text(ctx, U.fit(ctx, this.shared ? (r.player || 'anonymous') : 'this browser',
+                             PL.FONT.small, 150), x + 90, ry, {
+        font: PL.FONT.small, color: col
+      });
+      PL.gfx.text(ctx, r.version ? 'v' + r.version : String(r.date || '').slice(0, 10),
+        x + w, ry, {
+          font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.4)'
+        });
+    }
   };
 
   // ------------------------------------------------------------- page two

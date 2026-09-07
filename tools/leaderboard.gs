@@ -14,9 +14,10 @@
  *   `runs`        every run ever posted, append-only, never sorted or trimmed.
  *                 This is the record. The game reads it, your history lives in
  *                 it, and nothing here ever rewrites a row of it.
- *   `leaderboard` the top five per level and for the whole-game speedrun,
- *                 rebuilt from `runs` after every post. Derived, disposable,
- *                 and safe to delete — it comes straight back.
+ *   `leaderboard` the top five per level and for the whole-game speedrun, then
+ *                 a TAS section for tool-assisted times, rebuilt from `runs`
+ *                 after every post. Derived, disposable, and safe to delete —
+ *                 it comes straight back.
  *
  * Sorting a log in place would mean the sheet could not answer "what did I
  * actually run last Tuesday", and a bad row could not be found and removed by
@@ -48,7 +49,7 @@
 
 var SHEET_NAME = 'runs';
 var HEADERS = ['date', 'player', 'town', 'level', 'timeMs', 'grog',
-               'deaths', 'shards', 'speedrun', 'version', 'time'];
+               'deaths', 'shards', 'speedrun', 'version', 'time', 'tas'];
 
 var LB_SHEET = 'leaderboard';
 var LB_HEADERS = ['level', 'rank', 'time', 'player', 'mode', 'grog',
@@ -110,6 +111,10 @@ function sheet_() {
     return sh;
   }
   if (sh.getLastColumn() < HEADERS.length) {
+    // A sheet trimmed to exactly the old column count has nowhere to put the
+    // new one, and every read would throw. Make room before writing.
+    var max = sh.getMaxColumns();
+    if (max < HEADERS.length) sh.insertColumnsAfter(max, HEADERS.length - max);
     sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
     sh.setFrozenRows(1);
   }
@@ -144,7 +149,10 @@ function readRuns_() {
       shards: Number(v[7]) || 0,
       speedrun: v[8] === true || String(v[8]).toLowerCase() === 'true',
       version: String(v[9] || ''),
-      time: String(v[10] || '')
+      time: String(v[10] || ''),
+      // Set by TAS mode. Rows posted before this column existed read as false,
+      // which is right: nothing before it could have been tool-assisted.
+      tas: v[11] === true || String(v[11]).toLowerCase() === 'true'
     });
   }
   return rows;
@@ -182,7 +190,8 @@ function doPost(e) {
       Number(body.shards) || 0,
       body.speedrun === true,
       String(body.version || '').slice(0, 16),
-      String(body.time || '').slice(0, 16)
+      String(body.time || '').slice(0, 16),
+      body.tas === true
     ]);
     rebuildLeaderboard_();
     return json_({ ok: true });
@@ -210,10 +219,15 @@ function lbSheet_() {
 function rebuildLeaderboard_() {
   var runs = readRuns_();
 
-  var byLevel = {};
+  // Tool-assisted times are split off into their own section at the bottom.
+  // A frame-stepped run would sit on top of every level's top five for reasons
+  // that have nothing to do with how well anyone played, and the board people
+  // actually run against would stop being worth reading.
+  var byLevel = {}, tasLevel = {};
   for (var i = 0; i < runs.length; i++) {
     var r = runs[i];
-    (byLevel[r.level] = byLevel[r.level] || []).push(r);
+    var into = r.tas ? tasLevel : byLevel;
+    (into[r.level] = into[r.level] || []).push(r);
   }
 
   // Known levels in play order, then anything unrecognised so a level added to
@@ -254,6 +268,32 @@ function rebuildLeaderboard_() {
         e.timeMs
       ]);
     }
+  }
+
+  // ---- the TAS section, under everything else -----------------------------
+  var tasRows = [];
+  for (var q = 0; q < order.length; q++) {
+    var tid = order[q][0], tlabel = order[q][1];
+    var tlist = tasLevel[tid];
+    if (!tlist || !tlist.length) continue;
+    tlist.sort(function (a, b) {
+      return (a.timeMs - b.timeMs) || String(a.date).localeCompare(String(b.date));
+    });
+    var tn = Math.min(TOP_N, tlist.length);
+    for (var tp = 0; tp < tn; tp++) {
+      var te = tlist[tp];
+      tasRows.push([
+        tlabel, tp + 1, te.time || clock_(te.timeMs), te.player, 'TAS',
+        te.grog, te.deaths, te.version ? 'v' + te.version : '',
+        String(te.date).slice(0, 10), te.timeMs
+      ]);
+    }
+  }
+  if (tasRows.length) {
+    out.push(['', '', '', '', '', '', '', '', '', '']);
+    out.push(['TAS RECORDS — tool-assisted, set frame by frame in practice mode',
+              '', '', '', '', '', '', '', '', '']);
+    for (var tr = 0; tr < tasRows.length; tr++) out.push(tasRows[tr]);
   }
 
   var sh = lbSheet_();

@@ -80,6 +80,7 @@
       this.shards = 0;
       this.splits = [];
       this.lastTown = null;
+      this._cmp = null;
       var first = this.levels[0];
       PL.Game.reset(new PL.PlayScene(first.def, first.meta));
     },
@@ -123,6 +124,7 @@
         speedrun: true
       };
       PL.Store.recordRun(scene.def.town, scene.def.id, split);
+      this._cmp = null;                    // that row may have moved a record
       split.town = scene.def.town;
       split.level = scene.def.id;
       PL.Cloud.submit(split);
@@ -180,21 +182,73 @@
     /**
      * The time a split is measured against, in ms, or 0 if there is none.
      *
-     * Which time that is depends on what you set before the run. PERSONAL is
-     * your own record for the level; WORLD is the fastest anyone has put on the
-     * shared board. World falls back to personal for a level nobody has
-     * submitted yet, so the board never goes blank in the middle of a run just
-     * because one level is unclaimed — a comparison you can only half see is
-     * worse than one that quietly uses the best it has.
+     * Two switches, both set before the run on the title screen, decide which
+     * record that is:
+     *
+     *   WHOSE   your own records, or the fastest anyone has posted
+     *   WHICH   times set on the level alone, or splits out of a speedrun
+     *
+     * Neither is more correct than the other, which is why both are a choice.
+     * What matters is that the board says which pair is on, because a gold
+     * split means four different things.
+     *
+     * When the exact record asked for does not exist, it falls back rather than
+     * showing nothing: your own time in the same category, then either board's
+     * best of any category. A comparison you can only half see is worse than
+     * one that quietly uses the closest thing it has, and a board that goes
+     * blank mid-run over one unclaimed level is worse than both.
      */
     levelBestMs: function (townId, levelId) {
-      if (PL.Store.compareMode() === 'world' && PL.Cloud && PL.Cloud.byLevel) {
-        var rows = PL.Cloud.byLevel[levelId];
-        if (rows && rows.length && rows[0].timeMs) return rows[0].timeMs;
+      var kind = PL.Store.splitMode();
+      var world = PL.Store.compareMode() === 'world';
+      var mine = PL.Store.bestFor(townId, levelId, kind);
+      if (world && PL.Cloud) {
+        var w = PL.Cloud.bestMs(levelId, kind);
+        if (w) return w;
       }
-      var b = PL.Store.bestFor(townId, levelId);
-      return b ? b.timeMs : 0;
+      if (mine) return mine.timeMs;
+      if (world && PL.Cloud) {
+        var wa = PL.Cloud.bestMs(levelId);
+        if (wa) return wa;
+      }
+      var any = PL.Store.bestFor(townId, levelId);
+      return any ? any.timeMs : 0;
     },
+
+    /**
+     * The comparison as a running total: what the clock would read at each
+     * split if every level went exactly as well as the record it is being
+     * measured against.
+     *
+     * This is what makes the board readable the moment it appears rather than
+     * one level at a time. Every row carries the time to beat from the start,
+     * so "am I on pace" is a comparison between two numbers on the same line
+     * instead of arithmetic done in your head halfway up a ladder.
+     *
+     * A level with no record at all stops the accumulation: everything past it
+     * is `null` rather than a total that quietly pretends the missing level
+     * takes no time.
+     */
+    comparison: function () {
+      if (this._cmp) return this._cmp;
+      var rows = this.levels.length ? this.levels : PL.Towns.allLevels();
+      var out = [], total = 0, broken = false;
+      for (var i = 0; i < rows.length; i++) {
+        var def = rows[i].def;
+        var ms = this.levelBestMs(def.town, def.id);
+        if (!ms) broken = true;
+        total += ms;
+        out.push({ segMs: ms, totalMs: broken ? 0 : total });
+      }
+      return (this._cmp = out);
+    },
+
+    /* Every record read goes through localStorage and a JSON parse, and the
+     * board is drawn sixty times a second, so the comparison is worked out once
+     * and thrown away whenever it could have changed: a split landing, a switch
+     * being flipped, a run starting. */
+    _cmp: null,
+    invalidate: function () { this._cmp = null; },
 
     /**
      * Sum of best: the run you would have if every level went as well as it
@@ -205,14 +259,12 @@
      * zero, so a partial sum reads as partial instead of as a fantasy.
      */
     sumOfBest: function () {
-      var rows = this.levels.length ? this.levels : PL.Towns.allLevels();
+      var cmp = this.comparison();
       var total = 0, missing = 0;
-      for (var i = 0; i < rows.length; i++) {
-        var def = rows[i].def;
-        var ms = this.levelBestMs(def.town, def.id);
-        if (ms) total += ms; else missing++;
+      for (var i = 0; i < cmp.length; i++) {
+        if (cmp[i].segMs) total += cmp[i].segMs; else missing++;
       }
-      return { ms: total, missing: missing, count: rows.length };
+      return { ms: total, missing: missing, count: cmp.length };
     },
 
     /**

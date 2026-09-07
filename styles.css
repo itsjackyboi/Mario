@@ -79,3 +79,34 @@ noscript {
   color: var(--parchment);
   z-index: 20;
 }
+
+/* The one real form control in the game: an invisible field that catches typed
+ * text while the book is being signed (see src/input.js). It is a browser input
+ * rather than hand-read keystrokes so that every layout's letters and symbols —
+ * AltGr, accents, anything composed by an IME — arrive intact, and so a typed
+ * M is a letter rather than the mute key.
+ *
+ * It has to be focusable, so it cannot be display:none while in use or
+ * visibility:hidden at all; it is made transparent and one pixel instead. It is
+ * kept in the middle of the viewport so focusing it never scrolls the page, and
+ * given a 16px font because anything smaller makes iOS zoom the whole page in
+ * when it takes focus. Pointer events pass straight through to the canvas —
+ * clicks are the game's, keystrokes are the field's. */
+#text-catcher {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  outline: none;
+  opacity: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font-size: 16px;
+  pointer-events: none;
+  z-index: 5;
+}

@@ -13,10 +13,15 @@
       { label: 'Drunken speedrun', hint: 'Every level back to back on one unbroken clock.' },
       { label: 'Leaderboards', hint: "Top five per level, and every run behind it." },
       { label: 'Sign the book', hint: 'The name your runs go under on the shared board.' },
-      /* Set before a run, because it changes what every colour on the split
-       * board means: gold against your own record is a different achievement
-       * from gold against the fastest anyone has managed. */
-      { compare: true }
+      /* The two split-board switches. They are set before a run because they
+       * change what every colour on the board means, and they live on the shelf
+       * beside the Beer Bank rather than in this list because they are settings
+       * rather than places to go — a fifth row of text sat on top of the hint
+       * line and the control legend, which is exactly the screen space the
+       * board was shrunk to save. Focus lands on them after the last menu row;
+       * they are drawn by SplitSwitches. */
+      { slider: 0 },
+      { slider: 1 }
     ];
     this.stars = [];
     var rnd = U.rng(77);
@@ -25,20 +30,10 @@
     }
   }
 
-  /** Menu rows are fixed text except the comparison, which shows its state. */
-  TitleScene.prototype.optionLabel = function (i) {
-    var o = this.options[i];
-    if (!o.compare) return o.label;
-    return 'Splits compare: ' +
-      (PL.Store.compareMode() === 'world' ? 'WORLD BEST' : 'YOUR BEST');
-  };
-
   TitleScene.prototype.optionHint = function (i) {
     var o = this.options[i];
-    if (!o.compare) return o.hint;
-    return PL.Store.compareMode() === 'world'
-      ? 'Splits race the fastest time anyone has posted.  ← → to swap.'
-      : 'Splits race your own records.  ← → to swap.';
+    if (o.slider == null) return o.hint;
+    return PL.SplitSwitches.hint(o.slider) + '  ← → to swap.';
   };
 
   TitleScene.prototype.enter = function () {
@@ -51,23 +46,17 @@
     PL.Audio.music.play('title');
   };
 
-  /** Swap the split board between your own records and the shared board's. */
-  TitleScene.prototype.flipCompare = function () {
-    var next = PL.Store.compareMode() === 'world' ? 'self' : 'world';
-    PL.Store.setCompareMode(next);
-    // World needs the board in memory to compare against, so ask for it now
-    // rather than at the moment the first split lands.
-    if (next === 'world') PL.Cloud.load(true);
-  };
-
   TitleScene.prototype.update = function (dt) {
     this.t += dt;
     var In = PL.Input;
-    // Left/right flips the comparison without having to confirm it.
-    if (this.options[this.sel].compare && (In.pressed('left') || In.pressed('right'))) {
-      PL.Audio.sfx('menu');
-      this.flipCompare();
+    // A switch under the cursor flips on left/right without confirming, and
+    // either switch flips on a click wherever the cursor happens to be.
+    var onSlider = this.options[this.sel].slider;
+    if (onSlider != null && (In.pressed('left') || In.pressed('right'))) {
+      PL.SplitSwitches.flip(onSlider);
     }
+    var hit = PL.SplitSwitches.clicked();
+    if (hit >= 0) { this.sel = 4 + hit; PL.SplitSwitches.flip(hit); }
     if (In.pressed('up')) { this.sel = (this.sel + this.options.length - 1) % this.options.length; PL.Audio.sfx('menu'); }
     if (In.pressed('down')) { this.sel = (this.sel + 1) % this.options.length; PL.Audio.sfx('menu'); }
     if (PL.LetterIcon.clicked() || In.pressed('letter')) {
@@ -91,7 +80,7 @@
       else if (this.sel === 1) PL.Speedrun.start();
       else if (this.sel === 2) PL.Game.push(new PL.LeaderboardScene());
       else if (this.sel === 3) PL.Game.push(new PL.NameScene());
-      else this.flipCompare();
+      else PL.SplitSwitches.flip(this.options[this.sel].slider);
     }
   };
 
@@ -218,14 +207,17 @@
     PL.NameChip.draw(ctx, PL.NameChip.hot());
 
     // ---- menu ------------------------------------------------------------
+    // Only the rows that are places to go; the last two options are the split
+    // switches on the shelf, which draw themselves.
     for (var m = 0; m < this.options.length; m++) {
+      if (this.options[m].slider != null) continue;
       var my = 222 + m * 22;
       var on = m === this.sel;
       if (on) {
         PL.gfx.rect(ctx, W / 2 - 130, my - 14, 260, 21, 'rgba(255,179,71,0.16)');
         PL.gfx.text(ctx, '>', W / 2 - 122, my, { font: PL.FONT.hud, color: C.lantern });
       }
-      PL.gfx.text(ctx, this.optionLabel(m), W / 2, my, {
+      PL.gfx.text(ctx, this.options[m].label, W / 2, my, {
         font: PL.FONT.hud, align: 'center',
         color: on ? C.parchment : 'rgba(242,227,196,0.55)'
       });
@@ -245,6 +237,7 @@
     // ---- the two things on the shelf, one either side --------------------
     PL.LetterIcon.draw(ctx, t, PL.LetterIcon.hot());
     PL.BankIcon.draw(ctx, t, PL.BankIcon.hot());
+    PL.SplitSwitches.draw(ctx, this.sel - 4);
 
     // ---- controls --------------------------------------------------------
     PL.gfx.panel(ctx, 20, 312, W - 40, 42, { r: 5, alpha: 0.9 });
@@ -263,6 +256,100 @@
       PL.gfx.text(ctx, 'localStorage unavailable — records will not be saved', W / 2, 208, {
         font: PL.FONT.tiny, align: 'center', color: C.coral
       });
+    }
+  };
+
+  /* ------------------------------------------------------- split switches
+   *
+   * Two sliders on the shelf beside the Beer Bank, deciding what the split
+   * board races:
+   *
+   *     YOU  | WORLD        whose records
+   *     LEVEL | SPEEDRUN    which of that person's two records for a level
+   *
+   * They are set here, before a run, because they change the meaning of every
+   * colour on the board and swapping them mid-run would rewrite what you have
+   * already read. They are sliders rather than menu rows because they are
+   * states rather than destinations — and because a fifth row of text landed on
+   * top of the hint line and the control legend.
+   *
+   * Both a click and the keyboard drive them: the title's cursor carries on
+   * past the last menu row onto each switch, where ← → flips it.
+   */
+  PL.SplitSwitches = {
+    boxes: [{ x: 72, y: 246, w: 112, h: 16 }, { x: 72, y: 268, w: 112, h: 16 }],
+    LABELS: [['YOU', 'WORLD'], ['LEVEL', 'SPEEDRUN']],
+
+    /** 0 or 1: which side each switch is on. */
+    state: function (i) {
+      return i === 0 ? (PL.Store.compareMode() === 'world' ? 1 : 0)
+                     : (PL.Store.splitMode() === 'speedrun' ? 1 : 0);
+    },
+
+    hint: function (i) {
+      if (i === 0) {
+        return PL.Store.compareMode() === 'world'
+          ? 'Splits race the fastest time anyone has posted.'
+          : 'Splits race your own records.';
+      }
+      return PL.Store.splitMode() === 'speedrun'
+        ? 'Against splits set inside a speedrun — like for like.'
+        : 'Against times set on the level on its own.';
+    },
+
+    flip: function (i) {
+      PL.Audio.sfx('menu');
+      if (i === 0) {
+        var next = PL.Store.compareMode() === 'world' ? 'self' : 'world';
+        PL.Store.setCompareMode(next);
+        // World needs the board in memory to compare against, so ask for it now
+        // rather than at the moment the first split lands.
+        if (next === 'world') PL.Cloud.load(true);
+      } else {
+        PL.Store.setSplitMode(PL.Store.splitMode() === 'speedrun' ? 'level' : 'speedrun');
+      }
+      PL.Speedrun.invalidate();
+    },
+
+    hot: function (i) {
+      var b = this.boxes[i];
+      return PL.Input.hovering(b.x, b.y, b.w, b.h);
+    },
+
+    /** The switch the pointer just landed on, or -1. */
+    clicked: function () {
+      for (var i = 0; i < this.boxes.length; i++) {
+        var b = this.boxes[i];
+        if (PL.Input.clickedIn(b.x, b.y, b.w, b.h)) return i;
+      }
+      return -1;
+    },
+
+    draw: function (ctx, focus) {
+      PL.gfx.text(ctx, 'SPLIT BOARD', this.boxes[0].x + 1, this.boxes[0].y - 5, {
+        font: PL.FONT.tiny, color: 'rgba(242,227,196,0.45)'
+      });
+      for (var i = 0; i < this.boxes.length; i++) {
+        var b = this.boxes[i], on = this.state(i);
+        var lit = focus === i || this.hot(i);
+        PL.gfx.panel(ctx, b.x, b.y, b.w, b.h, {
+          r: 8, alpha: 1,
+          fill: 'rgba(18,12,17,0.78)',
+          stroke: lit ? C.lantern : 'rgba(156,124,82,0.45)'
+        });
+        // The knob is half the track, so which side it is on reads before any
+        // of the words do.
+        var half = (b.w - 6) / 2;
+        PL.gfx.roundRect(ctx, b.x + 3 + on * half, b.y + 3, half, b.h - 6, 6);
+        ctx.fillStyle = lit ? 'rgba(255,179,71,0.34)' : 'rgba(255,179,71,0.2)';
+        ctx.fill();
+        for (var s = 0; s < 2; s++) {
+          PL.gfx.text(ctx, this.LABELS[i][s], b.x + 3 + s * half + half / 2, b.y + 11, {
+            font: PL.FONT.tiny, align: 'center',
+            color: on === s ? (lit ? C.lanternHi : C.parchment) : 'rgba(242,227,196,0.4)'
+          });
+        }
+      }
     }
   };
 

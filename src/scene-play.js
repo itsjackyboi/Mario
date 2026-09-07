@@ -217,6 +217,10 @@
     // In TAS mode the world only moves when you tell it to.
     if (this.tas) {
       var In = PL.Input;
+      // Except once the tankard is touched: the cup being raised is not part of
+      // the route, and making someone step through it a frame at a time to see
+      // their own time would be a punishment for finishing.
+      if (this.finished) { this.step(1 / 60); return; }
       if (In.pressed('tas')) { this.toggleTas(); return; }
       if (In.pressed('restart')) {
         this.inputLog = [];
@@ -504,7 +508,17 @@
   PlayScene.prototype.showResults = function () {
     var p = this.player;
     // A practice run is not a run. Nothing is recorded, banked or unlocked.
+    //
+    // A TAS attempt is the exception, and only because it is offered rather
+    // than taken: a level finished with the frame-stepper on can be posted to
+    // the TAS board, which is a separate board with its own rules. Nothing
+    // reaches the human boards from in here, and nothing is written at all
+    // unless the next screen is told to.
     if (this.practice) {
+      if (this.tasFrame > 0) {
+        PL.Game.replace(new TasResultScene(this));
+        return;
+      }
       PL.Game.replace(new PL.LevelSelectScene(this.def.town));
       return;
     }
@@ -704,6 +718,132 @@
     }
   };
 
+  // -------------------------------------------------------------- TAS result
+  /**
+   * What a frame-stepped level ends on: the time, the frame count, and the
+   * offer to put it on the TAS board.
+   *
+   * The offer exists because the interesting question about a level — what is
+   * the fastest it can physically go — has no answer anywhere else, and a
+   * search of my own is a worse tool for finding it than a person with a
+   * frame-stepper and a strategy nobody has thought of yet. So the times go on
+   * a board, with a name against them.
+   *
+   * They go on a SEPARATE board, always. A tool-assisted time posted next to
+   * times played by hand would sit on top of every one of them for reasons that
+   * have nothing to do with how well anyone played, and the level's board would
+   * stop being worth reading. Nothing here writes to the ordinary boards, the
+   * area purse, the unlock chain or the Beer Bank.
+   */
+  function TasResultScene(play) {
+    this.opaque = true;
+    this.def = play.def;
+    this.meta = play.meta;
+    this.timeMs = play.elapsedMs;
+    this.frames = play.tasFrame;
+    this.grog = play.player.grogEarned;
+    this.shards = play.player.shards.length;
+    this.t = 0;
+    this.sel = 0;
+    this.saved = false;
+    this.best = PL.Store.bestFor(PL.Store.TAS_TOWN, this.def.id);
+    this.options = ['Post it to the TAS board', 'Run it again', 'Level select'];
+  }
+
+  TasResultScene.prototype.enter = function () { PL.Theme.apply(null); };
+
+  TasResultScene.prototype.save = function () {
+    if (this.saved) return;
+    this.saved = true;
+    var run = {
+      timeMs: this.timeMs, grog: this.grog,
+      shards: this.shards, deaths: 0, speedrun: false
+    };
+    // Local board first, shared second — same order as every other run, so a
+    // missing network costs nothing.
+    this.result = PL.Store.recordRun(PL.Store.TAS_TOWN, this.def.id, run);
+    PL.Cloud.submit({
+      town: this.def.town, level: this.def.id,
+      timeMs: run.timeMs, grog: run.grog, deaths: 0, shards: run.shards,
+      speedrun: false, tas: true
+    });
+    PL.Audio.sfx('trialWin');
+  };
+
+  TasResultScene.prototype.update = function (dt) {
+    this.t += dt;
+    var In = PL.Input;
+    if (In.pressed('up')) { this.sel = (this.sel + this.options.length - 1) % this.options.length; PL.Audio.sfx('menu'); }
+    if (In.pressed('down')) { this.sel = (this.sel + 1) % this.options.length; PL.Audio.sfx('menu'); }
+    if (In.pressed('back')) { PL.Game.replace(new PL.LevelSelectScene(this.def.town)); return; }
+    if (In.pressed('confirm') || In.pressed('jump')) {
+      if (this.sel === 0) { this.save(); return; }
+      PL.Audio.sfx('select');
+      if (this.sel === 1) {
+        var again = {};
+        for (var k in this.meta) again[k] = this.meta[k];
+        PL.Game.replace(new PlayScene(this.def, again));
+        return;
+      }
+      PL.Game.replace(new PL.LevelSelectScene(this.def.town));
+    }
+  };
+
+  TasResultScene.prototype.draw = function (ctx) {
+    var W = PL.VIEW_W, H = PL.VIEW_H;
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#101a1e');
+    g.addColorStop(1, '#1d2c30');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    PL.gfx.text(ctx, 'TOOL-ASSISTED', W / 2, 42, {
+      font: PL.FONT.head, align: 'center', color: C.teal
+    });
+    PL.gfx.text(ctx, U.fit(ctx, this.def.name, PL.FONT.small, W - 80), W / 2, 60, {
+      font: PL.FONT.small, align: 'center', color: 'rgba(242,227,196,0.75)'
+    });
+
+    PL.gfx.panel(ctx, W / 2 - 150, 76, 300, 92, { r: 6 });
+    PL.gfx.text(ctx, U.formatTime(this.timeMs), W / 2, 118, {
+      font: 'bold 30px "Trebuchet MS", "Segoe UI", sans-serif',
+      align: 'center', color: C.lanternHi
+    });
+    PL.gfx.text(ctx, this.frames + ' frames  ·  ' + this.grog + ' grog  ·  ' +
+                     this.shards + ' shard' + (this.shards === 1 ? '' : 's'),
+                W / 2, 138, {
+      font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.6)'
+    });
+    PL.gfx.text(ctx, this.best ? 'TAS best here: ' + U.formatTime(this.best.timeMs)
+                               : 'No TAS time on this level yet.',
+                W / 2, 156, {
+      font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.5)'
+    });
+
+    for (var i = 0; i < this.options.length; i++) {
+      var y = 196 + i * 26;
+      var on = i === this.sel;
+      var label = this.options[i];
+      var dim = false;
+      if (i === 0) {
+        if (this.saved) { label = 'Posted as ' + (PL.Store.playerName() || 'anonymous'); dim = true; }
+        else if (!PL.Store.playerName()) label += '  (as anonymous)';
+      }
+      if (on) PL.gfx.rect(ctx, W / 2 - 130, y - 14, 260, 21, 'rgba(79,184,165,0.18)');
+      PL.gfx.text(ctx, label, W / 2, y, {
+        font: PL.FONT.hud, align: 'center',
+        color: dim ? C.teal : (on ? C.parchment : 'rgba(242,227,196,0.55)')
+      });
+    }
+
+    PL.gfx.text(ctx,
+      'The TAS board is its own board. Nothing here touches the times people set by hand.',
+      W / 2, 288, { font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.45)' });
+    PL.gfx.text(ctx, '↑ ↓ choose · ENTER confirm · ESC level select', W / 2, 320, {
+      font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.4)'
+    });
+  };
+
   // ------------------------------------------------------------------- pause
 
   function PauseScene(play) {
@@ -768,5 +908,6 @@
 
   PL.PlayScene = PlayScene;
   PL.PauseScene = PauseScene;
+  PL.TasResultScene = TasResultScene;
 
 })(window.PL = window.PL || {});

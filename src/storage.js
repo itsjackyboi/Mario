@@ -39,6 +39,12 @@
   }
 
   var S = (PL.Store = {
+    /* Tool-assisted times are kept under an area of their own rather than on
+     * the level's board. They are a real answer to "how fast can this level go"
+     * and a meaningless answer to "how fast can it be played", so they are
+     * never mixed in with times set by hand. */
+    TAS_TOWN: '_tas',
+
     available: (function () {
       try {
         window.localStorage.setItem('pintland-drunken-trials:probe', '1');
@@ -64,9 +70,24 @@
       return t.levels[levelId].runs || [];
     },
 
-    bestFor: function (townId, levelId) {
-      var runs = this.runsFor(townId, levelId);
-      return runs.length ? runs[0] : null;
+    /**
+     * The best recorded run on a level, or null.
+     *
+     * `kind` narrows it to where the time came from: 'level' for a level played
+     * on its own, 'speedrun' for a split out of a Drunken Speedrun. They are
+     * genuinely different records — a split is run with a carried purse, no
+     * intro card and everything still to come, so comparing a solo attempt
+     * against one is comparing two different events. Omit `kind` for the
+     * fastest of either, which is what everything outside the split board wants.
+     */
+    bestFor: function (townId, levelId, kind) {
+      var runs = this.runsFor(townId, levelId);      // already sorted, best first
+      if (!kind || kind === 'any') return runs.length ? runs[0] : null;
+      var want = kind === 'speedrun';
+      for (var i = 0; i < runs.length; i++) {
+        if (!!runs[i].speedrun === want) return runs[i];
+      }
+      return null;
     },
 
     /**
@@ -295,6 +316,29 @@
       p.compare = mode === 'world' ? 'world' : 'self';
       write(PR_KEY, p);
       return p.compare;
+    },
+
+    /**
+     * Which pool of records the split board races: 'level' or 'speedrun'.
+     *
+     * The same level has two records and they are not the same achievement. A
+     * solo attempt starts on a fresh purse with nothing riding on it; a
+     * speedrun split is run with whatever the last level left you and a whole
+     * game still ahead. Racing the solo record during a run is the ambitious
+     * comparison and racing the split record is the honest one, so it is a
+     * choice rather than a rule — and the header says which is on.
+     *
+     * Level records are the default: everyone has those first.
+     */
+    splitMode: function () {
+      return this.loadProgress().splitKind === 'speedrun' ? 'speedrun' : 'level';
+    },
+
+    setSplitMode: function (kind) {
+      var p = this.loadProgress();
+      p.splitKind = kind === 'speedrun' ? 'speedrun' : 'level';
+      write(PR_KEY, p);
+      return p.splitKind;
     },
 
     setPlayerName: function (name) {

@@ -22,6 +22,9 @@
 
   LevelSelectScene.prototype.enter = function () {
     PL.Theme.apply(null);
+    // Warm the shared board here so a level started from this shelf already has
+    // the world record for its rail. No endpoint, no request.
+    PL.Cloud.load();
     // The area's own tune starts on the shelf you pick it from, so walking into
     // a level is a continuation rather than a cut.
     PL.Audio.music.play(this.town().id);
