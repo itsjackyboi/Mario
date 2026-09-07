@@ -30,6 +30,10 @@
   'use strict';
 
   var QUEUE_KEY = 'pintland-drunken-trials:outbox';
+  /* Appended to the build string on a tool-assisted row, so the flag survives a
+   * sheet whose script predates the `tas` column. Stripped again on the way in,
+   * so nothing downstream ever sees it. */
+  var TAS_MARK = '+tas';
   var FRESH_MS = 45000;          // how long a fetched board is considered current
   var MAX_QUEUE = 40;
 
@@ -87,7 +91,16 @@
         // all: flagged, it lives on its own board instead of drowning the
         // level's.
         tas: !!rec.tas,
-        version: PL.VERSION,
+        /* The flag goes out TWICE, and the second copy is not redundant.
+         *
+         * `tas` is a column the sheet only has if its script has been updated,
+         * and an older deployment builds its row from a fixed list of fields —
+         * so an unknown one is not stored badly, it is dropped silently, and a
+         * tool-assisted time lands looking exactly like a played one. The
+         * marker on the end of the build string rides in a column every
+         * version of the script has always written, so the flag survives
+         * whatever is deployed. It is read back off either. */
+        version: PL.VERSION + (rec.tas ? TAS_MARK : ''),
         date: new Date().toISOString()
       };
       var q = readQueue();
@@ -164,7 +177,12 @@
         if (!r || !r.level) continue;
         r.timeMs = Number(r.timeMs) || 0;
         r.speedrun = r.speedrun === true || r.speedrun === 'true' || r.speedrun === 1;
-        r.tas = r.tas === true || r.tas === 'true' || r.tas === 1;
+        // Either signal counts, and the marker is taken off the build string
+        // here so no screen ever has to know it was there.
+        r.version = String(r.version == null ? '' : r.version);
+        var marked = r.version.indexOf(TAS_MARK) >= 0;
+        if (marked) r.version = r.version.split(TAS_MARK).join('');
+        r.tas = marked || r.tas === true || r.tas === 'true' || r.tas === 1;
         var into = r.tas ? tas : by;
         (into[r.level] = into[r.level] || []).push(r);
       }

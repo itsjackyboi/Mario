@@ -16,9 +16,17 @@
  * that changed depending on your save state would not be comparable to anyone
  * else's, so the lock is ignored here on purpose.
  *
+ * TWO CATEGORIES, chosen before the run: a SHARD RUN, where reaching a tankard
+ * without that level's Red-Earth Shard sends you back to the start of it with
+ * the clock still running, and ANY%, where nothing but the tankard is required.
+ * They are different games rather than difficulty settings — the shard is what
+ * the towns are gated on, and a route free to walk past it is shorter wherever
+ * one appears — so they keep separate whole-game records and separate town
+ * splits, and every screen says which one is running.
+ *
  * Records go in the normal leaderboard store under a synthetic area/level pair
- * ('_speedrun' / 'full-game'), which needs no schema change and keeps whole-run
- * times out of the per-level boards.
+ * ('_speedrun' / 'full-game', or 'full-game-any'), which needs no schema change
+ * and keeps whole-run times out of the per-level boards.
  *
  * Each level's split ALSO goes on that level's own board, flagged `speedrun`,
  * because a personal best is a personal best however you got it — the board
@@ -42,12 +50,47 @@
 
   var SR_TOWN = '_speedrun';
   var SR_LEVEL = 'full-game';
+  var SR_LEVEL_ANY = 'full-game-any';
   var TOWN_KEY = 'town:';        // + town id, under SR_TOWN
+
+  /* THE TWO RUNS.
+   *
+   * A run with the shards and a run without are different games, not the same
+   * game played two ways: the shard is what the towns are gated on, and a route
+   * free to walk past it is shorter everywhere it appears. Putting both on one
+   * board would mean the board's top time was always the one that skipped the
+   * most, so they get a board each — separate whole-game records, separate town
+   * splits — and the run says which it is on every screen it touches.
+   *
+   * Per-level splits still go on the level's own board either way. Those boards
+   * already hold times set without the shard, because a single level has never
+   * required it; the mode column is what tells them apart there.
+   */
+  var MODES = {
+    shard: {
+      id: 'shard', level: SR_LEVEL, label: 'SHARD RUN', short: 'SHARDS',
+      blurb: 'Every level, every Red-Earth Shard. Touch the tankard without one and ' +
+             'the level starts again with the clock still running.'
+    },
+    any: {
+      id: 'any', level: SR_LEVEL_ANY, label: 'ANY%', short: 'ANY%',
+      blurb: 'Every level, nothing else required. Shards are optional, so anything ' +
+             'that reaches the tankard counts.'
+    }
+  };
 
   var Speedrun = (PL.Speedrun = {
     TOWN: SR_TOWN,
     LEVEL: SR_LEVEL,
+    LEVEL_ANY: SR_LEVEL_ANY,
     TOWN_KEY: TOWN_KEY,
+    MODES: MODES,
+
+    /** 'shard' or 'any'. Set by start(), read by everything downstream. */
+    mode: 'shard',
+    modeDef: function () { return MODES[this.mode] || MODES.shard; },
+    /** True when walking past a shard has to cost you the level. */
+    needsShards: function () { return this.mode !== 'any'; },
 
     active: false,
     levels: [],
@@ -61,7 +104,8 @@
     lastTown: null, // the town just closed, for the HUD's delta flash
 
     /** Fresh run: rebuild the route and drop straight into the first level. */
-    start: function () {
+    start: function (mode) {
+      this.mode = MODES[mode] ? mode : 'shard';
       var flat = PL.Towns.allLevels();
       this.levels = [];
       for (var i = 0; i < flat.length; i++) {
@@ -282,9 +326,18 @@
       return code + ' ' + (def.bonus ? '★' : (indexInTown + 1));
     },
 
+    /**
+     * The storage key for a town's split. Any% gets its own, because a town
+     * run without its shards is a different town.
+     */
+    townKey: function (townId, mode) {
+      var m = mode || this.mode;
+      return TOWN_KEY + townId + (m === 'any' ? ':any' : '');
+    },
+
     /** Best recorded split for a town in ms, or 0 if it has never been timed. */
     townBestMs: function (townId) {
-      var b = PL.Store.bestFor(SR_TOWN, TOWN_KEY + townId);
+      var b = PL.Store.bestFor(SR_TOWN, this.townKey(townId));
       return b ? b.timeMs : 0;
     },
 
@@ -293,7 +346,7 @@
       var ms = this.townMs(townId);
       if (ms <= 0) return;
       var prev = this.townBestMs(townId);       // read before it is written
-      PL.Store.recordRun(SR_TOWN, TOWN_KEY + townId, {
+      PL.Store.recordRun(SR_TOWN, this.townKey(townId), {
         timeMs: ms, grog: 0, shards: 0, deaths: 0, speedrun: true
       });
       this.lastTown = {
@@ -310,26 +363,149 @@
         shards: this.shards,
         deaths: this.deaths
       };
-      var result = PL.Store.recordRun(SR_TOWN, SR_LEVEL, run);
+      var level = this.modeDef().level;
+      var result = PL.Store.recordRun(SR_TOWN, level, run);
       PL.Store.deposit(this.purse);      // the run's surviving purse, banked
       PL.Cloud.submit({
-        town: SR_TOWN, level: SR_LEVEL,
+        town: SR_TOWN, level: level,
         timeMs: run.timeMs, grog: run.grog, deaths: run.deaths,
         shards: run.shards, speedrun: true
       });
-      PL.Game.replace(new SpeedrunEndScene(run, result, this.splits.slice()));
+      PL.Game.replace(new SpeedrunEndScene(run, result, this.splits.slice(), this.mode));
     },
 
-    /** Best whole-run time on this browser, or null. */
-    best: function () { return PL.Store.bestFor(SR_TOWN, SR_LEVEL); }
+    /** Best whole-run time on this browser for a category, or null. */
+    best: function (mode) {
+      var m = MODES[mode] || this.modeDef();
+      return PL.Store.bestFor(SR_TOWN, m.level);
+    }
   });
+
+  // ============================================================ which run
+  /**
+   * The choice you make before a run: shards, or not.
+   *
+   * It is a screen of its own rather than two rows on the title, because the
+   * two categories need explaining — the difference between them is a rule
+   * about the middle of a level, not a difficulty setting — and because each
+   * carries its own record, which is worth seeing before you start.
+   */
+  function SpeedrunPickScene() {
+    this.opaque = true;
+    this.t = 0;
+    this.sel = 0;
+    this.order = ['shard', 'any'];
+    this.boxes = [{ x: 44, y: 122, w: 262, h: 132 }, { x: 334, y: 122, w: 262, h: 132 }];
+  }
+
+  SpeedrunPickScene.prototype.enter = function () {
+    PL.Theme.apply(null);
+    PL.Cloud.load();
+    PL.Audio.music.play('title');
+  };
+
+  SpeedrunPickScene.prototype.update = function (dt) {
+    this.t += dt;
+    var In = PL.Input;
+    for (var i = 0; i < this.boxes.length; i++) {
+      var b = this.boxes[i];
+      if (In.hovering(b.x, b.y, b.w, b.h) && this.sel !== i) {
+        this.sel = i; PL.Audio.sfx('menu');
+      }
+      if (In.clickedIn(b.x, b.y, b.w, b.h)) {
+        PL.Audio.sfx('select');
+        Speedrun.start(this.order[i]);
+        return;
+      }
+    }
+    if (In.pressed('left') || In.pressed('up')) {
+      this.sel = (this.sel + this.order.length - 1) % this.order.length; PL.Audio.sfx('menu');
+    }
+    if (In.pressed('right') || In.pressed('down')) {
+      this.sel = (this.sel + 1) % this.order.length; PL.Audio.sfx('menu');
+    }
+    if (In.pressed('back')) { PL.Game.replace(new PL.TitleScene()); return; }
+    if (In.pressed('confirm') || In.pressed('jump')) {
+      PL.Audio.sfx('select');
+      Speedrun.start(this.order[this.sel]);
+    }
+  };
+
+  SpeedrunPickScene.prototype.draw = function (ctx) {
+    var W = PL.VIEW_W, H = PL.VIEW_H;
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#1a1020');
+    g.addColorStop(1, '#33202a');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    PL.gfx.text(ctx, 'DRUNKEN SPEEDRUN', W / 2, 52, {
+      font: PL.FONT.title, align: 'center', color: C.lanternHi
+    });
+    PL.gfx.text(ctx, 'Every level in the isles, back to back, on one unbroken clock. ' +
+                     'Two categories, two boards.', W / 2, 76, {
+      font: PL.FONT.small, align: 'center', color: 'rgba(242,227,196,0.7)'
+    });
+
+    for (var i = 0; i < this.order.length; i++) {
+      var m = MODES[this.order[i]], b = this.boxes[i];
+      var on = i === this.sel;
+      PL.gfx.panel(ctx, b.x, b.y, b.w, b.h, {
+        r: 6, alpha: 1,
+        fill: on ? 'rgba(255,179,71,0.16)' : 'rgba(22,15,20,0.9)',
+        stroke: on ? C.lantern : C.rope
+      });
+      PL.gfx.text(ctx, m.label, b.x + b.w / 2, b.y + 34, {
+        font: PL.FONT.head, align: 'center', color: on ? C.lanternHi : C.parchment
+      });
+      // The rule, wrapped by hand into the panel.
+      var words = m.blurb.split(' '), line = '', ly = b.y + 58;
+      ctx.font = PL.FONT.tiny;
+      for (var w = 0; w < words.length; w++) {
+        var next = line ? line + ' ' + words[w] : words[w];
+        if (ctx.measureText(next).width > b.w - 32 && line) {
+          PL.gfx.text(ctx, line, b.x + b.w / 2, ly, {
+            font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.65)'
+          });
+          ly += 12;
+          line = words[w];
+        } else {
+          line = next;
+        }
+      }
+      if (line) {
+        PL.gfx.text(ctx, line, b.x + b.w / 2, ly, {
+          font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.65)'
+        });
+      }
+
+      var best = Speedrun.best(m.id);
+      PL.gfx.rect(ctx, b.x + 16, b.y + b.h - 34, b.w - 32, 1, 'rgba(156,124,82,0.4)');
+      PL.gfx.text(ctx, 'YOUR BEST', b.x + 16, b.y + b.h - 14, {
+        font: PL.FONT.tiny, color: 'rgba(242,227,196,0.45)'
+      });
+      PL.gfx.text(ctx, best ? U.formatTime(best.timeMs) : '—', b.x + b.w - 16, b.y + b.h - 14, {
+        font: PL.FONT.mono, align: 'right',
+        color: best ? C.parchment : 'rgba(242,227,196,0.35)'
+      });
+    }
+
+    PL.gfx.text(ctx, 'Your purse carries between levels either way, and a death still costs ' +
+                     'five grog.', W / 2, 282, {
+      font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.5)'
+    });
+    PL.gfx.text(ctx, '← → choose · ENTER start · click either one · ESC back', W / 2, 320, {
+      font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.45)'
+    });
+  };
 
   // =========================================================== results screen
 
-  function SpeedrunEndScene(run, result, splits) {
+  function SpeedrunEndScene(run, result, splits, mode) {
     this.run = run;
     this.result = result;
     this.splits = splits;
+    this.mode = MODES[mode] ? mode : 'shard';
     this.opaque = true;
     this.t = 0;
     this.sel = 0;
@@ -355,7 +531,7 @@
     if (In.pressed('confirm') || In.pressed('jump')) {
       PL.Audio.sfx('select');
       var act = this.options[this.sel].act;
-      if (act === 'again') Speedrun.start();
+      if (act === 'again') Speedrun.start(this.mode);
       else if (act === 'select') PL.Game.reset(new PL.LevelSelectScene('shantytown'));
       else PL.Game.reset(new PL.TitleScene());
     }
@@ -372,11 +548,11 @@
     ctx.fillRect(0, 0, W, H);
     PL.gfx.glow(ctx, W / 2, H + 30, 300, 'rgba(255,140,60,0.4)', 0.45);
 
-    PL.gfx.text(ctx, 'DRUNKEN SPEEDRUN', W / 2, 32, {
-      font: PL.FONT.title, align: 'center', color: C.lanternHi
+    PL.gfx.text(ctx, 'DRUNKEN SPEEDRUN  ·  ' + MODES[this.mode].label, W / 2, 32, {
+      font: PL.FONT.head, align: 'center', color: C.lanternHi
     });
 
-    var best = Speedrun.best();
+    var best = Speedrun.best(this.mode);
     var isBest = this.result && this.result.isBest;
     PL.gfx.text(ctx,
       isBest ? 'Every level in the isles, and a new best for this browser.'
@@ -385,7 +561,7 @@
 
     // ---- the number that matters ----------------------------------------
     PL.gfx.panel(ctx, 22, 64, 244, 216, { r: 6 });
-    PL.gfx.text(ctx, 'FULL GAME', 38, 88, { font: PL.FONT.small, color: C.lantern });
+    PL.gfx.text(ctx, MODES[this.mode].label, 38, 88, { font: PL.FONT.small, color: C.lantern });
     PL.gfx.text(ctx, U.formatTime(this.run.timeMs), 250, 124, {
       font: 'bold 30px "Trebuchet MS", "Segoe UI", sans-serif',
       align: 'right', color: isBest ? C.lanternHi : C.parchment
@@ -452,6 +628,7 @@
     });
   };
 
+  PL.SpeedrunPickScene = SpeedrunPickScene;
   PL.SpeedrunEndScene = SpeedrunEndScene;
 
 })(window.PL = window.PL || {});

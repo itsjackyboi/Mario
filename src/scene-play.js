@@ -110,9 +110,12 @@
       ? 'Take the Red-Earth Shard to open ' + opens.name
       : '';
     // A run ignores the unlock chain, so the usual note is often empty there —
-    // and a run is exactly where walking past the shard costs the most.
+    // and a shard run is exactly where walking past the shard costs the most.
+    // Any% says the opposite, once, so nobody detours out of habit.
     if (this.speedrun && world.shardTotal > 0) {
-      this.shardNote = 'The Red-Earth Shard is required — no shard, no split';
+      this.shardNote = PL.Speedrun.needsShards()
+        ? 'The Red-Earth Shard is required — no shard, no split'
+        : 'ANY% — the shard is optional here';
     }
 
     // Each area has its own tune; the music system no-ops on a town without
@@ -533,7 +536,7 @@
        *
        * The clock survives because the new scene's baseMs is the run clock as
        * it stands. A wasted attempt costs exactly the time it took. */
-      if (this.world.shardTotal > 0 && p.shards.length === 0) {
+      if (PL.Speedrun.needsShards() && this.world.shardTotal > 0 && p.shards.length === 0) {
         // Charge the goal flourish too. The clock stops the instant the
         // tankard is touched, so without this the second and a bit of cup
         // being raised would be the one free time in the whole run — and it

@@ -32,15 +32,27 @@
     this.opaque = true;
     this.t = 0;
 
-    // The whole-game speedrun sits at the top, then every level in play order.
+    // The two whole-game categories sit at the top, then every level in play
+    // order. They are separate boards because they are separate games: one
+    // requires every Red-Earth Shard and the other requires none.
     this.rows = [{
       speedrun: true,
-      townName: 'Whole game',
+      townName: 'Whole game · shards',
       townId: PL.Speedrun.TOWN,
       def: {
         id: PL.Speedrun.LEVEL,
         name: 'Drunken Speedrun',
-        blurb: 'Every level, back to back, on one unbroken clock.'
+        blurb: 'Every level and every Red-Earth Shard, on one unbroken clock.'
+      },
+      index: -1
+    }, {
+      speedrun: true,
+      townName: 'Whole game · no shards',
+      townId: PL.Speedrun.TOWN,
+      def: {
+        id: PL.Speedrun.LEVEL_ANY,
+        name: 'Speedrun — Any%',
+        blurb: 'Every level, shards optional. Anything that reaches the tankard counts.'
       },
       index: -1
     }];
@@ -276,10 +288,19 @@
     if (sel.speedrun) return;              // no frame-stepping a whole run
     var runs = this.shared ? PL.Cloud.tasFor(sel.def.id)
                            : PL.Store.runsFor(PL.Store.TAS_TOWN, sel.def.id);
+    // The shared board shows the record and nothing else. There is one
+    // interesting tool-assisted time per level — the fastest anyone has proved
+    // possible — and a list of near-misses under it is just noise. The local
+    // board is your own attempts, so it keeps a few: that is a practice log
+    // rather than a record.
+    var show = this.shared ? 1 : 3;
 
     PL.gfx.rect(ctx, x, y, w, 1, 'rgba(79,184,165,0.35)');
-    PL.gfx.text(ctx, 'TAS RECORDS', x, y + 14, { font: PL.FONT.tiny, color: C.teal });
-    PL.gfx.text(ctx, 'tool-assisted · practice mode · own board',
+    PL.gfx.text(ctx, this.shared ? 'TAS RECORD' : 'YOUR TAS TIMES', x, y + 14,
+                { font: PL.FONT.tiny, color: C.teal });
+    PL.gfx.text(ctx,
+      this.shared ? 'tool-assisted · the fastest anyone has proved possible'
+                  : 'tool-assisted · this browser · not on the shared board yet',
       x + w, y + 14, {
         font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.35)'
       });
@@ -290,7 +311,7 @@
         x, y + 30, { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.4)' });
       return;
     }
-    for (var i = 0; i < Math.min(3, runs.length); i++) {
+    for (var i = 0; i < Math.min(show, runs.length); i++) {
       var r = runs[i], ry = y + 30 + i * 13;
       var col = i === 0 ? C.teal : 'rgba(242,227,196,0.6)';
       PL.gfx.text(ctx, String(i + 1), x, ry, { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.4)' });

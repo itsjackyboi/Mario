@@ -64,6 +64,7 @@ corner.
 | Open the Beer Bank (title screen) | click the keg, or `B` |
 | Sign the book (your name) | click the name chip, or pick it from the title menu |
 | Split-board switches (title screen) | click a slider beside the keg, or `↓` past the menu and `←` `→` |
+| Anything on the title screen | click it. Every row, icon and switch answers the mouse |
 | Practice a level | `C` on the level-select, then `C` in-level to drop a marker |
 | TAS mode (in practice) | `T` to enter, `.` step a frame, `/` hold to run, `,` rewind, `R` back to frame 0 |
 | Menus | `↑` `↓` `←` `→`, `Enter` to confirm, `Esc` to back out |
@@ -187,6 +188,21 @@ board makes, and shown in their own strip under each level's top five, in-game a
 sheet. Nothing posted from in here touches the level's records, the area purse, the unlock
 chain or the Beer Bank.
 
+The shared strip shows **one row: the record**. There is exactly one interesting
+tool-assisted time on a level — the fastest anyone has proved possible — and a list of
+near-misses under it is noise. The local strip keeps a few, because that is your own practice
+log rather than a record.
+
+**The flag is sent twice**, and the second copy is not redundant. `tas` is a column the sheet
+only has once its script has been updated, and an older deployment builds each row from a
+fixed list of fields — so an unknown one is not stored badly, it is dropped silently, and a
+tool-assisted time lands looking exactly like a played one. So the flag also rides as a `+tas`
+marker on the end of the build string, in a column every version of the script has always
+written. Either signal marks the row; the marker is stripped on the way in, so nothing
+downstream ever sees it. **A TAS time posted before this build exists** carries neither
+signal and will sit on the level's ordinary board until the row is deleted from `runs` by
+hand.
+
 That offer is the point of the mode. The fastest a level can go is worth knowing, and it is
 better found by a person with a frame-stepper and a strategy nobody has thought of than
 asserted by a search that never presses the item key.
@@ -301,6 +317,21 @@ The title screen offers both:
   ignoring the usual unlock, because a route that changed with your save state would not be
   comparable. **Your purse carries between levels**, because grog is the life pool and a run
   that started every level on nothing would end on the first death of each one.
+
+  **Two categories, chosen before the run.**
+
+  | | The rule | Board |
+  |---|---|---|
+  | **Shard run** | Touch a tankard without that level's Red-Earth Shard and the level starts again, clock still running | `full-game` |
+  | **Any%** | Nothing but the tankard is required; shards are optional everywhere | `full-game-any` |
+
+  They are different games rather than difficulty settings. The shard is what the towns are
+  gated on, and a route free to walk past it is shorter wherever one appears — so one board
+  holding both would only ever crown the run that skipped the most. They keep separate
+  whole-game records and separate town splits, and every screen says which one is running.
+
+  Per-level splits go on the level's own board either way. Those boards have always held
+  times set without the shard, because a single level has never required one.
 
   Whole-game times get their own leaderboard entry, and **each level's split is also logged
   on that level's own board**, tagged `SPEEDRUN` in the MODE column. A personal best is a

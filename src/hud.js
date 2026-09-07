@@ -88,8 +88,8 @@
       if (scene.speedrun) {
         var sr = PL.Speedrun;
         PL.gfx.text(ctx,
-          'RUN ' + (scene.meta.runIndex + 1) + ' / ' + scene.meta.runCount +
-          '  ·  ' + (sr.grog + p.grogEarned) + ' grog collected',
+          sr.modeDef().short + '  ·  RUN ' + (scene.meta.runIndex + 1) + ' / ' +
+          scene.meta.runCount + '  ·  ' + (sr.grog + p.grogEarned) + ' grog collected',
           W / 2, 42, {
             font: PL.FONT.tiny, align: 'center', color: C.lantern
           });

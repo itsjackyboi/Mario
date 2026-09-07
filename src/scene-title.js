@@ -10,7 +10,7 @@
     this.sel = 0;
     this.options = [
       { label: 'Row ashore', hint: 'Pick a town and a level. Times logged per level.' },
-      { label: 'Drunken speedrun', hint: 'Every level back to back on one unbroken clock.' },
+      { label: 'Drunken speedrun', hint: 'Every level back to back on one clock. Shard run or Any%.' },
       { label: 'Leaderboards', hint: "Top five per level, and every run behind it." },
       { label: 'Sign the book', hint: 'The name your runs go under on the shared board.' },
       /* The two split-board switches. They are set before a run because they
@@ -57,6 +57,23 @@
     }
     var hit = PL.SplitSwitches.clicked();
     if (hit >= 0) { this.sel = 4 + hit; PL.SplitSwitches.flip(hit); }
+    // Everything on this screen answers the mouse. Half a screen of clickable
+    // things is worse than none: it teaches you the wrong rule and then breaks
+    // it. Hovering a row moves the cursor onto it, so the keyboard and the
+    // pointer are never pointing at two different things.
+    for (var r = 0; r < this.options.length; r++) {
+      if (this.options[r].slider != null) continue;
+      var box = this.rowBox(r);
+      if (In.hovering(box.x, box.y, box.w, box.h) && this.sel !== r) {
+        this.sel = r;
+        PL.Audio.sfx('menu');
+      }
+      if (In.clickedIn(box.x, box.y, box.w, box.h)) {
+        this.sel = r;
+        this.choose();
+        return;
+      }
+    }
     if (In.pressed('up')) { this.sel = (this.sel + this.options.length - 1) % this.options.length; PL.Audio.sfx('menu'); }
     if (In.pressed('down')) { this.sel = (this.sel + 1) % this.options.length; PL.Audio.sfx('menu'); }
     if (PL.LetterIcon.clicked() || In.pressed('letter')) {
@@ -74,14 +91,23 @@
       PL.Game.push(new PL.NameScene());
       return;
     }
-    if (In.pressed('confirm') || In.pressed('jump')) {
-      PL.Audio.sfx('select');
-      if (this.sel === 0) PL.Game.replace(new PL.LevelSelectScene('shantytown'));
-      else if (this.sel === 1) PL.Speedrun.start();
-      else if (this.sel === 2) PL.Game.push(new PL.LeaderboardScene());
-      else if (this.sel === 3) PL.Game.push(new PL.NameScene());
-      else PL.SplitSwitches.flip(this.options[this.sel].slider);
-    }
+    if (In.pressed('confirm') || In.pressed('jump')) this.choose();
+  };
+
+  /** Where a menu row is, so drawing and hit-testing cannot drift apart. */
+  TitleScene.prototype.rowBox = function (i) {
+    return { x: PL.VIEW_W / 2 - 130, y: 222 + i * 22 - 14, w: 260, h: 21 };
+  };
+
+  /** Take the highlighted row, whether the cursor or the pointer picked it. */
+  TitleScene.prototype.choose = function () {
+    var o = this.options[this.sel];
+    if (o.slider != null) { PL.SplitSwitches.flip(o.slider); return; }
+    PL.Audio.sfx('select');
+    if (this.sel === 0) PL.Game.replace(new PL.LevelSelectScene('shantytown'));
+    else if (this.sel === 1) PL.Game.replace(new PL.SpeedrunPickScene());
+    else if (this.sel === 2) PL.Game.push(new PL.LeaderboardScene());
+    else if (this.sel === 3) PL.Game.push(new PL.NameScene());
   };
 
   TitleScene.prototype.draw = function (ctx) {
@@ -211,10 +237,10 @@
     // switches on the shelf, which draw themselves.
     for (var m = 0; m < this.options.length; m++) {
       if (this.options[m].slider != null) continue;
-      var my = 222 + m * 22;
+      var rb = this.rowBox(m), my = 222 + m * 22;
       var on = m === this.sel;
       if (on) {
-        PL.gfx.rect(ctx, W / 2 - 130, my - 14, 260, 21, 'rgba(255,179,71,0.16)');
+        PL.gfx.rect(ctx, rb.x, rb.y, rb.w, rb.h, 'rgba(255,179,71,0.16)');
         PL.gfx.text(ctx, '>', W / 2 - 122, my, { font: PL.FONT.hud, color: C.lantern });
       }
       PL.gfx.text(ctx, this.options[m].label, W / 2, my, {
@@ -224,8 +250,9 @@
     }
     // one line explaining whatever is highlighted, best time folded in
     var hint = this.optionHint(this.sel);
-    var srBest = this.sel === 1 ? PL.Speedrun.best() : null;
-    if (srBest) hint += '   Best: ' + U.formatTime(srBest.timeMs);
+    // The speedrun's records now live on the category screen, one each, so the
+    // hint says the choice is coming rather than quoting one of the two.
+    var srBest = null;
     if (this.sel === 3) hint = PL.Store.playerName()
       ? 'Signed as ' + PL.Store.playerName() + '. Pick something else if you like.'
       : hint;

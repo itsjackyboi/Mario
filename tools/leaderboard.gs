@@ -55,6 +55,14 @@ var LB_SHEET = 'leaderboard';
 var LB_HEADERS = ['level', 'rank', 'time', 'player', 'mode', 'grog',
                   'deaths', 'build', 'date', 'timeMs'];
 var TOP_N = 5;
+var TAS_TOP_N = 1;
+
+/* The game marks a tool-assisted row twice — the `tas` column, and this on the
+ * end of the build string. The second copy is what survives a sheet whose
+ * script is older than the column: that script builds its row from a fixed list
+ * of fields and drops anything it does not know, so without a marker in a
+ * column it does write, a frame-stepped time arrives looking played. */
+var TAS_MARK = '+tas';
 
 /**
  * Play order and display names for the leaderboard tab. Cosmetic only: this
@@ -67,7 +75,8 @@ var TOP_N = 5;
  * too, or live with the raw id.
  */
 var LEVEL_ORDER = [
-  ['full-game',            'Drunken Speedrun (whole game)'],
+  ['full-game',            'Drunken Speedrun (whole game, shards)'],
+  ['full-game-any',        'Drunken Speedrun (whole game, Any%)'],
   ['shantytown-1',         'Shanty Town I - The Crash Cliffs'],
   ['shantytown-2',         'Shanty Town II - The Bone Stair'],
   ['shantytown-3',         'Shanty Town III - The Drowning Tide'],
@@ -138,6 +147,14 @@ function readRuns_() {
   for (var i = 0; i < values.length; i++) {
     var v = values[i];
     if (!v[3]) continue;                         // no level id, not a run
+    // A tool-assisted row says so twice: in the `tas` column, and with a
+    // marker on the build string. The second copy is what makes a time posted
+    // to a sheet running an older script still read as tool-assisted — that
+    // script dropped the unknown column, but it wrote the build. The marker is
+    // stripped here so the tab shows a clean version.
+    var version = String(v[9] || '');
+    var marked = version.indexOf(TAS_MARK) >= 0;
+    if (marked) version = version.split(TAS_MARK).join('');
     rows.push({
       date: String(v[0]),
       player: String(v[1]),
@@ -148,11 +165,9 @@ function readRuns_() {
       deaths: Number(v[6]) || 0,
       shards: Number(v[7]) || 0,
       speedrun: v[8] === true || String(v[8]).toLowerCase() === 'true',
-      version: String(v[9] || ''),
+      version: version,
       time: String(v[10] || ''),
-      // Set by TAS mode. Rows posted before this column existed read as false,
-      // which is right: nothing before it could have been tool-assisted.
-      tas: v[11] === true || String(v[11]).toLowerCase() === 'true'
+      tas: marked || v[11] === true || String(v[11]).toLowerCase() === 'true'
     });
   }
   return rows;
@@ -279,7 +294,10 @@ function rebuildLeaderboard_() {
     tlist.sort(function (a, b) {
       return (a.timeMs - b.timeMs) || String(a.date).localeCompare(String(b.date));
     });
-    var tn = Math.min(TOP_N, tlist.length);
+    // One row per level: the record, and nothing else. There is exactly one
+    // interesting tool-assisted time on a level — the fastest anyone has proved
+    // possible — and a list of near-misses under it is noise.
+    var tn = Math.min(TAS_TOP_N, tlist.length);
     for (var tp = 0; tp < tn; tp++) {
       var te = tlist[tp];
       tasRows.push([
