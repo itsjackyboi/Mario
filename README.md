@@ -689,7 +689,19 @@ box on the other side. (`src/hud.js`)
 
 **Grog is per level.** The counter resets at level start and is *kept* through deaths and
 checkpoint respawns, so a run's grog total is a clean, comparable leaderboard stat. On
-completion it is banked into a persistent per-area purse. (`src/items.js`)
+completion, whatever survived goes to the Beer Bank and is recorded against that level as
+what you carried out of it. (`src/items.js`)
+
+**The town purse is a sum, not a tally.** It is the most grog you have ever carried out of
+each of a town's levels, added up — one number per level, however many times you have run
+them. It used to be an accumulator that added every completion forever, which is not a purse
+but a lifetime total of every attempt: three Shanty Town levels worth about seventy grog
+between them could read eleven hundred, because the fortieth run of level one counted as
+much as the first. It is now kept per level and summed on read, so it cannot drift — a wrong
+value would have to be a wrong record. Nothing spends it; it is a haul, not a wallet, and the
+wallet is the Beer Bank. Saves from before the change lose the old figure rather than have
+it guessed at: there is no way to know which levels those barrels came out of, and the number
+rebuilds as levels are finished. (`src/storage.js`)
 
 **Taking a hit costs grog, not your life.** Enemy or spike contact with grog in your purse
 knocks up to six barrels loose — they bounce and can be scooped back up for a few seconds —

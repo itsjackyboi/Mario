@@ -185,22 +185,55 @@
       return p;
     },
 
+    /**
+     * A town's state: which levels are cleared, which shards are held, and the
+     * purse.
+     *
+     * THE PURSE IS A SUM, NOT A TALLY. It is the most grog you have ever
+     * carried out of each of the town's levels, added up — one number per
+     * level, no matter how many times you have run them.
+     *
+     * It used to be an accumulator: every completion added whatever you walked
+     * out with, forever. That is not a purse, it is a lifetime total of every
+     * attempt, and it read as nonsense — three Shanty Town levels worth about
+     * seventy grog between them could show eleven hundred, because the number
+     * counted the fortieth run of level one as much as the first. Nothing
+     * spends it, so nothing was broken by it, but a number on screen should
+     * mean what it says.
+     *
+     * Kept per level and summed on read rather than as a running figure, so it
+     * cannot drift: it is derived from the record, and a wrong value would have
+     * to be a wrong record.
+     */
     townProgress: function (townId) {
       var p = this.loadProgress();
       var t = p.towns[townId] || {};
+      var carried = t.carried || {};
+      var purse = 0;
+      for (var id in carried) purse += carried[id] | 0;
       return {
         completed: t.completed || [],
         shards: t.shards || [],
-        purse: t.purse || 0
+        carried: carried,
+        purse: purse
       };
     },
 
-    /** Mark a level cleared and bank its grog into the town purse. */
+    /**
+     * Mark a level cleared, and record what was carried out of it if it beats
+     * what was carried out before. A speedrun passes 0 — the run's grog belongs
+     * to the run, and 0 can never lower a level's best haul.
+     */
     completeLevel: function (townId, levelId, grog) {
       var p = this.loadProgress();
-      var t = (p.towns[townId] = p.towns[townId] || { completed: [], shards: [], purse: 0 });
+      var t = (p.towns[townId] = p.towns[townId] || { completed: [], shards: [] });
       if (t.completed.indexOf(levelId) === -1) t.completed.push(levelId);
-      t.purse = (t.purse || 0) + (grog | 0);
+      if (!t.carried) t.carried = {};
+      t.carried[levelId] = Math.max(t.carried[levelId] | 0, grog | 0);
+      // The old running total. Left behind rather than migrated: there is no
+      // way to work out which levels those barrels came out of, and a guess
+      // would be a made-up number wearing a real one's clothes.
+      delete t.purse;
       write(PR_KEY, p);
     },
 
@@ -208,7 +241,7 @@
     collectShards: function (townId, shardIds) {
       if (!shardIds || !shardIds.length) return;
       var p = this.loadProgress();
-      var t = (p.towns[townId] = p.towns[townId] || { completed: [], shards: [], purse: 0 });
+      var t = (p.towns[townId] = p.towns[townId] || { completed: [], shards: [] });
       if (!t.shards) t.shards = [];
       for (var i = 0; i < shardIds.length; i++) {
         if (t.shards.indexOf(shardIds[i]) === -1) t.shards.push(shardIds[i]);

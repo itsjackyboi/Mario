@@ -116,7 +116,7 @@
     }
     y += 22;
     var purse = PL.Store.townProgress(this.def.town).purse;
-    PL.gfx.text(ctx, 'Town purse: ' + purse + ' grog', 42, y + 2, {
+    PL.gfx.text(ctx, 'Town purse: ' + purse + ' grog  ·  best haul per level', 42, y + 2, {
       font: PL.FONT.tiny, color: 'rgba(242,227,196,0.5)'
     });
     // The clock check. It only appears when it has something to say: a run the
