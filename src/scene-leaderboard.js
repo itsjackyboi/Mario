@@ -320,7 +320,7 @@
                 { font: PL.FONT.tiny, color: C.teal });
     PL.gfx.text(ctx,
       this.shared ? 'tool-assisted · the fastest anyone has proved possible'
-                  : 'tool-assisted · this browser · not on the shared board yet',
+                  : 'tool-assisted · every one you have posted from this browser',
       x + w, y + 14, {
         font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.35)'
       });

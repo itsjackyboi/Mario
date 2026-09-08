@@ -90,7 +90,7 @@
     });
 
     // ---- run stats -------------------------------------------------------
-    PL.gfx.panel(ctx, 26, 68, 268, 210, { r: 6 });
+    PL.gfx.panel(ctx, 26, 68, 268, 220, { r: 6 });
     var y = 94;
     PL.gfx.text(ctx, 'THIS RUN', 42, y, { font: PL.FONT.small, color: C.lantern });
     y += 26;
@@ -124,21 +124,21 @@
     // and the honest thing is to say so on the card rather than quietly let it
     // onto a board beside times that were.
     if (this.run.pace != null && this.run.pace < 0.97) {
-      y += 18;
+      y += 16;
       PL.gfx.text(ctx, 'Clock: ' + Math.round(this.run.pace * 100) +
         '% of real time — the browser dropped frames', 42, y + 2, {
           font: PL.FONT.tiny, color: C.coral
         });
     }
     if (this.shardGate) {
-      y += 18;
+      y += 16;
       PL.gfx.text(ctx, U.fit(ctx, this.shardGate.name + ' stays shut — no shard.',
                              PL.FONT.tiny, 236),
                   42, y + 2, { font: PL.FONT.tiny, color: C.coral });
     }
 
     // ---- leaderboard -----------------------------------------------------
-    PL.gfx.panel(ctx, 308, 68, 306, 210, { r: 6 });
+    PL.gfx.panel(ctx, 308, 68, 306, 220, { r: 6 });
     PL.gfx.text(ctx, 'TOP TEN — THIS BROWSER', 324, 94, { font: PL.FONT.small, color: C.lantern });
     PL.LeaderboardTable.draw(ctx, 324, 104, 274, this.result.runs, this.result.entry);
 

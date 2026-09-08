@@ -233,7 +233,7 @@
       font: 'bold 17px "Trebuchet MS", "Segoe UI", sans-serif',
       align: 'center', color: C.lantern
     });
-    PL.gfx.text(ctx, 'You are Corb. No crew, no legend, no reputation — just a long climb and a full cup.',
+    PL.gfx.text(ctx, 'You are Corb. The drunk with a dream',
       W / 2, 96, { font: PL.FONT.small, align: 'center', color: 'rgba(242,227,196,0.65)' });
 
     // ---- who is playing --------------------------------------------------
@@ -256,16 +256,14 @@
       });
     }
     // one line explaining whatever is highlighted, best time folded in
+    // The speedrun's records live on the category screen now, one each, so the
+    // hint describes the choice rather than quoting one of the two.
     var hint = this.optionHint(this.sel);
-    // The speedrun's records now live on the category screen, one each, so the
-    // hint says the choice is coming rather than quoting one of the two.
-    var srBest = null;
-    if (this.sel === 3) hint = PL.Store.playerName()
-      ? 'Signed as ' + PL.Store.playerName() + '. Pick something else if you like.'
-      : hint;
+    if (this.sel === 3 && PL.Store.playerName()) {
+      hint = 'Signed as ' + PL.Store.playerName() + '. Pick something else if you like.';
+    }
     PL.gfx.text(ctx, hint, W / 2, 304, {
-      font: PL.FONT.tiny, align: 'center',
-      color: srBest ? 'rgba(255,226,168,0.8)' : 'rgba(242,227,196,0.6)'
+      font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.6)'
     });
 
     // ---- the two things on the shelf, one either side --------------------
