@@ -265,6 +265,15 @@
      * moment the clock passes them, and the one your switches say you are
      * racing carries the gap.
      *
+     * BOTH ARE THE ABSOLUTE BEST, whatever they were set in. The split board's
+     * LEVEL/SPEEDRUN switch does not apply here, because the question is not the
+     * same one. Inside a run, comparing like with like is the point: a split is
+     * run on a carried purse with a whole game still ahead, and racing it
+     * against a fresh solo attempt would be racing a different event. On a
+     * single level there is no run to be consistent with — there is one time to
+     * beat, the fastest that has ever been done, and a rail that hid a faster
+     * time because of where it was set would be hiding the target.
+     *
      * Records do not change while you are inside a level, so they are read once
      * a second rather than sixty times — every read is a localStorage parse.
      */
@@ -277,8 +286,8 @@
       var now = scene.elapsedMs;
       chip(ctx, x, y, w, 44);
 
-      PL.gfx.text(ctx, PL.Store.splitMode() === 'speedrun' ? 'THIS LEVEL · RUN' : 'THIS LEVEL',
-                  x + 5, y + 12, { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.5)' });
+      PL.gfx.text(ctx, 'THIS LEVEL', x + 5, y + 12,
+                  { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.5)' });
 
       // The gap against whichever record the switches picked, once it is real.
       var target = world ? (b.world || b.you) : (b.you || b.world);
@@ -304,20 +313,27 @@
       }
     },
 
-    /** Both records for one level, cached for a second. */
+    /**
+     * The PB and the WR for one level: the fastest each, from any mode, cached
+     * for a second.
+     *
+     * No `kind` filter and no fallback chain — `bestFor` and `bestMs` with no
+     * kind already answer "the fastest, whatever it was set in", which is
+     * exactly the number a personal best and a world record mean. A split out
+     * of a speedrun counts, because it happened on this level and the clock
+     * does not care what came before it. Tool-assisted times do not, because
+     * the shared board indexes those apart.
+     */
     levelBests: function (def) {
-      var kind = PL.Store.splitMode();
-      var key = def.town + '/' + def.id + '/' + kind;
+      var key = def.town + '/' + def.id;
       var c = this._bests;
       var now = (window.performance && performance.now()) || Date.now();
       if (c && c.key === key && now - c.at < 1000) return c;
-      var mine = PL.Store.bestFor(def.town, def.id, kind) ||
-                 PL.Store.bestFor(def.town, def.id);
+      var mine = PL.Store.bestFor(def.town, def.id);
       c = {
         key: key, at: now,
         you: mine ? mine.timeMs : 0,
-        world: (PL.Cloud && PL.Cloud.bestMs(def.id, kind)) ||
-               (PL.Cloud && PL.Cloud.bestMs(def.id)) || 0
+        world: (PL.Cloud && PL.Cloud.bestMs(def.id)) || 0
       };
       this._bests = c;
       return c;

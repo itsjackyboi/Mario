@@ -397,6 +397,15 @@ The title screen offers both:
   and the world record for it, side by side, each going coral the moment the clock passes it,
   with the gap on whichever one your switches say you are racing.
 
+  Both are the **absolute** best — the fastest ever set on that level, whether it was a solo
+  attempt or a split out of somebody's speedrun. The LEVEL/SPEEDRUN switch does not apply
+  here, because the question is not the same one. Inside a run, comparing like with like is
+  the point: a split is run on a carried purse with a whole game still ahead, and racing it
+  against a fresh solo attempt would be racing a different event. On a single level there is
+  no run to be consistent with — there is one time to beat, and a rail that hid a faster time
+  because of where it was set would be hiding the target. Tool-assisted times are still out;
+  they are on their own board.
+
   **Sum of best** is the run you would have if every level went as well as it ever has. It is
   not a time anyone has run — it is the target, and the gap between it and your best run is
   what is left on the table. Levels you have never cleared count as missing rather than zero,
