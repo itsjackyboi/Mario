@@ -1,8 +1,11 @@
 # Releasing v2
 
-Everything here is built and sitting on the `v2` branch. **Nothing has been pushed and
-nothing on the live site has changed** — `claude/pintland-isles-platformer-ye69kf` is still
-v1.17.0 and still serving the pre-release game.
+Everything here is on the **`v2` branch**, pushed and safe. **The live page has not
+changed**: GitHub Pages serves `claude/pintland-isles-platformer-ye69kf`, which is still
+v1.17.0 and still the pre-release game. Pushing a second branch cannot affect it — Pages
+only ever builds the one branch it is pointed at.
+
+Releasing is step 3 below, and it is one merge.
 
 ## What v2 changes
 
@@ -31,20 +34,64 @@ you would rather it went too; it is one line.
    Paste the result over the whole of `data/prerelease.js`. It writes the same shape with
    every row in it.
 
-2. **Decide what the shared board points at.** v2 must not post into the pre-release sheet,
-   or the two eras end up mixed on one board. Either:
-   - **wipe the `runs` tab** of the existing sheet (keep the header row) and re-run
-     `rebuildLeaderboard` from the Apps Script editor; or
-   - **deploy the script against a new sheet** and paste that URL into `config.js`.
+2. **Split the sheet into two boards.** Same sheet, same URL, same log — one more tab.
 
-   Either way, redeploy `tools/leaderboard.gs` if you have not since v1.14 — it grows a
-   `tas` column, an Any% row, and the TAS section.
+   Paste the current `tools/leaderboard.gs` into the Apps Script editor and save. Then, from
+   the function dropdown, run **`splitEras`** once. It:
 
-3. **Merge and push.** `git checkout claude/pintland-isles-platformer-ye69kf && git merge v2`,
-   then push. Pages serves the branch root, so the push *is* the release.
+   - renames the existing `leaderboard` tab to **`Pre Release Records`**, exactly as it
+     stands, and never writes to it again;
+   - builds a fresh `leaderboard` from this era's runs — empty on release day, filling as
+     people play.
 
-4. **Check the version corner.** The title screen should read `v2.0.0`. If it does not, the
-   browser is on a cached copy.
+   Then **Deploy → Manage deployments → edit → Version: New version** so the live URL runs
+   the new script. The URL does not change and `config.js` needs no edit.
+
+   Nothing is deleted. `runs` keeps every pre-release row where it has always been.
+
+   **How the two boards know which is which:** the era is the build's major version, which
+   every row has carried since the first one. `1.8` and `1.16.0` are era 1; `2.0.0` is era 2.
+   No new column, nothing to migrate, and the game filters the same way — a v1 time never
+   appears on a v2 board, in the sheet or in the game.
+
+3. **Put v2 on the live branch.** From a clone of the repo:
+
+   ```sh
+   git fetch origin
+   git checkout claude/pintland-isles-platformer-ye69kf
+   git pull
+   git merge origin/v2          # fast-forward: v2 is the live branch plus these commits
+   git push origin claude/pintland-isles-platformer-ye69kf
+   ```
+
+   Pages serves that branch's root, so **the push is the release** — usually live within a
+   minute or two. Nothing else to build or deploy.
+
+   (Or, entirely in the GitHub web UI: open a pull request from `v2` into
+   `claude/pintland-isles-platformer-ye69kf` and merge it. Same result, with a diff to read
+   first.)
+
+4. **Check the version corner.** Open the live page and read the number in the top-left of
+   the title screen. It should say `v2.0.0`. If it still says `v1.17.0`, the browser is
+   holding a cached copy of `index.html` — hard-refresh (Ctrl/Cmd-Shift-R). Every other file
+   is cache-busted by the version, so once the index is fresh, everything is.
+
+5. **Play one level.** The board should be empty and fill with your run; the book under the
+   version number should still hold the pre-release records.
+
+### If you need to undo it
+
+The old build is one commit away and nothing about it was destroyed:
+
+```sh
+git checkout claude/pintland-isles-platformer-ye69kf
+git revert --no-commit HEAD -m 1 && git commit -m "Roll back to v1.17.0"
+git push
+```
+
+Local saves already wiped by the era bump stay wiped — that part is on players' machines,
+not in the repo — but the pre-release board, the sheet and its log are all untouched by a
+rollback.
 
 ## What a returning player sees
 

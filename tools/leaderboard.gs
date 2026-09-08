@@ -10,14 +10,17 @@
  *   GET  ?rebuild=1 -> { ok: true }        redraw the leaderboard tab now
  *   POST <json row> -> { ok: true }        add one run, then redraw
  *
- * TWO TABS, on purpose:
- *   `runs`        every run ever posted, append-only, never sorted or trimmed.
- *                 This is the record. The game reads it, your history lives in
- *                 it, and nothing here ever rewrites a row of it.
- *   `leaderboard` the top five per level and for the whole-game speedrun, then
- *                 a TAS section for tool-assisted times, rebuilt from `runs`
- *                 after every post. Derived, disposable, and safe to delete —
- *                 it comes straight back.
+ * THE TABS:
+ *   `runs`                every run ever posted, append-only, never sorted or
+ *                         trimmed. This is the record. The game reads it, your
+ *                         history lives in it, and nothing here ever rewrites a
+ *                         row of it.
+ *   `leaderboard`         the top five per level and for the whole-game
+ *                         speedrun, then a TAS section, rebuilt from THIS
+ *                         ERA's runs after every post. Derived, disposable and
+ *                         safe to delete — it comes straight back.
+ *   `Pre Release Records` the board from the era before, kept under its own
+ *                         name by splitEras() and never written again.
  *
  * Sorting a log in place would mean the sheet could not answer "what did I
  * actually run last Tuesday", and a bad row could not be found and removed by
@@ -57,6 +60,27 @@ var LB_HEADERS = ['level', 'rank', 'time', 'player', 'mode', 'grog',
 var TOP_N = 5;
 var TAS_TOP_N = 1;
 
+/* ------------------------------------------------------------------- eras
+ *
+ * v2 changed the levels, so a time set on v1 and a time set on v2 are times on
+ * two different games and belong on two different boards. The log keeps both
+ * — `runs` is append-only and nothing here ever deletes a row — and the
+ * derived tabs are where they part company:
+ *
+ *   Pre Release Records   the old board, renamed and then left alone forever
+ *   leaderboard           rebuilt from this era's runs, every post
+ *
+ * THE ERA IS THE BUILD'S MAJOR VERSION, which every row has carried since the
+ * first one. No new column, nothing to migrate, and rows posted years ago sort
+ * themselves: 1.8 and 1.16.0 are era 1, 2.0.0 is era 2. A row with no build at
+ * all is old by definition and counts as era 1.
+ *
+ * When v3 comes, bump ERA, run splitEras() once, and the same thing happens
+ * again: this era's board is renamed to keep it, and a fresh one starts.
+ */
+var ERA = 2;
+var PRE_SHEET = 'Pre Release Records';
+
 /* The game marks a tool-assisted row twice — the `tas` column, and this on the
  * end of the build string. The second copy is what survives a sheet whose
  * script is older than the column: that script builds its row from a fixed list
@@ -94,6 +118,12 @@ var LEVEL_ORDER = [
   ['roto-3',               'Roto Kaiishi III - The Undertow'],
   ['tavern-1',             "Sackbeard's Tavern (finale)"]
 ];
+
+/** Which era a row belongs to: the major version of the build it was set on. */
+function era_(version) {
+  var n = parseInt(String(version || '').replace(/^v/, ''), 10);
+  return isNaN(n) ? 1 : n;
+}
 
 /** Milliseconds as 00:41.20, for rows posted before the game sent `time`. */
 function clock_(ms) {
@@ -232,7 +262,16 @@ function lbSheet_() {
  * drift out of step with the log the way an incremental update can.
  */
 function rebuildLeaderboard_() {
-  var runs = readRuns_();
+  var all = readRuns_();
+
+  /* THIS ERA ONLY. The log keeps every run ever posted; this tab is the board
+   * for the game as it stands. Older eras are not deleted, they are elsewhere:
+   * the tab this one replaced was renamed rather than cleared, and splitEras()
+   * is what does the renaming. */
+  var runs = [];
+  for (var e = 0; e < all.length; e++) {
+    if (era_(all[e].version) >= ERA) runs.push(all[e]);
+  }
 
   // Tool-assisted times are split off into their own section at the bottom.
   // A frame-stepped run would sit on top of every level's top five for reasons
@@ -319,6 +358,42 @@ function rebuildLeaderboard_() {
   sh.getRange(1, 1, out.length, LB_HEADERS.length).setValues(out);
   sh.setFrozenRows(1);
   return out.length - 1;
+}
+
+/**
+ * ONE-TIME, AT A RELEASE. Keeps the current board under its own name and starts
+ * a fresh one for the new era.
+ *
+ *   1. renames the `leaderboard` tab to `Pre Release Records`, exactly as it
+ *      stands — nothing recalculated, nothing dropped
+ *   2. builds a new `leaderboard` from this era's runs, which is empty on the
+ *      day of the release and fills as people play
+ *
+ * Run it once, from the Apps Script editor, after the new build is live. It
+ * refuses rather than overwrites if the archive name is already taken, so
+ * running it twice cannot flatten the thing it just saved.
+ *
+ * `runs` is untouched: every pre-release row stays in the log where it has
+ * always been.
+ */
+function splitEras() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var pre = ss.getSheetByName(PRE_SHEET);
+  var lb = ss.getSheetByName(LB_SHEET);
+
+  if (pre) {
+    ss.toast('"' + PRE_SHEET + '" already exists — nothing renamed. Rebuilding ' +
+             LB_SHEET + ' only.');
+  } else if (!lb) {
+    ss.toast('No "' + LB_SHEET + '" tab to keep. Building a fresh one.');
+  } else {
+    lb.setName(PRE_SHEET);
+    ss.toast('Kept the old board as "' + PRE_SHEET + '".');
+  }
+
+  var n = rebuildLeaderboard_();          // creates `leaderboard` afresh
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    n + ' rows on the new ' + LB_SHEET + ' (era ' + ERA + ').');
 }
 
 /**

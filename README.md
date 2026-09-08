@@ -249,8 +249,18 @@ Point it at a Google Sheet and everyone's runs land on one board, readable in-ga
   This is the record. The game reads it, your history lives in it, and nothing rewrites a
   row of it.
 - **`leaderboard`** — the **top five per level** and for the whole-game speedrun, in play
-  order, then a **TAS section** for tool-assisted times, rebuilt from `runs` after every
-  post. Derived and disposable: delete the tab and it comes straight back.
+  order, then a **TAS section** for tool-assisted times, rebuilt from **this era's** runs
+  after every post. Derived and disposable: delete the tab and it comes straight back.
+- **`Pre Release Records`** — the board from the era before, kept under its own name and
+  never written again.
+
+**Eras.** v2 changed the levels, so a v1 time and a v2 time are times on two different games.
+The era is the build's **major version**, which every row has carried since the first one:
+`1.8` and `1.16.0` are era 1, `2.0.0` is era 2, and a row with no build at all is old by
+definition. Nothing had to be added to say so, nothing migrates, and the game filters the
+same way the sheet does — an old time never appears on a new board. Running `splitEras()`
+once from the Apps Script editor renames the current board to `Pre Release Records` and
+starts a fresh one; `runs` is untouched.
 
 `tas` is what keeps a frame-stepped time off the board people run against: those rows are
 indexed apart, excluded from every top five and every split-board comparison, and listed on

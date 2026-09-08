@@ -34,6 +34,22 @@
    * sheet whose script predates the `tas` column. Stripped again on the way in,
    * so nothing downstream ever sees it. */
   var TAS_MARK = '+tas';
+
+  /* The era a row belongs to is the major version of the build it was set on,
+   * and the current era is this build's own. It needs no column and no
+   * migration: every row ever posted carries its build, so 1.8 and 1.16.0 sort
+   * themselves as era 1 the moment 2.0.0 exists. A row with no build at all is
+   * old by definition. The sheet's script splits its derived tabs the same way
+   * — see tools/leaderboard.gs. */
+  function era(version) {
+    var n = parseInt(String(version || '').replace(/^v/, ''), 10);
+    return isNaN(n) ? 1 : n;
+  }
+  /* Read at call time, not at load: this file is loaded before game.js, so
+   * PL.VERSION does not exist yet while these lines are running. Caching it
+   * here would have quietly pinned the era at 1 and let every old row back
+   * onto the board. */
+  function currentEra() { return era(PL.VERSION); }
   var FRESH_MS = 45000;          // how long a fetched board is considered current
   var MAX_QUEUE = 40;
 
@@ -178,6 +194,12 @@
       for (var i = 0; i < this.rows.length; i++) {
         var r = this.rows[i];
         if (!r || !r.level) continue;
+        // Only this era's runs. v2 changed the levels, so a v1 time is a time
+        // on a different game — it is kept in the sheet's log and shown on the
+        // pre-release board, and it does not belong in a ranking anyone is
+        // still racing. The era is the build's major version, which every row
+        // has always carried, so nothing had to be added to say so.
+        if (era(r.version) < currentEra()) continue;
         r.timeMs = Number(r.timeMs) || 0;
         r.speedrun = r.speedrun === true || r.speedrun === 'true' || r.speedrun === 1;
         // Either signal counts, and the marker is taken off the build string
