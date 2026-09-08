@@ -64,6 +64,10 @@
     this.pet = PL.makePet();
 
     this.speedrun = !!this.meta.speedrun;
+    // Where the clock check starts measuring for this level: wall time against
+    // simulated time. See PL.Game's loop.
+    this.paceReal = PL.Game.realMs;
+    this.paceGame = PL.Game.gameMs;
     this.baseMs = this.speedrun ? PL.Speedrun.elapsedMs : 0;
     this.levelMs = 0;
     this.elapsedMs = this.baseMs;
@@ -558,7 +562,8 @@
       // split, where the purse is carried in from the level before.
       grog: p.grogEarned,
       shards: p.shards.length,
-      deaths: p.deaths
+      deaths: p.deaths,
+      pace: PL.Game.pace(this.paceReal, this.paceGame)
     };
     PL.Store.collectShards(this.def.town, p.shards);
     PL.Store.completeLevel(this.def.town, this.def.id, p.grog);

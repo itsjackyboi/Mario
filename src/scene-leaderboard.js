@@ -28,9 +28,14 @@
   var TOP_N = 5;          // rows on page one
   var FULL_VISIBLE = 11;  // rows on page two
 
-  function LeaderboardScene() {
+  function LeaderboardScene(opts) {
     this.opaque = true;
     this.t = 0;
+    /* The same screen twice: the live board, and the pre-release archive.
+     * They show the same thing in the same shape and differ only in where the
+     * rows come from, so building a second screen would have been two screens
+     * to keep in step and one of them would have drifted. */
+    this.archive = !!(opts && opts.archive);
 
     // The two whole-game categories sit at the top, then every level in play
     // order. They are separate boards because they are separate games: one
@@ -70,17 +75,21 @@
     this.scroll = 0;
     this.page = 'top';      // 'top' | 'full'
     this.fullScroll = 0;
-    this.shared = PL.Cloud.enabled();
+    // The archive is one board — there is no local copy of someone else's
+    // pre-release run — so it is always the shared side.
+    this.shared = this.archive ? true : PL.Cloud.enabled();
   }
 
   LeaderboardScene.prototype.enter = function () {
     PL.Theme.apply(null);
-    PL.Cloud.load();
+    if (this.archive) PL.Archive.load();
+    else PL.Cloud.load();
   };
 
   /** Runs for the selected level, from whichever board is showing. */
   LeaderboardScene.prototype.runs = function () {
     var sel = this.rows[this.sel];
+    if (this.archive) return PL.Archive.runsFor(sel.def.id);
     return this.shared ? PL.Cloud.runsFor(sel.townId, sel.def.id)
                        : PL.Store.runsFor(sel.townId, sel.def.id);
   };
@@ -122,7 +131,7 @@
 
   /** Swap boards. With no shared board configured there is nothing to swap to. */
   LeaderboardScene.prototype.flip = function () {
-    if (!PL.Cloud.enabled()) return;
+    if (this.archive || !PL.Cloud.enabled()) return;
     this.shared = !this.shared;
     this.fullScroll = 0;
     if (this.shared) PL.Cloud.load();
@@ -137,12 +146,21 @@
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
 
-    PL.gfx.text(ctx, 'THE BOOKS OF CAPTAINS', 20, 32, { font: PL.FONT.head, color: C.parchment });
+    PL.gfx.text(ctx, this.archive ? 'PRE-RELEASE RECORDS' : 'THE BOOKS OF CAPTAINS',
+      20, 32, { font: PL.FONT.head, color: this.archive ? C.teal : C.parchment });
     PL.gfx.text(ctx, this.subtitle(), 20, 48, {
       font: PL.FONT.tiny,
-      color: (this.shared && PL.Cloud.state === 'error') ? C.coral : 'rgba(242,227,196,0.5)'
+      color: (!this.archive && this.shared && PL.Cloud.state === 'error')
+        ? C.coral : 'rgba(242,227,196,0.5)'
     });
-    this.boardTabs(ctx, W);
+    if (this.archive) {
+      PL.gfx.text(ctx, PL.Archive.frozen() ? 'FROZEN' : 'LIVE', W - 20, 32, {
+        font: PL.FONT.small, align: 'right',
+        color: PL.Archive.frozen() ? C.teal : C.lantern
+      });
+    } else {
+      this.boardTabs(ctx, W);
+    }
 
     if (!this.rows.length) {
       PL.gfx.text(ctx, 'No levels registered.', W / 2, H / 2, {
@@ -155,6 +173,7 @@
   };
 
   LeaderboardScene.prototype.subtitle = function () {
+    if (this.archive) return PL.Archive.status();
     if (!this.shared) {
       return PL.Cloud.enabled()
         ? "This browser's own records. ← → for the shared board."
@@ -268,7 +287,7 @@
     this.tasStrip(ctx, sel, 244, 226, W - 286);
 
     PL.gfx.text(ctx, '↑ ↓ pick a level · ENTER every run · ' +
-      (PL.Cloud.enabled() ? '← → board · ' : '') + 'ESC back', W / 2, 332, {
+      (!this.archive && PL.Cloud.enabled() ? '← → board · ' : '') + 'ESC back', W / 2, 332, {
       font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.5)'
     });
   };
@@ -286,7 +305,8 @@
    */
   LeaderboardScene.prototype.tasStrip = function (ctx, sel, x, y, w) {
     if (sel.speedrun) return;              // no frame-stepping a whole run
-    var runs = this.shared ? PL.Cloud.tasFor(sel.def.id)
+    var runs = this.archive ? PL.Archive.tasFor(sel.def.id)
+             : this.shared ? PL.Cloud.tasFor(sel.def.id)
                            : PL.Store.runsFor(PL.Store.TAS_TOWN, sel.def.id);
     // The shared board shows the record and nothing else. There is one
     // interesting tool-assisted time per level — the fastest anyone has proved
@@ -361,10 +381,49 @@
       PL.gfx.rect(ctx, trackX, thumbY, 3, thumbH, C.lantern);
     }
 
-    PL.gfx.text(ctx, '↑ ↓ scroll · ' + (PL.Cloud.enabled() ? '← → board · ' : '') +
+    PL.gfx.text(ctx, '↑ ↓ scroll · ' +
+      (!this.archive && PL.Cloud.enabled() ? '← → board · ' : '') +
       'ESC back to the top five', W / 2, 332, {
       font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.5)'
     });
+  };
+
+  /* The little book under the version number: PRE-RELEASE RECORDS.
+   *
+   * It sits with the build number rather than in the menu because that is what
+   * it is about — which version these times were set on. Small, quiet, and out
+   * of the way of a screen that is mostly about starting a run.
+   */
+  PL.RecordsIcon = {
+    box: { x: 6, y: 20, w: 128, h: 18 },
+
+    draw: function (ctx, hot) {
+      var b = this.box, x = b.x + 2, y = b.y + 2;
+
+      // a closed book, seen from the front: cover, spine, page edges
+      PL.gfx.rect(ctx, x, y, 14, 13, hot ? '#8d5c39' : '#6d4630');
+      PL.gfx.rect(ctx, x, y, 3, 13, hot ? '#c9a24a' : '#9c7c52');
+      PL.gfx.rect(ctx, x + 12, y + 1, 2, 11, hot ? '#f6e6c2' : '#c9b894');
+      PL.gfx.rect(ctx, x + 5, y + 3, 6, 1, hot ? '#f2dc9a' : '#a8926a');
+      PL.gfx.rect(ctx, x + 5, y + 6, 6, 1, hot ? '#f2dc9a' : '#a8926a');
+
+      PL.gfx.text(ctx, hot ? 'open the old book' : 'PRE-RELEASE RECORDS',
+        x + 19, y + 11, {
+          font: PL.FONT.tiny,
+          color: hot ? C.lanternHi : 'rgba(242,227,196,0.34)',
+          shadow: false
+        });
+    },
+
+    hot: function () {
+      var b = this.box;
+      return PL.Input.hovering(b.x, b.y, b.w, b.h);
+    },
+
+    clicked: function () {
+      var b = this.box;
+      return PL.Input.clickedIn(b.x, b.y, b.w, b.h);
+    }
   };
 
   PL.LeaderboardScene = LeaderboardScene;

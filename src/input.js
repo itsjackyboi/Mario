@@ -20,6 +20,7 @@
     KeyL: 'letter',
     KeyC: 'mark',
     KeyB: 'bank',
+    KeyH: 'records',
     /* TAS mode, inside practice. Frame-at-a-time playback needs keys of its
      * own that no ordinary run touches. */
     KeyT: 'tas',
@@ -33,8 +34,14 @@
     hits: {},         // went down since the last frame (latched)
     lifts: {},        // came up since the last frame (latched)
 
-    // Pointer, in logical 640x360 space. `clicked` is latched like a key press.
-    mouse: { x: -1, y: -1, down: false, clicked: false, over: false },
+    /* Pointer, in logical 640x360 space. `clicked` is latched like a key press.
+     *
+     * `moved` is latched the same way, and menus need it: a screen where
+     * hovering a row selects it must only do that when the pointer actually
+     * moves. Otherwise a mouse left sitting over one option re-selects it every
+     * frame, and the arrow keys cannot move off it — you press right, and the
+     * stationary pointer drags the cursor back before you see it. */
+    mouse: { x: -1, y: -1, down: false, clicked: false, over: false, moved: false },
 
     /* Text entry. While `typing` is on, keys are letters rather than actions —
      * the action map is skipped entirely, so typing a name with a W in it does
@@ -155,6 +162,18 @@
       return m.over && m.x >= x && m.x <= x + w && m.y >= y && m.y <= y + h;
     },
 
+    /**
+     * True only on a frame where the pointer moved and landed in this rect.
+     *
+     * This is what a menu should use to move its cursor. `hovering` answers
+     * "is the pointer there", which stays true forever while the mouse sits
+     * still — and a menu that reselects on that can never be driven by the
+     * keyboard while the pointer rests on a row.
+     */
+    hoveredInto: function (x, y, w, h) {
+      return this.mouse.moved && this.hovering(x, y, w, h);
+    },
+
     /** True on the frame a click lands inside this logical rect. */
     clickedIn: function (x, y, w, h) {
       return this.mouse.clicked && this.hovering(x, y, w, h);
@@ -176,6 +195,7 @@
       this.hits = {};
       this.lifts = {};
       this.mouse.clicked = false;
+      this.mouse.moved = false;
       this.textDone = false;
       this.textCancel = false;
     },
@@ -262,6 +282,11 @@
       canvas.addEventListener('pointermove', function (e) {
         var pt = toLogical(e);
         if (!pt) return;
+        // Sub-pixel jitter from a resting hand should not count as a move, or
+        // the keyboard would still be fighting a stationary pointer.
+        if (Math.abs(pt.x - self.mouse.x) > 0.5 || Math.abs(pt.y - self.mouse.y) > 0.5) {
+          self.mouse.moved = true;
+        }
         self.mouse.x = pt.x; self.mouse.y = pt.y; self.mouse.over = true;
       });
       canvas.addEventListener('pointerdown', function (e) {

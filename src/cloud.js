@@ -150,6 +150,9 @@
           // The split board may have been comparing against a stale copy of
           // this, or against nothing at all.
           if (PL.Speedrun) PL.Speedrun.invalidate();
+          // Keep the pre-release archive's safety copy current until the day it
+          // is frozen. No-op after that.
+          if (PL.Archive) PL.Archive.remember(self.rows);
           self.state = 'ready';
           self.error = '';
           self.fetchedAt = Date.now();

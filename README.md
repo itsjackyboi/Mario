@@ -64,6 +64,7 @@ corner.
 | Open the Beer Bank (title screen) | click the keg, or `B` |
 | Sign the book (your name) | click the name chip, or pick it from the title menu |
 | Split-board switches (title screen) | click a slider beside the keg, or `↓` past the menu and `←` `→` |
+| Pre-release records (title screen) | click the book under the version number, or `H` |
 | Anything on the title screen | click it. Every row, icon and switch answers the mouse |
 | Practice a level | `C` on the level-select, then `C` in-level to drop a marker |
 | TAS mode (in practice) | `T` to enter, `.` step a frame, `/` hold to run, `,` rewind, `R` back to frame 0 |
@@ -408,6 +409,80 @@ The title screen offers both:
   time it took — including the second of cup-raising at the tankard, which is otherwise the one
   moment the clock is stopped, and which should not be free on the attempt that failed.
 
+## Does your browser change your time?
+
+No. The clock counts **simulated steps, not seconds**, and that is the whole answer.
+
+The loop banks real time and spends it in fixed 1/60 steps. Everything — physics, the timer,
+every hazard — advances one step at a time, and the clock adds 16.667ms per step. So the same
+run on a 60Hz Chrome, a 120Hz Safari and a 240Hz Firefox records the same number, because all
+three take the same number of steps to cross the same level. Nothing about the display, the
+browser's timer resolution, or how fast the machine is gets into the recorded time.
+
+Driving the real loop with synthetic frame times, over a simulated minute of play:
+
+| Frame rate | Game time recorded for 60 wall seconds |
+|---|---|
+| 30 Hz, 59.94 Hz, 60 Hz, 75 Hz, 120 Hz, 144 Hz, 240 Hz | 60.000s (±0.02%, one frame's rounding) |
+| 60 Hz with ±2ms of jitter | 60.000s |
+| 20 fps, 10 fps, 5 fps | 60.000s |
+| Below 4 fps | falls behind — see below |
+
+And in a real browser, with Chrome's CPU throttled 1×, 4× and 10×, five wall seconds of play
+recorded 5.000s, 5.033s and 5.017s. A machine ten times too slow keeps the same clock.
+
+**The two edges, and where they are set.**
+
+*A stall.* One frame may spend at most 250ms of real time; past that, time is dropped rather
+than simulated. Otherwise a hitch would be paid off in one enormous burst of physics with no
+frames drawn, and you would die to a hazard you never saw. The world and the clock stop
+together, so a stutter costs nothing and gains nothing.
+
+*Slow motion.* Steps per frame are capped too, and this one is a fairness setting rather than
+a performance one. If the cap were low, a machine that fell behind could never catch up: the
+banked time would grow every frame and the game would run in permanent slow motion — and
+since the clock counts steps, that hands the player **more real seconds to react inside every
+counted second**. It is the one way this timing model can be gamed, and throttling a browser
+is easy. So the cap is set to exactly the number of steps the 250ms limit allows, which puts
+the threshold below 4 fps instead of below 12. At the old setting a 10 fps browser ran at 83%
+speed; now it runs at 100%.
+
+**The clock check.** Every results card compares the wall time the loop saw against the time
+it simulated, and says so when they disagree by more than 3% — `Clock: 94% of real time`.
+Under a second of stall is ignored, so a switched tab or a garbage-collection pause is not an
+accusation. It is not a cheat detector; nothing about a browser-submitted time can be. It is
+there so a run set on a machine that could not keep up is visible as one, instead of quietly
+landing on a board beside runs that did.
+
+What is *not* the same across browsers is everything outside the timer: audio latency, how
+quickly a keypress reaches the page, and whether a background tab keeps running at all
+(nowhere does — the game pauses, and the clock pauses with it). None of those touch a recorded
+time.
+
+## Pre-release records
+
+The book under the version number on the title screen, or `H`. It is the shared board in the
+same shape as the leaderboard, kept for the times set before v2 — after which the game changes
+enough that they stop being comparable, but not enough that they stop being the record of who
+did what first.
+
+**It is not frozen yet.** Until it is, it simply follows the live board, so it is always
+current and there is nothing to maintain; the header says `LIVE` and the subtitle says so in
+words. Freezing is one deliberate step, and it is what makes the board outlive the sheet:
+
+1. Open the game with the shared board reachable and let it load.
+2. In the browser console: `copy(PL.Archive.dump())`
+3. Paste over the whole of `data/prerelease.js` and commit.
+
+After that the header reads `FROZEN`, the rows in that file *are* the archive, and the sheet
+can be wiped, redeployed or pointed somewhere else without this screen moving. `src/archive.js`
+holds the behaviour and never gets regenerated; `data/prerelease.js` holds nothing but data and
+gets replaced wholesale, which is why they are two files.
+
+Until it is frozen, every load of the shared board also leaves a copy in `localStorage`. That
+is per-browser, so it is not the archive — but if the sheet is wiped before anyone runs the
+dump, the last board that browser saw is still there to freeze from.
+
 ## The levels
 
 Sixteen levels across six areas. The last level of each area is built on a mechanic that
@@ -713,6 +788,7 @@ src/
   audio.js                     synthesised SFX (no asset files)
   storage.js                   localStorage leaderboard, progress, and aggregates
   cloud.js                     the shared board: submit, fetch, offline outbox
+  archive.js                   the pre-release board: reads it, freezes it
   game.js                      canvas setup, fixed-timestep loop, scene stack
   camera.js                    dead-zone follow, clamping, screen shake
   tiles.js                     tile ids, the glyph legend, per-style tile painting
@@ -742,7 +818,7 @@ src/
   scene-bank.js                the Beer Bank's three shelves
   scene-title.js               title, premise, control legend, the envelope
   scene-levelselect.js         areas, levels, the Owe Block branch, shard indicators
-  scene-leaderboard.js         standalone records view
+  scene-leaderboard.js         standalone records view (live board and archive)
   scene-play.js                the level runner (+ pause overlay)
   scene-complete.js            level-complete card + shared leaderboard table
   scene-ending.js              the finale's whole-tryout summary
@@ -754,6 +830,7 @@ tools/
 
 data/
   towns.js                     the area registry and unlock rules
+  prerelease.js                the frozen pre-release board — data only, regenerated
   shantytown/level-1..3.js
   aleforge/level-1..3.js
   providence/level-1..3.js, oweblock.js

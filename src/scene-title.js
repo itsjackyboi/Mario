@@ -64,7 +64,7 @@
     for (var r = 0; r < this.options.length; r++) {
       if (this.options[r].slider != null) continue;
       var box = this.rowBox(r);
-      if (In.hovering(box.x, box.y, box.w, box.h) && this.sel !== r) {
+      if (In.hoveredInto(box.x, box.y, box.w, box.h) && this.sel !== r) {
         this.sel = r;
         PL.Audio.sfx('menu');
       }
@@ -84,6 +84,11 @@
     if (PL.BankIcon.clicked() || In.pressed('bank')) {
       PL.Audio.sfx('select');
       PL.Game.push(new PL.BankScene());
+      return;
+    }
+    if (PL.RecordsIcon.clicked() || In.pressed('records')) {
+      PL.Audio.sfx('select');
+      PL.Game.push(new PL.LeaderboardScene({ archive: true }));
       return;
     }
     if (PL.NameChip.clicked()) {
@@ -122,10 +127,12 @@
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
 
-    // build number, top-left, faint enough to ignore and legible enough to read
+    // build number, top-left, faint enough to ignore and legible enough to read,
+    // with the old book under it
     PL.gfx.text(ctx, 'v' + PL.VERSION, 8, 16, {
       font: PL.FONT.tiny, color: 'rgba(242,227,196,0.28)', shadow: false
     });
+    PL.RecordsIcon.draw(ctx, PL.RecordsIcon.hot());
 
     for (var s = 0; s < this.stars.length; s++) {
       var st = this.stars[s];
@@ -272,7 +279,7 @@
       ['MOVE', '← →  A D'],
       ['JUMP', 'SPACE / Z'],
       ['USE ITEM', 'E / SHIFT'],
-      ['PAUSE', 'ESC · M mute']
+      ['PAUSE', 'ESC · M mute · H records']
     ];
     for (var c = 0; c < cols.length; c++) {
       var cx = 32 + c * ((W - 64) / cols.length);

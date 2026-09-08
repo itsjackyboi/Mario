@@ -125,6 +125,8 @@
       this.splits = [];
       this.lastTown = null;
       this._cmp = null;
+      this.paceReal = PL.Game.realMs;
+      this.paceGame = PL.Game.gameMs;
       var first = this.levels[0];
       PL.Game.reset(new PL.PlayScene(first.def, first.meta));
     },
@@ -361,7 +363,8 @@
         timeMs: this.elapsedMs,
         grog: this.grog,
         shards: this.shards,
-        deaths: this.deaths
+        deaths: this.deaths,
+        pace: PL.Game.pace(this.paceReal, this.paceGame)
       };
       var level = this.modeDef().level;
       var result = PL.Store.recordRun(SR_TOWN, level, run);
@@ -409,7 +412,7 @@
     var In = PL.Input;
     for (var i = 0; i < this.boxes.length; i++) {
       var b = this.boxes[i];
-      if (In.hovering(b.x, b.y, b.w, b.h) && this.sel !== i) {
+      if (In.hoveredInto(b.x, b.y, b.w, b.h) && this.sel !== i) {
         this.sel = i; PL.Audio.sfx('menu');
       }
       if (In.clickedIn(b.x, b.y, b.w, b.h)) {
@@ -580,6 +583,13 @@
     this.stat(ctx, 38, y, 'Grog collected', String(this.run.grog), C.grogBand); y += 22;
     this.stat(ctx, 38, y, 'Red-Earth Shards', String(this.run.shards), C.coral); y += 22;
     this.stat(ctx, 38, y, 'Deaths', String(this.run.deaths), 'rgba(242,227,196,0.85)');
+    // Only shown when it has something to say — see scene-complete.js.
+    if (this.run.pace != null && this.run.pace < 0.97) {
+      PL.gfx.text(ctx, 'Clock: ' + Math.round(this.run.pace * 100) +
+        '% of real time — the browser dropped frames', 38, y + 20, {
+          font: PL.FONT.tiny, color: C.coral
+        });
+    }
 
     // ---- splits, two columns --------------------------------------------
     PL.gfx.panel(ctx, 276, 64, W - 298, 216, { r: 6 });

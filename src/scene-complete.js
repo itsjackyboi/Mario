@@ -119,6 +119,17 @@
     PL.gfx.text(ctx, 'Town purse: ' + purse + ' grog', 42, y + 2, {
       font: PL.FONT.tiny, color: 'rgba(242,227,196,0.5)'
     });
+    // The clock check. It only appears when it has something to say: a run the
+    // browser could not keep pace with is not the same run as everyone else's,
+    // and the honest thing is to say so on the card rather than quietly let it
+    // onto a board beside times that were.
+    if (this.run.pace != null && this.run.pace < 0.97) {
+      y += 18;
+      PL.gfx.text(ctx, 'Clock: ' + Math.round(this.run.pace * 100) +
+        '% of real time — the browser dropped frames', 42, y + 2, {
+          font: PL.FONT.tiny, color: C.coral
+        });
+    }
     if (this.shardGate) {
       y += 18;
       PL.gfx.text(ctx, U.fit(ctx, this.shardGate.name + ' stays shut — no shard.',
