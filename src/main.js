@@ -7,6 +7,12 @@
     var loading = document.getElementById('loading');
 
     try {
+      /* Before anything reads a save: clear one left from an earlier era.
+       * v2 is a different game — different levels, and every v1 time was set on
+       * the old ones — so records, unlocks and the Beer Bank all start again,
+       * for everybody, at the same moment. The pre-release board keeps the old
+       * times; see src/archive.js. */
+      PL.wiped = PL.Store.resetEra();
       PL.Game.init(canvas);
       PL.Audio.init();
       // Reads config.js. With no endpoint set this leaves the cloud switched

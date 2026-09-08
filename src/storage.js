@@ -17,6 +17,25 @@
   var MAX_ROWS = 10;
   var HEARD_MAX = 400;      // quip lines remembered; see heardLines()
 
+  /* THE ERA. Bumping this wipes every save on every machine, once.
+   *
+   * v2 changes the levels, so every time set on v1 was set on a different game
+   * and none of them are comparable. They are not deleted, they are moved: the
+   * pre-release board keeps them (see src/archive.js), and the era wipe only
+   * clears what a player carries — records, times, unlocks, the Beer Bank and
+   * everything bought out of it.
+   *
+   * The Bank goes with the rest on purpose. A launch where the people who
+   * played the preview start with twenty thousand grog and a full wardrobe, and
+   * everybody else starts with nothing, is not the same launch for both. The
+   * cosmetics are all still there to be earned again, from the same start.
+   *
+   * It runs once per browser: the era is written back with the empty save, so a
+   * player who never played the preview never notices, and one who did loses
+   * their save exactly once rather than every time they open the game.
+   */
+  var ERA = 2;
+
   function read(key, fallback) {
     try {
       var raw = window.localStorage.getItem(key);
@@ -29,6 +48,8 @@
     }
   }
 
+  function isEmpty(o) { for (var k in o) return false; return true; }
+
   function write(key, obj) {
     try {
       window.localStorage.setItem(key, JSON.stringify(obj));
@@ -40,6 +61,27 @@
   }
 
   var S = (PL.Store = {
+    ERA: ERA,
+
+    /**
+     * Clear a save left over from an earlier era, once.
+     *
+     * Called at boot, before anything reads a record. It leaves the pre-release
+     * archive's own key alone — that is the point of the archive, and wiping it
+     * here would throw away the only copy some browsers have of the old board.
+     *
+     * Returns true if it wiped, so the game can say so rather than a player
+     * finding an empty Bank and assuming a bug.
+     */
+    resetEra: function () {
+      var p = read(PR_KEY, null);
+      if (p && p.era === ERA) return false;
+      var had = !!(p && (p.bank || p.banked || (p.towns && !isEmpty(p.towns))));
+      write(LB_KEY, { version: VERSION, towns: {} });
+      write(PR_KEY, { version: VERSION, era: ERA, towns: {}, player: (p && p.player) || '' });
+      return had;
+    },
+
     /* Tool-assisted times are kept under an area of their own rather than on
      * the level's board. They are a real answer to "how fast can this level go"
      * and a meaningless answer to "how fast can it be played", so they are
@@ -183,6 +225,7 @@
       var p = read(PR_KEY, null);
       if (!p || p.version !== VERSION) p = { version: VERSION, towns: {} };
       if (!p.towns) p.towns = {};
+      p.era = ERA;                 // written back with every save
       return p;
     },
 

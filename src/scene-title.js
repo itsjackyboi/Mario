@@ -236,6 +236,15 @@
     PL.gfx.text(ctx, 'You are Corb. The drunk with a dream',
       W / 2, 96, { font: PL.FONT.small, align: 'center', color: 'rgba(242,227,196,0.65)' });
 
+    /* Said once, on the machine it happened to. An empty Bank and a blank board
+     * look exactly like a bug to someone who had both yesterday. */
+    if (PL.wiped) {
+      PL.gfx.text(ctx, 'v2: preview records, grog and skins have been cleared — ' +
+        'the old board is under PRE-RELEASE RECORDS', W / 2, 110, {
+          font: PL.FONT.tiny, align: 'center', color: C.coral
+        });
+    }
+
     // ---- who is playing --------------------------------------------------
     PL.NameChip.draw(ctx, PL.NameChip.hot());
 

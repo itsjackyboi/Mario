@@ -468,6 +468,30 @@ quickly a keypress reaches the page, and whether a background tab keeps running 
 (nowhere does — the game pauses, and the clock pauses with it). None of those touch a recorded
 time.
 
+## The v2 era wipe
+
+v2 changes the levels, so every time set before it was set on a different game. The save
+format did not change — the **era** did, and bumping `ERA` in `src/storage.js` clears every
+save on every machine, once:
+
+- every local record, time, split and unlock
+- the town purses
+- the Beer Bank, its lifetime total, and everything bought and worn out of it
+
+The Bank goes with the rest on purpose. A launch where the people who played the preview
+open with twenty thousand grog and a full wardrobe, and everyone else opens with nothing, is
+not the same launch for both. Every cosmetic is still there to be earned from the same start.
+
+The name on the book survives, because it is an identity rather than an advantage.
+
+It runs once per browser — the era is written back with the empty save — so a new player
+never notices and a returning one loses their save exactly once rather than on every load.
+The pre-release board is not touched by it: that is the whole point of the archive, and the
+snapshot in `localStorage` is the only copy some browsers have.
+
+Where there was something to clear, the title screen says so in one line, so an empty Bank
+does not read as a bug.
+
 ## Pre-release records
 
 The book under the version number on the title screen, or `H`. It is the shared board in the
@@ -494,6 +518,33 @@ gets replaced wholesale, which is why they are two files.
 Until it is frozen, every load of the shared board also leaves a copy in `localStorage`. That
 is per-browser, so it is not the archive — but if the sheet is wiped before anyone runs the
 dump, the last board that browser saw is still there to freeze from.
+
+## Alternate routes
+
+Seven levels carry a second way through, added in v2. Every one is an **addition**: no
+existing platform, hazard, pickup or spawn moved, and the trial levels were left alone.
+
+| Level | The route |
+|---|---|
+| Shanty Town II — The Bone Stair | A rigging line off the top of the stair, over the wretch water |
+| Aleforge I — Brewers Lane | An upper gantry over the first keg chute and its gap |
+| Aleforge II — Wolendi Wind Farm | A high line across the two-gust segment, entering neither column |
+| Providence I — The Ordered Stair | An upper gallery over the iron-in-threes |
+| Fenwick I — Brandywine Brush | A canopy branch over the deep bog |
+| Roto Kaiishi I — The Long Pier | A rope line above the surf and its five floats |
+| Roto Kaiishi II — Netmenders' Row | Up onto the awnings, over the hooks |
+
+They are options rather than shortcuts: each costs a climb, each rejoins the main line, and
+each carries grog so it reads as a route rather than scenery. Most trade something — the
+Wolendi line skips two gust cycles *and* the tonic and Lagerhorn underneath them.
+
+**They were measured, not guessed.** The movement envelope comes off the real player: 3.1
+tiles of rise, 4.84 tiles across on a flat jump, and 4.30 / 3.76 / 2.82 tiles across while
+still one, two or three tiles above the take-off. No link on any route asks for more than
+that. A reachability pass over each level — footholds as nodes, jumps cut to that envelope,
+entity platforms included because half of every level is crossed on things that are not
+tiles — confirms each new foothold connects to the route and back, and that nothing which
+used to be reachable stopped being so.
 
 ## The levels
 
@@ -859,6 +910,8 @@ src/
 
 tools/
   leaderboard.gs               paste into Apps Script; the whole server side
+  bundle.js                    the whole game as one HTML file (a preview build)
+  stamp.js                     cache-busts every asset URL with the version
 
 data/
   towns.js                     the area registry and unlock rules
