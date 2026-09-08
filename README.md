@@ -676,9 +676,17 @@ by how many zones are left, so the budget is always spent by the end of the leve
 different couple speaks on every attempt. He was narrating, and the joke does not survive
 that.
 
-That is also what makes a hundred-line pool worth having: a level file can write `'@?ru'`
-instead of naming a line, which draws a random one from that group and prefers ones this
-session has not heard. Two runs at the same level are two different conversations.
+**And he does not repeat himself at the same barrel.** A named line like `'@bonehardy1'` is
+a first choice, not a script: the line the level was written around is what you hear the
+first time, and after that the zone rotates to one you have not heard — another Bonehardy
+line, then, once that set is spent, the pooled material. Same subject, different sentence.
+What has been heard is kept in the save rather than in memory, because a rotation that reset
+every reload would make the second session the first session's conversation again. Across
+twenty-five runs of Shanty Town I, fifty spoken lines came out fifty different lines.
+
+A level file can also write `'@?ru'` instead of naming a line, which draws from that group
+directly. Both roads lead to the same place: two runs at a level are two different
+conversations.
 
 **His one-liners live in a fixed caption box.** Bottom-left, out of the play area, with his
 face on it — a speech bubble over the action was covering the jumps. The box grows to fit
@@ -995,15 +1003,15 @@ lines in `src/quips.js`:
 | Written as | Gives you |
 | --- | --- |
 | `'a literal line'` | exactly that |
-| `'@pv3'` | that one line — for a zone placed next to the specific thing it mocks |
-| `'@?ru'` | a random line from the `ru` group, preferring ones unheard this session |
+| `'@pv3'` | that line the first time; after that, an unheard one from the `pv` group, then from the pool |
+| `'@?ru'` | a random line from the `ru` group, preferring unheard ones |
 | `'@?in,cr'` | the same, drawing across several groups |
 
 The pool is grouped: one set per Liquor King, one per area, plus three area-neutral ones —
 `ru*` (rumours he picked up on the crossing and has not verified), `in*` (what people have
 said about *him*, which he has been rehearsing answers to) and `cr*` (what he makes of the
-whole business). The `@?` form exists so those three actually get heard: he only says two
-lines a level, so naming a fixed line in every zone would mean most of the pool never
+whole business). The `@?` form and the rotation both exist so those three actually get
+heard: he only says two lines a level, so a fixed line in every zone would mean most of the pool never
 surfaced.
 
 Place the digit next to the thing being mocked — a keg stack, a bone shrine, a bell tower,

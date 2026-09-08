@@ -17,9 +17,16 @@
  * file may hold literal text, a `@key` reference to one specific line, or a
  * `@?group` draw — a random line from `ru` (rumours he picked up on the
  * crossing), `in` (what people have said about him) or `cr` (what he makes of
- * the whole business), preferring ones this session has not heard. That is what
- * makes a pool this size worth having: two runs at a level are two different
- * conversations.
+ * the whole business), preferring ones not yet heard.
+ *
+ * AND A NAMED LINE IS A FIRST CHOICE, NOT A SCRIPT. The line a level names is
+ * what you hear the first time, because it is the one the zone was written
+ * around; after that the zone rotates to something unheard from the same group,
+ * and once that is spent, from the pool. Hearing the same sentence at the same
+ * barrel on every attempt is what makes a mouthy character grate, and the pool
+ * is many times bigger than the handful of keys the levels name. What has been
+ * heard is kept in the save, not just in memory: a rotation that reset every
+ * reload would make the second session the first session's conversation again.
  */
 (function (PL) {
   'use strict';
@@ -186,40 +193,102 @@
       return out;
     },
 
-    /* Lines already used this session, so a random draw does not repeat itself
-     * while there is anything unheard left in the group. */
-    heard: {},
+    /* Lines already used, so a draw does not repeat itself while there is
+     * anything unheard left in the group.
+     *
+     * It outlives the tab. Held only in memory, every reload put Corb back to
+     * the top of the pool and the second run of a level was the first run's
+     * conversation again — which is exactly the complaint a big pool exists to
+     * answer. Seeded from the save the first time it is asked for.
+     */
+    _heard: null,
+    get heard() {
+      if (!this._heard) {
+        this._heard = {};
+        var saved = (PL.Store && PL.Store.heardLines && PL.Store.heardLines()) || [];
+        for (var i = 0; i < saved.length; i++) this._heard[saved[i]] = true;
+      }
+      return this._heard;
+    },
+
+    /** Note a line as heard, here and in the save. */
+    mark: function (key) {
+      if (!key) return key;
+      this.heard[key] = true;
+      if (PL.Store && PL.Store.markHeard) PL.Store.markHeard(key);
+      return key;
+    },
 
     /**
      * Resolve a level's quip text.
-     *   '@key'   one specific line
+     *   '@key'   that line, or a sibling of it once it has been heard
      *   '@?ru'   a random line from the `ru` group, preferring unheard ones
      * Anything else is used verbatim.
+     *
+     * A FIXED KEY IS A FIRST CHOICE, NOT A SCRIPT. The line a level names is
+     * the one it was written around, so it is what you hear the first time —
+     * but hearing the same sentence at the same barrel on every attempt is
+     * what makes a mouthy character grate, and the pool is far bigger than the
+     * handful of keys the levels name. Once a line has been heard, the zone
+     * rotates to an unheard sibling from its own group: `@bonehardy1` becomes
+     * another Bonehardy line, `@af5` another Aleforge one. Same subject, same
+     * joke being made about the same thing, different sentence.
      */
     resolve: function (text) {
       if (typeof text !== 'string' || text.charAt(0) !== '@') return text;
       var key = text.slice(1);
       if (key.charAt(0) === '?') return this.LINES[this.draw(key.slice(1))] || text;
-      this.heard[key] = true;
-      return this.LINES[key] || text;
+      if (!this.LINES[key]) return text;
+      if (!this.heard[key]) return this.LINES[this.mark(key)];
+
+      // Heard already: rotate within the group the key belongs to, which is its
+      // name without the trailing number. A key with no number has no siblings
+      // to rotate to and stays as written.
+      var prefix = key.replace(/[0-9]+$/, '');
+      if (prefix === key) return this.LINES[key];
+      /* Once the whole group has been heard, widen to the pooled material
+       * rather than cycle three lines forever. A rumour at a Bonehardy shrine
+       * is still Corb talking about the same six men, and on the twentieth run
+       * of a level a line you have not heard beats the right line for the
+       * eighth time. */
+      var pool = this.hasFresh(prefix) ? prefix : prefix + ',ru,in,cr';
+      return this.LINES[this.draw(pool, key)] || this.LINES[key];
+    },
+
+    /** Is there anything in this group that has not been heard? */
+    hasFresh: function (prefix) {
+      var keys = this.group(prefix), heard = this.heard;
+      for (var i = 0; i < keys.length; i++) if (!heard[keys[i]]) return true;
+      return false;
     },
 
     /**
-     * A key from one or more groups ('ru', or 'in,cr'), preferring lines this
-     * session has not heard so a big pool actually gets through.
+     * A key from one or more groups ('ru', or 'in,cr'), preferring lines that
+     * have not been heard so a big pool actually gets through. `except` is a
+     * key to avoid when there is anything else to say — it is what stops a
+     * rotation from landing back on the line it is rotating away from once a
+     * group has been heard through.
      */
-    draw: function (prefix) {
-      var groups = prefix.split(','), all = [];
+    draw: function (prefix, except) {
+      var groups = prefix.split(','), all = [], seen = {};
       for (var g = 0; g < groups.length; g++) {
-        all = all.concat(this.group(groups[g]));
+        var keys = this.group(groups[g]);
+        for (var k = 0; k < keys.length; k++) {
+          // A widened pool can name the same group twice; a line listed twice
+          // would simply be twice as likely, which is not what was asked for.
+          if (!seen[keys[k]]) { seen[keys[k]] = true; all.push(keys[k]); }
+        }
+      }
+      if (except && all.length > 1) {
+        var kept = [];
+        for (var e = 0; e < all.length; e++) if (all[e] !== except) kept.push(all[e]);
+        all = kept;
       }
       if (!all.length) return null;
-      var fresh = [];
-      for (var i = 0; i < all.length; i++) if (!this.heard[all[i]]) fresh.push(all[i]);
+      var heard = this.heard, fresh = [];
+      for (var i = 0; i < all.length; i++) if (!heard[all[i]]) fresh.push(all[i]);
       var pool = fresh.length ? fresh : all;
-      var key = pool[Math.floor(Math.random() * pool.length)];
-      this.heard[key] = true;
-      return key;
+      return this.mark(pool[Math.floor(Math.random() * pool.length)]);
     }
   };
 

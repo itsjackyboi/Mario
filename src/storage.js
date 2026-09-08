@@ -15,6 +15,7 @@
   var PR_KEY = 'pintland-drunken-trials:progress';
   var VERSION = 1;
   var MAX_ROWS = 10;
+  var HEARD_MAX = 400;      // quip lines remembered; see heardLines()
 
   function read(key, fallback) {
     try {
@@ -331,6 +332,30 @@
      */
     playerName: function () {
       return this.loadProgress().player || '';
+    },
+
+    /**
+     * Lines of Corb's that have already been heard, so the next one at the same
+     * barrel is a different one. See src/quips.js.
+     *
+     * It has to outlive the tab or the rotation resets every reload and the
+     * second session is the first session's conversation again. Capped, because
+     * it is a nicety rather than a record: the oldest go first, and if the whole
+     * list were lost the worst case is hearing a good line twice.
+     */
+    heardLines: function () {
+      var h = this.loadProgress().heard;
+      return h instanceof Array ? h : [];
+    },
+
+    markHeard: function (key) {
+      if (!key) return;
+      var p = this.loadProgress();
+      var h = p.heard instanceof Array ? p.heard : [];
+      if (h.indexOf(key) !== -1) return;
+      h.push(key);
+      p.heard = h.slice(-HEARD_MAX);
+      write(PR_KEY, p);
     },
 
     /**
