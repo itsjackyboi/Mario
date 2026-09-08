@@ -4,6 +4,22 @@
  * gust columns run on a fixed cycle: a rising phase that carries you up, then
  * a lateral SHEAR that throws anyone still hanging in the air. Every column
  * has a perch plank at the bottom so you can stand and count it out.
+ *
+ * THE LOW LINE. At the first two columns there is one loose board lying across
+ * the alley at deck height — segment 1 at column 39, segment 2 at column 69 —
+ * and a runner who does not want to stand and count can go under the wind
+ * instead of up it: ledge, board, far side, without ever touching the perch.
+ *
+ * It is deliberately at the edge of what the legs can do. The board sits 4.5
+ * tiles out and a flat jump carries 4.84, so the take-off window is about four
+ * frames wide; short of it is the pit, and the pit has no floor. The flight
+ * also crosses the column itself, so the line only exists while that column is
+ * quiet — a lift catches you mid-air and puts you back on the perch, a shear
+ * throws you out of the alley. Two things to get right, both of them the
+ * player's to find.
+ *
+ * The intended route is untouched: perch, wait for the lift, ride it to the
+ * plank above. The board adds a second answer without taking the first away.
  */
 (function (PL) {
   'use strict';
@@ -39,7 +55,7 @@
         '..........o..o................',
         '.......==.................====',
         '....o.....4....o......==......',
-        '#####........########....#####',
+        '#####....=...########....#####',
         '#####........########....#####',
         '#####........########....#####'
       ],
@@ -52,7 +68,7 @@
         '..........o...........o.......',
         '.......==..........==.........',
         '....o.........T..........N....',
-        '#####.......#####.......######',
+        '#####....=..#####.......######',
         '#####.......#####.......######',
         '#####.......#####.......######'
       ],

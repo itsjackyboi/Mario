@@ -539,6 +539,7 @@ existing platform, hazard, pickup or spawn moved, and the trial levels were left
 | Shanty Town II — The Bone Stair | A rigging line off the top of the stair, over the wretch water |
 | Aleforge I — Brewers Lane | An upper gantry over the first keg chute and its gap |
 | Aleforge II — Wolendi Wind Farm | A high line across the two-gust segment, entering neither column |
+| Aleforge II — the low line | A board across the alley at each of the first two columns: under the wind rather than up it |
 | Providence I — The Ordered Stair | An upper gallery over the iron-in-threes |
 | Fenwick I — Brandywine Brush | A canopy branch over the deep bog |
 | Roto Kaiishi I — The Long Pier | A rope line above the surf and its five floats |
@@ -547,6 +548,15 @@ existing platform, hazard, pickup or spawn moved, and the trial levels were left
 They are options rather than shortcuts: each costs a climb, each rejoins the main line, and
 each carries grog so it reads as a route rather than scenery. Most trade something — the
 Wolendi line skips two gust cycles *and* the tonic and Lagerhorn underneath them.
+
+**The Wolendi low line is the tight one.** At the first two columns a single board lies
+across the alley at deck height, so a runner who does not want to stand on the perch and
+count the cycle out can jump it instead. The board sits 4.5 tiles out against a 4.84-tile
+flat jump, which leaves a take-off window about **four frames** wide over a pit with no
+floor — and the flight crosses the column, so the line is only open while that column is
+quiet, measured at **7 of 24 arrival timings** across the cycle. A lift catches you mid-air
+and puts you back on the perch; a shear throws you out of the alley. The perch route is
+exactly as it was.
 
 **They were measured, not guessed.** The movement envelope comes off the real player: 3.1
 tiles of rise, 4.84 tiles across on a flat jump, and 4.30 / 3.76 / 2.82 tiles across while

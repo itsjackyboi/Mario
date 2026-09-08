@@ -113,6 +113,7 @@ levels are untouched.
 | **Shanty Town II — The Bone Stair** | A rigging line off the top of the stair, three long planks over the wretch water, dropping onto the far bank. Skips the loose-plank crossing. |
 | **Aleforge I — Brewers Lane** | An upper gantry from the first brewery catwalk, over the first keg chute and its gap, back down to the roof beyond it. |
 | **Aleforge II — Wolendi Wind Farm** | A step off the right-hand roof onto a high line that crosses the two-gust segment without entering either column. Skips two gust cycles — and the tonic and Lagerhorn under them. |
+| **Aleforge II — the low line** | One loose board across the alley at each of the first two columns, so a runner can go *under* the wind instead of standing on the perch and counting the cycle out. |
 | **Providence I — The Ordered Stair** | An upper gallery, entered by two steps off the flat before it, running over the iron-in-threes segment. |
 | **Fenwick I — Brandywine Brush** | A canopy branch off the last bank, over the deep bog. Skips four vines with no light and no phantom footing. |
 | **Roto Kaiishi I — The Long Pier** | A rope line above the surf, over five floats and three wretches, landing on the far deck. |
@@ -126,6 +127,14 @@ to the route and back — and that nothing that used to be reachable stopped bei
 
 They are options, not shortcuts: each costs a climb, each drops you back on the main line,
 and each carries grog so it reads as a route rather than scenery.
+
+**The Wolendi low line is the one deliberately frame-tight thing in v2.** The board sits 4.5
+tiles out and a flat jump carries 4.84, so the take-off window measures about **four frames**;
+short of it is the pit and the pit has no floor. The flight also crosses the column, so the
+line only exists while that column is quiet — measured, it is open on **7 of 24 arrival
+timings** sampled across the wind cycle. Arrive on a lift and it puts you back on the perch;
+arrive on a shear and it throws you out of the alley. The intended route is untouched: perch,
+wait for the lift, ride it to the plank above.
 
 ## Playing it before you ship it
 
