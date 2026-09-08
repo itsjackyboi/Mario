@@ -471,7 +471,10 @@ time.
 ## Pre-release records
 
 The book under the version number on the title screen, or `H`. It is the shared board in the
-same shape as the leaderboard, kept for the times set before v2 — after which the game changes
+same shape as the leaderboard — with the **build** each record was set on shown beside it,
+because that is the whole point of the screen: the timer and the damage rules have moved
+between builds, and a pre-release record without the build it was set on is half a record —
+kept for the times set before v2 — after which the game changes
 enough that they stop being comparable, but not enough that they stop being the record of who
 did what first.
 

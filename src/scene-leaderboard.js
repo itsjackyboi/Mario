@@ -270,8 +270,14 @@
 
     // No DATE here: alongside the level list there is only room for five
     // columns, and who set it matters more than when. Page two has both.
+    //
+    // The archive shows BUILD in its place, because that is the whole point of
+    // that screen: these are times from before v2, the timer and the damage
+    // rules have moved between builds, and a pre-release record without the
+    // build it was set on is half a record.
     PL.LeaderboardTable.draw(ctx, 244, 108, W - 286, runs.slice(0, TOP_N), null, {
       player: this.shared,
+      version: this.archive,
       date: false,
       empty: this.shared ? 'Nobody has posted a run here yet.'
                          : 'No runs logged yet. Get wet.'

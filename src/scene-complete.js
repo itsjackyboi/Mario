@@ -206,6 +206,19 @@
       // MODE never rides back into TIME, however little room is left.
       var cMode = Math.max(cGrog - 76, cPlayer + (opts.player ? 96 : 0));
       var playerW = Math.max(40, cMode - cPlayer - 10);
+      /* MODE is the one column with a word in it rather than a number, so it is
+       * the one that can run into its neighbour when an optional column is
+       * added. With BUILD on there is no room for SPEEDRUN beside the grog
+       * count, so it says RUN instead: a shorter word beats a word that
+       * collides, and both are read against the `single` on every other row.
+       *
+       * The grog column is right-aligned and ends at cGrog, so the space MODE
+       * can have is what is left after the widest number that column will
+       * hold — measuring against cGrog itself leaves the word touching a
+       * three-digit haul. */
+      ctx.font = PL.FONT.tiny;
+      var runLabel = ctx.measureText('SPEEDRUN').width <= cGrog - cMode - 26
+        ? 'SPEEDRUN' : 'RUN';
 
       PL.gfx.text(ctx, '#', x, y + 12, { font: PL.FONT.tiny, color: dim });
       PL.gfx.text(ctx, 'TIME', cTime, y + 12, { font: PL.FONT.tiny, color: dim });
@@ -246,7 +259,7 @@
             font: PL.FONT.small, color: mine ? PL.C.lanternHi : col
           });
         }
-        PL.gfx.text(ctx, r.speedrun ? 'SPEEDRUN' : 'single', cMode, ry, {
+        PL.gfx.text(ctx, r.speedrun ? runLabel : 'single', cMode, ry, {
           font: PL.FONT.tiny,
           color: r.speedrun ? PL.C.teal : 'rgba(242,227,196,0.55)'
         });
