@@ -85,6 +85,7 @@
      * replays. Both survive enter() being called again by the rewind itself. */
     if (this.tasSeed === undefined) this.tasSeed = 20260904;
     if (this.tas === undefined) this.tas = false;
+    if (this.tasAuto === undefined) this.tasAuto = false;
     if (!this.inputLog) this.inputLog = [];
     if (this.tasFrame === undefined) this.tasFrame = 0;
     this.fadeIn = 1;
@@ -172,14 +173,31 @@
     PL.Audio.sfx('select');
   };
 
-  /** The buttons held this frame, as a small record the log can keep. */
+  /**
+   * The buttons held this frame, as a small record the log can keep.
+   *
+   * AUTORUN holds right for you. Almost every frame of almost every route is
+   * "still running right", and holding a direction with one hand while tapping
+   * step with the other — for a thousand frames — is the part of building a TAS
+   * that is tiring rather than interesting. With it on, the work is step and
+   * jump, and the frames where you do want to stop or turn are the ones you
+   * actually think about. Holding left still wins: pressing a direction has to
+   * mean that direction, or the toggle would be a trap.
+   */
   PlayScene.prototype.readHeld = function () {
     var In = PL.Input;
+    var auto = this.tasAuto && !In.down('left');
     return {
-      l: In.down('left') ? 1 : 0, r: In.down('right') ? 1 : 0,
+      l: In.down('left') ? 1 : 0, r: (In.down('right') || auto) ? 1 : 0,
       u: In.down('up') ? 1 : 0, d: In.down('down') ? 1 : 0,
       j: In.down('jump') ? 1 : 0, i: In.pressed('item') ? 1 : 0
     };
+  };
+
+  /** AUTORUN on or off. Reachable from the key or from the panel chip. */
+  PlayScene.prototype.toggleAutorun = function () {
+    this.tasAuto = !this.tasAuto;
+    PL.Audio.sfx('menu');
   };
 
   /** Advance exactly one frame on the given held inputs, and log it. */
@@ -200,24 +218,35 @@
    */
   PlayScene.prototype.tasRewind = function (frame) {
     frame = Math.max(0, Math.min(frame, this.tasFrame));
+    var self = this;
     var log = this.inputLog;
     var keepTas = this.tas, keepSeed = this.tasSeed, keepMark = this.mark;
+    var keepAuto = this.tasAuto;
     PL.util.restoreRandom();
     PL.util.seedRandom(keepSeed);
-    this.enter();                       // same build, same seed, same level
-    this.tas = keepTas;
-    this.tasSeed = keepSeed;
-    this.mark = keepMark;
-    this.inputLog = log;
-    this.tasFrame = 0;
-    this.introT = 0;                    // the card has been read
-    for (var f = 0; f < frame; f++) {
-      PL.Input.force = log[f] || {};
-      PL.Input.forcePrev = f > 0 ? (log[f - 1] || {}) : null;
-      this.tasFrame++;
-      this.step(1 / 60);
-    }
-    PL.Input.force = PL.Input.forcePrev = null;
+    /* The replay is the level being played again from the start, as fast as the
+     * machine can do it, and every frame of it asks for the sounds it made the
+     * first time. Heard, that is a whole run's jumps and splashes arriving in
+     * one instant — deafening, and nothing to do with the frame you are
+     * actually rewinding to. Rewinding is meant to be silent; only the frame
+     * you land on makes a noise, and it does that when you step off it. */
+    PL.Audio.quiet(function () {
+      self.enter();                     // same build, same seed, same level
+      self.tas = keepTas;
+      self.tasSeed = keepSeed;
+      self.tasAuto = keepAuto;
+      self.mark = keepMark;
+      self.inputLog = log;
+      self.tasFrame = 0;
+      self.introT = 0;                  // the card has been read
+      for (var f = 0; f < frame; f++) {
+        PL.Input.force = log[f] || {};
+        PL.Input.forcePrev = f > 0 ? (log[f - 1] || {}) : null;
+        self.tasFrame++;
+        self.step(1 / 60);
+      }
+      PL.Input.force = PL.Input.forcePrev = null;
+    });
   };
 
   PlayScene.prototype.update = function (dt) {
@@ -235,6 +264,7 @@
         this.tasRewind(0);
         return;
       }
+      if (In.pressed('autorun') || PL.HUD.tasAutoClicked()) { this.toggleAutorun(); return; }
       if (In.pressed('rewind')) { this.tasRewind(this.tasFrame - 1); return; }
       if (In.down('rewind') && this.tasFrame > 0 && (this.tasHold = (this.tasHold || 0) + 1) > 12) {
         this.tasRewind(this.tasFrame - 1);

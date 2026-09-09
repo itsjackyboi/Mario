@@ -67,7 +67,7 @@ corner.
 | Pre-release records (title screen) | click the book under the version number, or `H` |
 | Anything on the title screen | click it. Every row, icon and switch answers the mouse |
 | Practice a level | `C` on the level-select, then `C` in-level to drop a marker |
-| TAS mode (in practice) | `T` to enter, `.` step a frame, `/` hold to run, `,` rewind, `R` back to frame 0 |
+| TAS mode (in practice) | `T` to enter, `.` step a frame, `/` hold to run, `,` rewind, `;` autorun, `R` back to frame 0 |
 | Menus | `↑` `↓` `←` `→`, `Enter` to confirm, `Esc` to back out |
 
 There is no drop-item control. Carried items are a FIFO queue — `E` spends whichever is at
@@ -163,7 +163,20 @@ whatever you are holding, `/` held runs it forward, `,` rewinds a frame, and `R`
 frame zero. A panel in the corner shows the frame number, the exact clock, position to two
 decimals, horizontal and vertical speed, whether you are still counted as grounded and how
 much coyote time is left — the numbers a route actually turns on, which the game otherwise
-never shows you.
+never shows you. Under them is what the *next* step will record, which is not always what
+your hands are doing — see AUTORUN.
+
+**AUTORUN** — `;`, or the switch on the panel — holds right for you. Almost every frame of
+almost every route is "still running right", and holding a direction with one hand while
+tapping step with the other, for a thousand frames, is the tiring part rather than the
+interesting one. With it on the work is step and jump, and the frames where you *do* want to
+stop or turn are the ones you actually think about. Holding left still wins over it, so a
+direction you press always means that direction.
+
+**Rewinding is silent.** The replay is the level being played again at full speed, and every
+frame of it asks for the sounds it made the first time; heard, that is a whole run's jumps
+and splashes arriving in one instant. Only the frame you land on makes a noise, and it makes
+it when you step off it.
 
 You cannot find a frame-perfect line at sixty frames a second. You find it by stepping into
 the gap and looking, which is what this is for: the strategies a machine search misses are

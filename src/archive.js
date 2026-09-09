@@ -141,22 +141,23 @@
     runsFor: function (levelId) { this.index(); return this.byLevel[levelId] || []; },
     tasFor: function (levelId) { this.index(); return this.tasByLevel[levelId] || []; },
 
-    /** One line saying what this screen is showing and how solid it is. */
+    /**
+     * One line under the title: how many runs are in the book, and the warning
+     * that goes with all of them.
+     *
+     * Where the rows came from — the frozen file, the live board, this
+     * browser's last snapshot — is the badge in the top right, not this line.
+     * What a reader actually needs to know here is that these times were set on
+     * a build that no longer exists, and that a route one of them used may have
+     * been changed or closed since. A time you cannot match because the level
+     * moved under it is not a time you should be measuring yourself against.
+     */
     status: function () {
-      var d = this.data();
-      switch (this.source()) {
-        case 'frozen':
-          return 'Frozen ' + String(d.capturedAt).slice(0, 10) + '  ·  ' +
-                 d.rows.length + ' runs  ·  this board no longer changes.';
-        case 'live':
-          return 'Following the live board  ·  ' + PL.Cloud.rows.length +
-                 ' runs  ·  not frozen yet, so it still moves.';
-        case 'snapshot':
-          return 'The last board this browser saw' +
-                 (this.snappedAt ? ', ' + String(this.snappedAt).slice(0, 10) : '') +
-                 '  ·  ' + this.snapshot().length + ' runs  ·  not frozen yet.';
-      }
-      return 'Nothing here yet — open it once with the shared board reachable.';
+      var n = this.all().length;
+      if (!n) return 'Nothing here yet — open it once with the shared board reachable.';
+      return n + ' run' + (n === 1 ? '' : 's') + '  ·  these runs were completed on an ' +
+             'old build of the game, some may be obsolete or unattainable in the ' +
+             'current version';
     },
 
     /**
