@@ -22,6 +22,11 @@
  *   `Pre Release Records` the board from the era before, kept under its own
  *                         name by splitEras() and never written again.
  *
+ * A log tab that has been renamed is still read: any tab whose header row opens
+ * `date, player, town, level` counts as a log, so renaming `runs` — which makes
+ * the next post create a fresh empty one — no longer hides everything that came
+ * before it. Only `runs` is written to.
+ *
  * Sorting a log in place would mean the sheet could not answer "what did I
  * actually run last Tuesday", and a bad row could not be found and removed by
  * hand. Deriving a second tab costs one cheap rewrite per post and keeps both.
@@ -166,14 +171,58 @@ function json_(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-/** Every run in the log, as objects. Shared by doGet and the rebuild. */
-function readRuns_() {
-  var sh = sheet_();
-  var last = sh.getLastRow();
-  if (last < 2) return [];
+/**
+ * Every tab that is a run log: `runs` first, then any other tab whose header
+ * row opens with the same four columns.
+ *
+ * There is normally exactly one, and reading by shape would be a pointless
+ * generalisation — except that a log is easy to lose by accident. Rename the
+ * `runs` tab, for any good reason, and the next posted run finds no tab by that
+ * name, makes a fresh empty one, and the board starts again from nothing: every
+ * old row is still in the sheet, sitting in a tab that nothing reads any more.
+ * That is exactly what happened to this one, and the history came back the
+ * moment the script stopped going by name alone.
+ *
+ * Only `runs` is ever written to. The rest are read.
+ */
+function logSheets_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var out = [sheet_()];                          // creates `runs` if it is gone
+  var all = ss.getSheets();
+  for (var i = 0; i < all.length; i++) {
+    var sh = all[i];
+    if (sh.getSheetName() === SHEET_NAME) continue;
+    if (sh.getLastRow() < 2 || sh.getLastColumn() < 4) continue;
+    var head = sh.getRange(1, 1, 1, 4).getValues()[0];
+    var isLog = true;
+    for (var c = 0; c < 4 && isLog; c++) {
+      if (String(head[c]).toLowerCase().replace(/\s+/g, '') !== HEADERS[c]) isLog = false;
+    }
+    if (isLog) out.push(sh);
+  }
+  return out;
+}
 
-  var values = sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
-  var rows = [];
+/** Every run in every log, as objects. Shared by doGet and the rebuild. */
+function readRuns_() {
+  var logs = logSheets_();
+  var rows = [], seen = {};
+  for (var s = 0; s < logs.length; s++) readLog_(logs[s], rows, seen);
+  // Back into the order they were run in, so ?board=1 still reads as a log
+  // rather than as one tab followed by another.
+  rows.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
+  return rows;
+}
+
+/** Add one log tab's runs to `rows`, skipping any already seen. */
+function readLog_(sh, rows, seen) {
+  var last = sh.getLastRow();
+  if (last < 2) return;
+  // An archived tab can be narrower than this script's column list — it was
+  // written before a column existed. Read what is there; the rest comes back
+  // undefined and falls through to the same defaults as an empty cell.
+  var wide = Math.min(HEADERS.length, sh.getLastColumn());
+  var values = sh.getRange(2, 1, last - 1, wide).getValues();
   for (var i = 0; i < values.length; i++) {
     var v = values[i];
     if (!v[3]) continue;                         // no level id, not a run
@@ -185,7 +234,7 @@ function readRuns_() {
     var version = String(v[9] || '');
     var marked = version.indexOf(TAS_MARK) >= 0;
     if (marked) version = version.split(TAS_MARK).join('');
-    rows.push({
+    var row = {
       date: String(v[0]),
       player: String(v[1]),
       town: String(v[2]),
@@ -198,9 +247,15 @@ function readRuns_() {
       version: version,
       time: String(v[10] || ''),
       tas: marked || v[11] === true || String(v[11]).toLowerCase() === 'true'
-    });
+    };
+    // Two tabs can hold the same run — a log copied rather than renamed is the
+    // usual way. A run is one player finishing one level at one instant, so
+    // that is the key, and a duplicate of it is not a second run.
+    var key = row.date + '|' + row.player + '|' + row.level + '|' + row.timeMs;
+    if (seen[key]) continue;
+    seen[key] = 1;
+    rows.push(row);
   }
-  return rows;
 }
 
 /** GET ?board=1 for the whole log, ?rebuild=1 to redraw the leaderboard tab. */
