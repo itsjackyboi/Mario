@@ -175,33 +175,44 @@ function search(levelId, opts) {
    * thunk that is only called if the position is actually wanted. Saving is the
    * single most expensive thing this search does — more than the physics it is
    * saving — and most children are beaten by a sibling before they are ever
-   * expanded. Deciding first and saving second cuts the bill by most of itself. */
-  const CAP = beamW * 2;
-  function offer(g, h, key, snap) {
+   * expanded. Deciding first and saving second cuts the bill by most of itself.
+   *
+   * A band is kept as one small set PER COLUMN rather than one ranked list.
+   *
+   * That is not tidiness, it is the difference between finishing The Drowning
+   * Tide and not. With a single ranked list, a position that has stopped to
+   * climb the ladder is worse than every position still running along the beach
+   * — being further along is exactly what the estimate rewards — so it is
+   * refused entry and never saved at all. The whole beam is then made of runs
+   * out on the sand, and the whole beam drowns together when the water comes
+   * in, at the same frame, at any width. Diversity applied when survivors are
+   * CHOSEN comes too late; nothing trailing ever got into the band to choose
+   * from.
+   */
+  const PER_COL = opts.perCol || 6;
+  const COLW = T * 2;
+
+  function offer(g, h, key, x, snap) {
     const b = bandOf(g);
     let bucket = bands.get(b);
     if (!bucket) bands.set(b, bucket = new Map());
+    const cb = Math.floor(x / COLW);
+    let m = bucket.get(cb);
+    if (!m) bucket.set(cb, m = new Map());
+
     const f = g + h;
-    const have = bucket.get(key);
+    const have = m.get(key);
     if (have) { if (have.g + have.h <= f) return; }
-    else if (bucket.size >= CAP) {
-      if (bucket.worst === undefined) {
-        let w = -Infinity;
-        for (const n of bucket.values()) if (n.g + n.h > w) w = n.g + n.h;
-        bucket.worst = w;
-      }
-      if (f >= bucket.worst) return;          // beaten already: never saved
-      // make room for it
+    else if (m.size >= PER_COL) {
       let wk = null, wv = -Infinity;
-      for (const [k, n] of bucket) if (n.g + n.h > wv) { wv = n.g + n.h; wk = k; }
-      bucket.delete(wk);
-      bucket.worst = undefined;
+      for (const [k2, n] of m) if (n.g + n.h > wv) { wv = n.g + n.h; wk = k2; }
+      if (f >= wv) return;                    // beaten in its own column: never saved
+      m.delete(wk);
     }
-    bucket.set(key, snap());
-    bucket.worst = undefined;
+    m.set(key, snap());
   }
 
-  bands.set(0, new Map([[0, start]]));
+  bands.set(0, new Map([[Math.floor(start.x / (T * 2)), new Map([[0, start]])]]));
 
   let best = null;
   let expanded = 0, died = 0, offMap = 0, worked = 0;
@@ -212,25 +223,32 @@ function search(levelId, opts) {
     bands.delete(b);
     if (!bucket) continue;
 
-    /* Take the best, but not sixty versions of the same place.
+    /* Survivors are drawn round-robin from the columns, best of each first.
      *
-     * Left to itself a beam fills with near-duplicates: standing on a plank at
-     * a dozen sub-pixel offsets is a dozen slots spent on one position. That is
-     * fatal exactly where it matters, because crossing a gap always looks worse
-     * for a moment than not crossing it — the jumper is over water with nothing
-     * under him — so the one node that jumped is outranked by the crowd that
-     * stayed, and the search sits on the near side for the rest of the level.
-     * Capping how many survivors any one tile may contribute keeps the risky
-     * node in the beam long enough to land. */
-    const ranked = [...bucket.values()].sort((u, v) => (u.g + u.h) - (v.g + v.h));
+     * The leading edge still gets the most slots, because it supplies the best
+     * node in the most columns — but it cannot take them all, and the run that
+     * stopped to climb the ladder is still in the beam when the water goes back
+     * out. The per-tile cap on top of that stops a dozen sub-pixel variants of
+     * standing on one plank from spending a dozen slots.
+     */
+    const cols = [...bucket.values()].map(m => [...m.values()].sort((u, v) => (u.g + u.h) - (v.g + v.h)));
+    cols.sort((u, v) => (u[0].g + u[0].h) - (v[0].g + v[0].h));
+
     const nodes = [], perCell = new Map();
-    for (const n of ranked) {
-      if (nodes.length >= beamW) break;
-      const cell = (Math.floor(n.x / T) << 6) + Math.floor(n.y / T);
-      const c = perCell.get(cell) || 0;
-      if (c >= SPREAD) continue;
-      perCell.set(cell, c + 1);
-      nodes.push(n);
+    for (let round = 0; nodes.length < beamW; round++) {
+      let took = 0;
+      for (const arr of cols) {
+        if (nodes.length >= beamW) break;
+        const n = arr[round];
+        if (!n) continue;
+        const cell = (Math.floor(n.x / T) * 64) + Math.floor(n.y / T);
+        const c = perCell.get(cell) || 0;
+        if (c >= SPREAD) continue;
+        perCell.set(cell, c + 1);
+        nodes.push(n);
+        took++;
+      }
+      if (!took) break;
     }
     worked++;
 
@@ -282,7 +300,7 @@ function search(levelId, opts) {
           const key = (Math.round(p.x / 5) * 8192) + (Math.round(p.y / 5) * 8) +
                       (p.vx > 0.2 ? 4 : p.vx < -0.2 ? 2 : 0) + (p.grounded ? 1 : 0);
           const px = p.x, py = p.y, d = played;
-          offer(g, h, key, () => ({
+          offer(g, h, key, px, () => ({
             snap: S.snapshot(base, rng, PL, { horizon: HORIZON }),
             g, h, key, parent: node, act: a, dur: d, x: px, y: py
           }));

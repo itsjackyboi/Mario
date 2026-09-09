@@ -37,16 +37,20 @@ const MAXRUN = 4.3;                 // px per frame, measured, no item
 const WALK = T / MAXRUN;            // ≈ 7.44 frames to cross one tile
 const GRAV = 0.62;
 
-/* The jump, as measured in the game rather than derived from the constants:
- * how many tiles across Corb clears for each tile he gains. Above two tiles of
- * rise there is nothing left to move him sideways with. */
-const REACH_UP = [4.30, 3.76, 3.23];
+/* How many tiles across Corb clears for each tile he gains, flown in the real
+ * game by bot/envelope.js and copied here. Re-run that if the physics change.
+ *
+ * The first version of this table was written from memory and was wrong by a
+ * whole row — it had 4.30 as the flat reach when 4.30 is what a jump clears
+ * arriving ONE tile up, and it stopped at two tiles of rise when a bare jump
+ * reaches three. Every three-tile climb in the game was therefore off the map,
+ * which is a quiet way of telling a search that a level has no route. Numbers
+ * that price every move in the game are measured now, not remembered. */
+const REACH_UP = [4.84, 4.30, 3.76, 2.82];
 
-/* And with a wind pouch or a lagerhorn in hand. A pouch is a whole second jump
- * launched from mid-air, so it buys height AND distance; these are the same
- * measurements taken with one in the purse. Levels get this table only if they
- * actually contain the item. */
-const REACH_ASSISTED = [5.50, 5.20, 4.80, 4.40, 3.90, 3.30];
+/* And with a wind pouch: one extra jump, spent by pressing again in mid-air.
+ * Also measured, and nearly double what was guessed for it. */
+const REACH_ASSISTED = [9.27, 8.87, 8.33, 7.79, 7.26, 6.32];
 
 /** Falling: how far across you drift while dropping `d` tiles, and how long. */
 function fallFrames(d) { return Math.sqrt(2 * d * T / GRAV); }
@@ -195,7 +199,11 @@ function moves(m, c, r, out) {
   }
 
   // a jump: up to two tiles of rise, less reach the higher you go
-  const table = m.assisted ? REACH_ASSISTED : REACH_UP;
+  /* The bigger envelope applies where the item can actually be in hand: from
+   * the pouch onwards, or near a gust that throws you. Granting it level-wide
+   * would have the map promising a five-tile climb in an opening whose pouch is
+   * a hundred and seventy columns further on. */
+  const table = (m.assistFrom !== undefined && c >= m.assistFrom) ? REACH_ASSISTED : REACH_UP;
   for (let rise = 0; rise < table.length; rise++) {
     const r2 = r - rise;
     if (r2 < 0) break;
@@ -323,13 +331,20 @@ function analyse(scene, PL) {
    * second jump in mid-air and a lagerhorn is a third more height; a map that
    * assumed the bare envelope on a level built around them would call the route
    * impossible and send the search at a wall. */
-  let inverts = false, assisted = false;
+  let inverts = false, assistFrom;
   for (const e of world.entities) {
     if (e.type === 'veilGate') inverts = true;
-    if (e.type === 'pouch' || e.type === 'lagerhorn' || e.type === 'windGust') assisted = true;
+    if (e.type === 'pouch' || e.type === 'lagerhorn') {
+      const c = Math.floor(e.x / T);
+      if (assistFrom === undefined || c < assistFrom) assistFrom = c;
+    }
+    if (e.type === 'windGust') {
+      const c = Math.max(0, Math.floor(e.x / T) - 2);
+      if (assistFrom === undefined || c < assistFrom) assistFrom = c;
+    }
   }
   const m = build(world, PL ? sweep(PL, scene.def, 900) : null, { inverts });
-  m.assisted = assisted;
+  m.assistFrom = assistFrom;
   if (inverts) {
     m.flips = new Uint8Array(m.cols);
     for (const e of world.entities) {
