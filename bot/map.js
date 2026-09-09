@@ -389,6 +389,13 @@ function analyse(scene, PL) {
  * Corb spends most of a run in the air, where by definition he is not standing
  * anywhere, and a heuristic that returns Infinity every time his feet leave the
  * ground is a heuristic that only scores the boring half of the level.
+ *
+ * The width of the scan is the part that matters. Mid-jump over four tiles of
+ * water, the only standing places are the plank behind and the plank ahead; a
+ * scan that reaches two columns sees only the one behind, quotes the cost of
+ * going back, and so prices every jump across the gap as worse than not
+ * jumping. The search then sits on the near plank for the length of the level.
+ * So it reaches as far as a jump does, and charges honestly for the distance.
  */
 function lookup(m, dist, c, r) {
   if (c < 0) c = 0; if (c >= m.cols) c = m.cols - 1;
@@ -396,8 +403,8 @@ function lookup(m, dist, c, r) {
   const i = r * m.cols + c;
   if (isFinite(dist[i])) return dist[i];
   let best = Infinity;
-  for (let dr = -3; dr <= 6; dr++) {
-    for (let dc = -2; dc <= 2; dc++) {
+  for (let dr = -4; dr <= 8; dr++) {
+    for (let dc = -6; dc <= 6; dc++) {
       const rr = r + dr, cc = c + dc;
       if (rr < 0 || rr >= m.rows || cc < 0 || cc >= m.cols) continue;
       const d = dist[rr * m.cols + cc];

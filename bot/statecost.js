@@ -9,10 +9,11 @@ for (const id of ['shantytown-3', 'fenwick-2', 'aleforge-3', 'tavern-1']) {
   PL.Game.reset(scene); scene.introT = 0; scene.fadeIn = 0;
   scene.inputLog = []; scene.tasFrame = 0; scene.tas = true;
   for (let f = 0; f < 300; f++) R.stepTop(PL, scene, held(f));
-  const c = S.census(S.snapshot(scene, rng, PL));
+  const HZ = +(process.argv[2] || 6);
+  const c = S.census(S.snapshot(scene, rng, PL, { horizon: HZ }));
   let t0 = process.hrtime.bigint();
   const N = 2000; let snap;
-  for (let i = 0; i < N; i++) snap = S.snapshot(scene, rng, PL);
+  for (let i = 0; i < N; i++) snap = S.snapshot(scene, rng, PL, { horizon: HZ });
   const snapUs = Number(process.hrtime.bigint() - t0) / 1000 / N;
   t0 = process.hrtime.bigint();
   for (let i = 0; i < N; i++) S.restore(scene, snap, rng);

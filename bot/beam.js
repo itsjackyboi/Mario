@@ -55,7 +55,16 @@ const T = 32;
  * stringing several identical choices together, which is precisely the lottery
  * the old search was losing. Releasing between two held jumps is what gives a
  * second press in mid-air, which is how a wind pouch is spent.
+ *
+ * But it cannot be held for a FIXED number of frames, and that mistake cost a
+ * whole search. At six frames a move, Corb can only leave the ground every 26
+ * pixels — most of a tile — and a jump across four tiles of water has a
+ * take-off window far narrower than that. On The Salt Road the beam sat on a
+ * two-tile plank for four hundred moves, never once able to start its jump in
+ * the right place, and reported the level impossible. So a move carries its own
+ * length, and the short ones exist to shift the phase of the long ones.
  */
+const DURATIONS = [2, 6];
 const ACTIONS = [
   { l: 0, r: 1, u: 0, d: 0, j: 0, i: 0 },   // run on
   { l: 0, r: 1, u: 0, d: 0, j: 1, i: 0 },   // run and jump
@@ -113,7 +122,6 @@ function openScene(win, PL, levelId, seed) {
 function search(levelId, opts) {
   opts = opts || {};
   const beamW = opts.beam || 80;
-  const chunk = opts.chunk || 6;
   const seed = opts.seed === undefined ? 20260904 : opts.seed;
   const maxFrames = opts.maxFrames || 4200;
   const log = opts.log || (() => {});
@@ -125,85 +133,169 @@ function search(levelId, opts) {
   const p = base.player;
 
   const start = {
-    snap: S.snapshot(base, rng, PL), g: 0, h: map.costAt(p.x, p.y),
+    snap: S.snapshot(base, rng, PL, { horizon: DURATIONS[DURATIONS.length - 1] }),
+    g: 0, h: map.costAt(p.x, p.y), key: 0,
     parent: null, act: -1, x: p.x, y: p.y
   };
   if (!isFinite(start.h)) return { ok: false, why: 'the map has no route from the spawn' };
 
-  let beam = [start];
-  let best = null;                 // the fastest finish seen
-  let expanded = 0, died = 0, offMap = 0;
-
-  /** Replay a node's ancestry into a flat input log. */
+  /**
+   * A node's ancestry, spelled back out as one button object per frame.
+   *
+   * This is the whole output of the search: the shape is exactly what
+   * PlayScene.inputLog holds, so what comes out here is a replayable TAS log
+   * with no translation step between the search and the game.
+   */
   function logOf(node) {
-    const acts = [];
-    for (let n = node; n && n.act >= 0; n = n.parent) acts.push(n.act);
-    acts.reverse();
+    const steps = [];
+    for (let n = node; n && n.act >= 0; n = n.parent) steps.push(n);
+    steps.reverse();
     const out = [];
-    for (const a of acts) for (let k = 0; k < chunk; k++) out.push(ACTIONS[a]);
+    for (const n of steps) for (let k = 0; k < n.dur; k++) out.push(ACTIONS[n.act]);
     return out;
   }
 
-  for (let depth = 0; beam.length && depth * chunk < maxFrames; depth++) {
-    const kids = new Map();        // dedup key -> the best child holding it
+  /* Nodes are held in bands two frames wide and worked through in time order.
+   * A depth-synchronous beam cannot do this: with moves of different lengths,
+   * "everyone has taken four moves" stops meaning "everyone is at the same
+   * moment", and comparing a node 40 frames in against one 80 frames in on the
+   * same estimate silently prefers the one that has done less. Banding by frame
+   * keeps the comparison honest — every node in a band is at the same point in
+   * the level's own clock, phase blocks and gear arcs included. */
+  const BAND = 2;
+  /* How long a snapshot is promised to be good for. The search never plays more
+   * than the longest move before restoring again, so that is the promise made
+   * and the one state.js is held to. */
+  const HORIZON = DURATIONS[DURATIONS.length - 1];
+  const SPREAD = opts.spread || 3;     // most survivors any one tile may supply
+  const bands = new Map();
+  const bandOf = g => Math.floor(g / BAND);
 
-    for (const node of beam) {
-      // a node already slower than a finished run is not worth extending
-      if (best && node.g + node.h / 1.45 >= best.g) continue;
+  /* Offering a position is separated from SAVING it, and `snap` arrives as a
+   * thunk that is only called if the position is actually wanted. Saving is the
+   * single most expensive thing this search does — more than the physics it is
+   * saving — and most children are beaten by a sibling before they are ever
+   * expanded. Deciding first and saving second cuts the bill by most of itself. */
+  const CAP = beamW * 2;
+  function offer(g, h, key, snap) {
+    const b = bandOf(g);
+    let bucket = bands.get(b);
+    if (!bucket) bands.set(b, bucket = new Map());
+    const f = g + h;
+    const have = bucket.get(key);
+    if (have) { if (have.g + have.h <= f) return; }
+    else if (bucket.size >= CAP) {
+      if (bucket.worst === undefined) {
+        let w = -Infinity;
+        for (const n of bucket.values()) if (n.g + n.h > w) w = n.g + n.h;
+        bucket.worst = w;
+      }
+      if (f >= bucket.worst) return;          // beaten already: never saved
+      // make room for it
+      let wk = null, wv = -Infinity;
+      for (const [k, n] of bucket) if (n.g + n.h > wv) { wv = n.g + n.h; wk = k; }
+      bucket.delete(wk);
+      bucket.worst = undefined;
+    }
+    bucket.set(key, snap());
+    bucket.worst = undefined;
+  }
+
+  bands.set(0, new Map([[0, start]]));
+
+  let best = null;
+  let expanded = 0, died = 0, offMap = 0, worked = 0;
+  const lastBand = Math.ceil(maxFrames / BAND);
+
+  for (let b = 0; b <= lastBand; b++) {
+    const bucket = bands.get(b);
+    bands.delete(b);
+    if (!bucket) continue;
+
+    /* Take the best, but not sixty versions of the same place.
+     *
+     * Left to itself a beam fills with near-duplicates: standing on a plank at
+     * a dozen sub-pixel offsets is a dozen slots spent on one position. That is
+     * fatal exactly where it matters, because crossing a gap always looks worse
+     * for a moment than not crossing it — the jumper is over water with nothing
+     * under him — so the one node that jumped is outranked by the crowd that
+     * stayed, and the search sits on the near side for the rest of the level.
+     * Capping how many survivors any one tile may contribute keeps the risky
+     * node in the beam long enough to land. */
+    const ranked = [...bucket.values()].sort((u, v) => (u.g + u.h) - (v.g + v.h));
+    const nodes = [], perCell = new Map();
+    for (const n of ranked) {
+      if (nodes.length >= beamW) break;
+      const cell = (Math.floor(n.x / T) << 6) + Math.floor(n.y / T);
+      const c = perCell.get(cell) || 0;
+      if (c >= SPREAD) continue;
+      perCell.set(cell, c + 1);
+      nodes.push(n);
+    }
+    worked++;
+
+    for (const node of nodes) {
+      /* A node that cannot beat a finish already in hand, even granting it the
+       * fastest Corb the game allows for the whole of the rest, is not worth a
+       * snapshot. */
+      if (best && node.g + node.h / 1.77 >= best.g) continue;
 
       for (let a = 0; a < ACTIONS.length; a++) {
+        /* One restore serves every length of the same move. The two-frame
+         * version of "run right" is a prefix of the six-frame version, so the
+         * shorter is taken on the way to the longer rather than by rewinding
+         * and starting again. */
         S.restore(base, node.snap, rng);
-        let dead = false;
-        for (let k = 0; k < chunk; k++) {
-          R.stepTop(PL, base, ACTIONS[a]);
-          if (base.finished) break;
-          if (p.dead) { dead = true; break; }
-        }
-        expanded++;
-        if (dead) { died++; continue; }
-
-        const g = base.tasFrame;
-
-        if (base.finished) {
-          if (!best || g < best.g) {
-            best = { g, node: { parent: node, act: a }, };
-            best.log = logOf(best.node).slice(0, g);
-            log('  finish at ' + g + ' frames (' + (g / 60).toFixed(2) + 's) — depth ' + depth);
+        let played = 0, dead = false, over = false;
+        for (const dur of DURATIONS) {
+          while (played < dur && !dead && !over) {
+            R.stepTop(PL, base, ACTIONS[a]);
+            played++;
+            if (base.finished) { over = true; break; }
+            if (p.dead) { dead = true; break; }
           }
-          continue;
+          expanded++;
+          if (dead) { died++; break; }
+
+          const g = base.tasFrame;
+
+          if (over) {
+            if (!best || g < best.g) {
+              best = { g, node: { parent: node, act: a, dur: played } };
+              best.log = logOf(best.node).slice(0, g);
+              log('  finish at ' + g + ' frames (' + (g / 60).toFixed(2) + 's)');
+            }
+            break;
+          }
+          if (g >= maxFrames) break;
+
+          /* The estimate, divided by how fast this Corb is. A run holding the
+           * tonic really is nearer the end than one that is not, and this is
+           * where the search learns to want the bottle. */
+          const raw = map.costAt(p.x, p.y);
+          if (!isFinite(raw)) { offMap++; continue; }
+          const h = raw / speedNow(p);
+
+          /* Two positions a few pixels apart, moving the same way, are the same
+           * position as far as a route is concerned. Keeping both doubles the
+           * beam and buys nothing, so the faster one wins the slot. */
+          const key = (Math.round(p.x / 5) * 8192) + (Math.round(p.y / 5) * 8) +
+                      (p.vx > 0.2 ? 4 : p.vx < -0.2 ? 2 : 0) + (p.grounded ? 1 : 0);
+          const px = p.x, py = p.y, d = played;
+          offer(g, h, key, () => ({
+            snap: S.snapshot(base, rng, PL, { horizon: HORIZON }),
+            g, h, key, parent: node, act: a, dur: d, x: px, y: py
+          }));
         }
-        if (g >= maxFrames) continue;
-
-        /* The estimate, divided by how fast this Corb is. A run holding the
-         * tonic really is nearer the end than one that is not, and this is
-         * where the search learns to want the bottle. */
-        const raw = map.costAt(p.x, p.y);
-        if (!isFinite(raw)) { offMap++; continue; }
-        const h = raw / speedNow(p);
-
-        /* Two positions a few pixels apart, moving the same way, are the same
-         * position as far as a route is concerned. Keeping both doubles the
-         * beam and buys nothing, so the faster one wins the slot. */
-        const key = (Math.round(p.x / 6) << 12) ^ (Math.round(p.y / 6) << 3) ^
-                    ((p.vx > 0.2 ? 2 : p.vx < -0.2 ? 1 : 0) << 1) ^ (p.grounded ? 1 : 0);
-        const have = kids.get(key);
-        if (have && have.g + have.h <= g + h) continue;
-
-        kids.set(key, {
-          snap: S.snapshot(base, rng, PL), g, h,
-          parent: node, act: a, x: p.x, y: p.y
-        });
       }
     }
 
-    beam = [...kids.values()].sort((u, v) => (u.g + u.h) - (v.g + v.h)).slice(0, beamW);
-
-    if (opts.verbose && depth % 20 === 0 && beam.length) {
-      const lead = beam[0];
-      log('  depth ' + String(depth).padStart(4) + '  frame ' + String(lead.g).padStart(4) +
-          '  beam ' + String(beam.length).padStart(4) +
-          '  furthest ' + Math.round(Math.max(...beam.map(b => b.x)) / T) + '/' + map.cols +
-          '  best estimate ' + ((lead.g + lead.h) / 60).toFixed(2) + 's' +
+    if (opts.verbose && b % 60 === 0) {
+      let far = 0, lo = Infinity;
+      for (const n of nodes) { if (n.x > far) far = n.x; if (n.g + n.h < lo) lo = n.g + n.h; }
+      log('  frame ' + String(b * BAND).padStart(4) + '  band ' + String(nodes.length).padStart(4) +
+          '  furthest ' + Math.round(far / T) + '/' + map.cols +
+          '  best estimate ' + (lo / 60).toFixed(2) + 's' +
           (best ? '   finished ' + (best.g / 60).toFixed(2) + 's' : ''));
     }
   }
@@ -214,7 +306,7 @@ function search(levelId, opts) {
     frames: best ? best.g : 0,
     timeMs: best ? best.g * 1000 / 60 : 0,
     log: best ? best.log : null,
-    expanded, died, offMap
+    expanded, died, offMap, bands: worked
   };
 }
 
