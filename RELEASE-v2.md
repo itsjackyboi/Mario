@@ -13,7 +13,7 @@ Releasing is step 3 below, and it is one merge.
 |---|---|
 | **Records** | Every local record, time, unlock and split is wiped once, on first load, on every machine. The split board starts empty and fills in as runs are set. |
 | **Grog and skins** | The Beer Bank balance, the lifetime banked total, everything bought and everything worn go with it. Nobody carries a preview advantage into launch. |
-| **Pre-release board** | Kept, frozen, in `data/prerelease.js` — reachable from the book under the version number, or `H`. |
+| **Pre-release board** | Kept, frozen, in `data/prerelease.js` — reachable from the book under the version number, or `H`. The sheet keeps its own copy on the `Pre Release Records` tab. |
 | **Levels** | Seven levels gain an *additional* route each. Nothing existing moved. |
 
 The player's **name is kept** — it is an identity, not an advantage, and making everyone
@@ -22,37 +22,33 @@ you would rather it went too; it is one line.
 
 ## The order to do it in
 
-1. **Freeze the full board first, if you want the whole history.**
-   `data/prerelease.js` currently holds the top five per level, transcribed from the sheet's
-   `leaderboard` tab. If you would rather keep every run ever posted, do this *before* the
-   sheet is touched: open the live game, let the board load, and in the console run
+1. **The sheet is already split, and needs nothing on the day.** Two derived tabs, one per
+   era: `Pre Release Records` is the era-1 board and `leaderboard` is the era-2 board. While
+   v1 is what people are playing, every posted run rebuilds `Pre Release Records` and leaves
+   `leaderboard` alone. **The moment the first `2.0.0` run is posted that reverses on its
+   own** — `leaderboard` starts filling and `Pre Release Records` freezes exactly as it
+   stands. No constant to bump, no function to run, nothing to redeploy.
+
+   This works because the era is the build's major version, which every row has carried
+   since the first one — `1.8` and `1.17.0` are era 1, `2.0.0` is era 2 — and the era being
+   played is simply the highest anyone has posted. It only goes up, so somebody still on a
+   cached v1 build after the release adds to the log and changes no board. The game filters
+   the same way, so a v1 time never appears on a v2 board, in the sheet or in the game.
+
+   `runs` keeps every row ever posted, throughout.
+
+2. **Re-freeze the book, last thing before you merge.** `data/prerelease.js` is the
+   PRE-RELEASE RECORDS book, and it is a snapshot — taken on 8 September, so it does not
+   have anything set since. Records set between now and the release belong in it, so take it
+   fresh: open the live game, let the board load, and in the console run
 
    ```js
    copy(PL.Archive.dump())
    ```
 
-   Paste the result over the whole of `data/prerelease.js`. It writes the same shape with
-   every row in it.
-
-2. **Split the sheet into two boards.** Same sheet, same URL, same log — one more tab.
-
-   Paste the current `tools/leaderboard.gs` into the Apps Script editor and save. Then, from
-   the function dropdown, run **`splitEras`** once. It:
-
-   - renames the existing `leaderboard` tab to **`Pre Release Records`**, exactly as it
-     stands, and never writes to it again;
-   - builds a fresh `leaderboard` from this era's runs — empty on release day, filling as
-     people play.
-
-   Then **Deploy → Manage deployments → edit → Version: New version** so the live URL runs
-   the new script. The URL does not change and `config.js` needs no edit.
-
-   Nothing is deleted. `runs` keeps every pre-release row where it has always been.
-
-   **How the two boards know which is which:** the era is the build's major version, which
-   every row has carried since the first one. `1.8` and `1.16.0` are era 1; `2.0.0` is era 2.
-   No new column, nothing to migrate, and the game filters the same way — a v1 time never
-   appears on a v2 board, in the sheet or in the game.
+   Paste the result over the whole of `data/prerelease.js` and commit it to `v2`. It writes
+   the same shape with every era-1 row in it — the same set of runs `Pre Release Records`
+   is built from.
 
 3. **Put v2 on the live branch.** From a clone of the repo:
 
@@ -77,7 +73,9 @@ you would rather it went too; it is one line.
    is cache-busted by the version, so once the index is fresh, everything is.
 
 5. **Play one level.** The board should be empty and fill with your run; the book under the
-   version number should still hold the pre-release records.
+   version number should still hold the pre-release records. In the sheet, that same run is
+   the first row on `leaderboard`, and `Pre Release Records` has stopped changing — that is
+   the era switch having happened by itself.
 
 ### If you need to undo it
 
