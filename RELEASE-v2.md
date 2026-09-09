@@ -14,7 +14,10 @@ Releasing is step 3 below, and it is one merge.
 | **Records** | Every local record, time, unlock and split is wiped once, on first load, on every machine. The split board starts empty and fills in as runs are set. |
 | **Grog and skins** | The Beer Bank balance, the lifetime banked total, everything bought and everything worn go with it. Nobody carries a preview advantage into launch. |
 | **Pre-release board** | Kept, frozen, in `data/prerelease.js` — reachable from the book under the version number, or `H`. The sheet keeps its own copy on the `Pre Release Records` tab. |
-| **Levels** | Seven levels gain an *additional* route each. Nothing existing moved. |
+| **Levels** | Seven levels gain an *additional* route each, and each route carries its own
+hazards and its own item. Nothing else on those levels moved. |
+| **Shards** | Moved, in every level except Shanty Town I and The Undertow, off the running
+line and onto a spur you have to turn round for. The shard run and Any% are different runs now. |
 
 The player's **name is kept** — it is an identity, not an advantage, and making everyone
 re-sign the book to play a level they already know is friction for nothing. Say the word if
@@ -103,19 +106,23 @@ Bank with no explanation reads as a bug; this is the explanation.
 
 ## The new routes
 
-Each is an addition. No existing platform, hazard, pickup or spawn moved, and the trial
-levels are untouched.
+Each is an addition: no existing platform, hazard, pickup or spawn moved to make room for
+one, and the trial levels have no new route at all.
 
-| Level | The route |
-|---|---|
-| **Shanty Town II — The Bone Stair** | A rigging line off the top of the stair, three long planks over the wretch water, dropping onto the far bank. Skips the loose-plank crossing. |
-| **Aleforge I — Brewers Lane** | An upper gantry from the first brewery catwalk, over the first keg chute and its gap, back down to the roof beyond it. |
-| **Aleforge II — Wolendi Wind Farm** | A step off the right-hand roof onto a high line that crosses the two-gust segment without entering either column. Skips two gust cycles — and the tonic and Lagerhorn under them. |
-| **Aleforge II — the low line** | One loose board across the alley at each of the first two columns, so a runner can go *under* the wind instead of standing on the perch and counting the cycle out. |
-| **Providence I — The Ordered Stair** | An upper gallery, entered by two steps off the flat before it, running over the iron-in-threes segment. |
-| **Fenwick I — Brandywine Brush** | A canopy branch off the last bank, over the deep bog. Skips four vines with no light and no phantom footing. |
-| **Roto Kaiishi I — The Long Pier** | A rope line above the surf, over five floats and three wretches, landing on the far deck. |
-| **Roto Kaiishi II — Netmenders' Row** | Up onto the awnings and along, over the hooks and the netmenders working between them. |
+| Level | The route | What is on it |
+|---|---|---|
+| **Shanty Town II — The Bone Stair** | A rigging line off the top of the stair, over the wretch water, dropping onto the far bank. Skips the loose-plank crossing. | Seven boards of the span are loose — stand still and they go. A rival paces the landing you drop onto. A Hollow Urn hangs over the worst of it. |
+| **Aleforge I — Brewers Lane** | An upper gantry from the first brewery catwalk, over the first keg chute and its gap, back down to the roof beyond it. | A second chute at the far end, rolling kegs back down the gantry at you, and a rival on the middle span. A Lagerhorn past him. |
+| **Aleforge II — Wolendi Wind Farm** | A high line that crosses the two-gust segment without entering either column. | A chute at the head of it, and the shear phase of both columns reaches across it. A Brewer's Bellows halfway. |
+| **Aleforge II — the low line** | One loose board across the alley at each of the first two columns, so a runner can go *under* the wind instead of counting the cycle out. | The take-off window, and grog on each board. |
+| **Providence I — The Ordered Stair** | An upper gallery over the iron-in-threes segment. | Two Apostles marching it in strict time, and the iron is still under you if they walk you off. A Vial of Purity between them. |
+| **Fenwick I — Brandywine Brush** | A canopy over the deep bog. Skips four vines. | The long span **is phantom footing** — it exists only while the spirit-light burns, and the light sits at the canopy's mouth. Seven seconds to cross or fall through it. |
+| **Roto Kaiishi I — The Long Pier** | A rope line above the surf, over five floats and three wretches. | A rival on the line, open water under every tile of it, and a Tide-Reader's Glass mid-span. |
+| **Roto Kaiishi II — Netmenders' Row** | Up onto the awnings and along, over the hooks. | Two netmenders working the awnings, hooks in the deck below. A Harbourman's Ballast between them. |
+
+Each one was run in the engine end to end — held right, hopping, no route knowledge — and
+each is crossable. None of them is free: every one carries a hazard of its town's own kind
+and an item worth the risk, so the choice is a real one rather than a faster empty shelf.
 
 Every route was checked against the real movement envelope, measured off the actual player:
 **3.1 tiles of rise, 4.84 tiles across on a flat jump**, and 4.30 / 3.76 / 2.82 tiles across
@@ -124,7 +131,39 @@ more than that, and a reachability pass over each level confirms every new footh
 to the route and back — and that nothing that used to be reachable stopped being so.
 
 They are options, not shortcuts: each costs a climb, each drops you back on the main line,
-and each carries grog so it reads as a route rather than scenery.
+and each carries something worth the detour.
+
+## The shard is a decision now
+
+A shard used to sit on the top step of a plank staircase that was also the fastest way
+through the segment, so a runner going for time collected it whether they meant to or not.
+That made the shard run and the Any% run nearly the same run.
+
+Every shard outside Shanty Town I and The Undertow — the two you asked to leave alone — now
+sits on a **spur**: a short climb that goes *backward*, or up out of the line, and dead-ends.
+You pass it, turn round, take it, and drop back. Measured on a weighted map of each level —
+ground covered, plus what climbing costs, plus a charge per move — the detour went from
+**+0 to +2** to **+7 to +15**, against routes that run 220-320. Roughly a second or two, not
+a re-route.
+
+The check that matters is the other one. A bot that holds right and hops, on twelve different
+jump cadences, is run through each shard's segment; anything it still ends up carrying was on
+the line:
+
+| | before | after |
+|---|---|---|
+| Brewers Lane | 3 of 12 | 0 of 12 |
+| The Ordered Stair | 3 of 12 | 0 of 12 |
+| The Long Pier | 3 of 12 | 0 of 12 |
+| The Bone Stair, Wolendi, Netmenders' Row, Brandywine, the Tavern | 1 of 12 each | 0 of 12 |
+| **The Overturned Wood** | **8 of 12** | **0 of 12** |
+
+The Overturned Wood was the worst of them: its shard sat on the ceiling walk, so walking the
+ceiling *was* collecting it. It now hangs three tiles under the roof, and taking it means
+jumping away from the ceiling and floating back — with the water not far under that.
+
+Each moved shard was then taken in the engine from the foothold the design says you take it
+from, so none of this made one unreachable. Shanty Town I and The Undertow are untouched.
 
 **The Wolendi low line is the one deliberately frame-tight thing in v2.** The board sits 4.5
 tiles out and a flat jump carries 4.84, so the take-off window measures about **four frames**;
