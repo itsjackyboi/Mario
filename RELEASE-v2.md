@@ -107,14 +107,15 @@ Bank with no explanation reads as a bug; this is the explanation.
 ## The new routes
 
 Each is an addition: no existing platform, hazard, pickup or spawn moved to make room for
-one, and the trial levels have no new route at all.
+one. The trial levels are otherwise untouched — the Rolling Boil's low line is the single
+exception, and it opens a way past two gears rather than adding a route of its own.
 
 | Level | The route | What is on it |
 |---|---|---|
 | **Shanty Town II — The Bone Stair** | A rigging line off the top of the stair, over the wretch water, dropping onto the far bank. Skips the loose-plank crossing. | Seven boards of the span are loose — stand still and they go. A rival paces the landing you drop onto. A Hollow Urn hangs over the worst of it. |
 | **Aleforge I — Brewers Lane** | An upper gantry from the first brewery catwalk, over the first keg chute and its gap, back down to the roof beyond it. | A second chute at the far end, rolling kegs back down the gantry at you, and a rival on the middle span. A Lagerhorn past him. |
 | **Aleforge II — Wolendi Wind Farm** | A high line that crosses the two-gust segment without entering either column. | A chute at the head of it, and the shear phase of both columns reaches across it. A Brewer's Bellows halfway. |
-| **Aleforge II — the low line** | One loose board across the alley at each of the first two columns, so a runner can go *under* the wind instead of counting the cycle out. | The take-off window, and grog on each board. |
+| **Aleforge III — The Rolling Boil** | A low line under the gear pit after the checkpoint: two short boards that let a runner take the first two gears **on the move** instead of standing on one and counting it round. | Nothing but the pit. The boards hang over it with no floor beneath them, and the take-off window is about six frames. |
 | **Providence I — The Ordered Stair** | An upper gallery over the iron-in-threes segment. | Two Apostles marching it in strict time, and the iron is still under you if they walk you off. A Vial of Purity between them. |
 | **Fenwick I — Brandywine Brush** | A canopy over the deep bog. Skips four vines. | The long span **is phantom footing** — it exists only while the spirit-light burns, and the light sits at the canopy's mouth. Seven seconds to cross or fall through it. |
 | **Roto Kaiishi I — The Long Pier** | A rope line above the surf, over five floats and three wretches. | A rival on the line, open water under every tile of it, and a Tide-Reader's Glass mid-span. |
@@ -165,13 +166,16 @@ jumping away from the ceiling and floating back — with the water not far under
 Each moved shard was then taken in the engine from the foothold the design says you take it
 from, so none of this made one unreachable. Shanty Town I and The Undertow are untouched.
 
-**The Wolendi low line is the one deliberately frame-tight thing in v2.** The board sits 4.5
-tiles out and a flat jump carries 4.84, so the take-off window measures about **four frames**;
-short of it is the pit and the pit has no floor. The flight also crosses the column, so the
-line only exists while that column is quiet — measured, it is open on **7 of 24 arrival
-timings** sampled across the wind cycle. Arrive on a lift and it puts you back on the perch;
-arrive on a shear and it throws you out of the alley. The intended route is untouched: perch,
-wait for the lift, ride it to the plank above.
+**The Rolling Boil's low line is the one deliberately frame-tight thing in v2.** The gears
+after the checkpoint turn on a 7.8-second cycle, and until now the crossing had to be waited
+out: sampled across a whole turn of the gears, **no arrival at all** had a line that could be
+taken without standing on a gear and counting it round. Two short boards under the pit change
+that. Measured by holding right and jumping — a bot that cannot wait, so anything it finds is
+a crossing taken on the move — there are now **36 complete no-stop crossings of the first two
+gears, off a take-off window six frames wide**. Miss it and the pit has no floor.
+
+The third gear is untouched and still a gate: the line puts you level with it, not past it.
+Nothing about the intended route changed — ride the gears round, as before.
 
 ## Playing it before you ship it
 
