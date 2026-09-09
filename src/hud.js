@@ -153,8 +153,8 @@
           font: PL.FONT.tiny, align: 'center', color: C.teal
         });
         var hint = scene.tas
-          ? 'T  leave TAS  ·  .  step  ·  /  hold to run  ·  ,  rewind  ·  R  frame 0  ·  ' +
-            'finish it to post it to the TAS board'
+          ? 'T  leave TAS  ·  .  step  ·  /  hold to run  ·  ,  rewind  ·  ;  autorun  ·  ' +
+            'R  frame 0  ·  finish it to post it to the TAS board'
           : (scene.mark ? 'C  lift the marker   ·   T  TAS mode'
                         : 'C  drop a marker   ·   T  TAS mode');
         PL.gfx.text(ctx, hint, W / 2, H - 8, {
@@ -479,7 +479,8 @@
      */
     tasPanel: function (ctx, scene) {
       var p = scene.player;
-      var w = 168, h = 78, x = PL.VIEW_W - w - 6, y = PL.VIEW_H - h - 22;
+      var box = this.tasPanelBox();
+      var w = box.w, h = box.h, x = box.x, y = box.y;
       chip(ctx, x, y, w, h);
 
       PL.gfx.text(ctx, 'TAS', x + 6, y + 12, { font: PL.FONT.small, color: C.teal });
@@ -503,13 +504,36 @@
         PL.gfx.text(ctx, r[3], x + w - 6, ry, { font: PL.FONT.tiny, align: 'right', color: C.parchment });
       }
 
-      // What is held right now — the input that the next step will record.
-      var In = PL.Input;
-      var keys = [['←', 'left'], ['→', 'right'], ['↑', 'up'], ['↓', 'down'],
-                  ['JMP', 'jump'], ['ITEM', 'item']];
+      // The AUTORUN switch. A button as well as a key, because it is the one
+      // thing on this panel you reach for mid-route with both hands already
+      // busy, and because a toggle you cannot see the state of is worse than
+      // no toggle.
+      var ar = this.tasAutoRect();
+      var arOn = !!scene.tasAuto;
+      var arHot = PL.Input.hovering(ar.x, ar.y, ar.w, ar.h);
+      PL.gfx.rect(ctx, ar.x, ar.y, ar.w, ar.h,
+                  arOn ? 'rgba(79,184,165,0.45)' : 'rgba(156,124,82,0.16)');
+      if (arHot) {
+        ctx.save();
+        ctx.strokeStyle = C.teal;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(ar.x + 0.5, ar.y + 0.5, ar.w - 1, ar.h - 1);
+        ctx.restore();
+      }
+      PL.gfx.text(ctx, ';  AUTORUN  ' + (arOn ? 'ON' : 'OFF'),
+                  ar.x + ar.w / 2, ar.y + 8, {
+        font: PL.FONT.tiny, align: 'center',
+        color: arOn ? C.parchment : 'rgba(242,227,196,0.45)'
+      });
+
+      // What the next step will record — which is not simply what is held,
+      // once AUTORUN is holding right on your behalf.
+      var held = scene.readHeld();
+      var keys = [['←', 'l'], ['→', 'r'], ['↑', 'u'], ['↓', 'd'],
+                  ['JMP', 'j'], ['ITEM', 'i']];
       var kx = x + 6;
       for (var k = 0; k < keys.length; k++) {
-        var on = In.down(keys[k][1]);
+        var on = !!held[keys[k][1]];
         ctx.font = PL.FONT.tiny;
         var kw = ctx.measureText(keys[k][0]).width + 8;
         PL.gfx.rect(ctx, kx, y + h - 15, kw, 11,
@@ -520,6 +544,27 @@
         });
         kx += kw + 3;
       }
+    },
+
+    /* The TAS panel's box, and the AUTORUN switch inside it.
+     *
+     * Both live here rather than in the drawing code because the scene has to
+     * hit-test the switch on the same rectangle the panel drew it on, and two
+     * copies of a rectangle drift apart the first time either moves. */
+    tasPanelBox: function () {
+      var w = 168, h = 92;
+      return { x: PL.VIEW_W - w - 6, y: PL.VIEW_H - h - 22, w: w, h: h };
+    },
+
+    tasAutoRect: function () {
+      var b = this.tasPanelBox();
+      return { x: b.x + 6, y: b.y + b.h - 29, w: b.w - 12, h: 11 };
+    },
+
+    /** True on the frame the AUTORUN switch is clicked. */
+    tasAutoClicked: function () {
+      var r = this.tasAutoRect();
+      return PL.Input.mouse.clicked && PL.Input.hovering(r.x, r.y, r.w, r.h);
     },
 
     /** The one ITEM button: shows what E will spend, and how many are queued. */

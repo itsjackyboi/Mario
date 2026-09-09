@@ -9,6 +9,20 @@
     muted: false,
     master: null,
 
+    /* Greater than zero while something is running the game without anybody
+     * watching it — a TAS rewind replays every frame from the start, and each
+     * of those frames asks for the sounds it made the first time. Played, they
+     * all land in the same instant: a level's worth of jumps, coins and
+     * splashes stacked into one noise. Counted rather than a flag, so nested
+     * silence unwinds correctly. */
+    silent: 0,
+
+    /** Run `fn` with every sound suppressed, whatever it throws. */
+    quiet: function (fn) {
+      this.silent++;
+      try { return fn(); } finally { this.silent--; }
+    },
+
     init: function () {
       if (this.ctx) return;
       var Ctor = window.AudioContext || window.webkitAudioContext;
@@ -35,7 +49,7 @@
 
     /** One shaped oscillator note. */
     tone: function (freq, dur, type, vol, slideTo) {
-      if (!this.ctx || this.muted) return;
+      if (!this.ctx || this.muted || this.silent) return;
       var t = this.ctx.currentTime;
       var osc = this.ctx.createOscillator();
       var g = this.ctx.createGain();
@@ -51,7 +65,7 @@
 
     /** Filtered noise burst — splashes, thuds, crumbling wood. */
     noise: function (dur, vol, freq, q) {
-      if (!this.ctx || this.muted) return;
+      if (!this.ctx || this.muted || this.silent) return;
       var t = this.ctx.currentTime;
       var len = Math.max(1, Math.floor(this.ctx.sampleRate * dur));
       var buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
@@ -124,6 +138,28 @@
         if (!A.ctx || !this.track) return;
         var t = this.track;
         var spb = 60 / t.bpm / 4;                // seconds per sixteenth
+
+        /* CATCH UP BY SKIPPING, NEVER BY PLAYING.
+         *
+         * The scheduler assumes it is woken often enough to stay ahead of the
+         * audio clock. Anything that blocks the main thread breaks that: a TAS
+         * rewind replays thousands of frames between two wake-ups, and a
+         * backgrounded tab stops waking it at all. Come back a second late and
+         * the loop below would book every note of that second — all of them at
+         * times already past, so the browser fires them at once, and the tune
+         * comes back as a loud fast smear of itself.
+         *
+         * The bar that should have played while nothing was listening is gone;
+         * the only sensible thing is to leave it gone. Advance the step counter
+         * over the missed notes so the tune resumes in the right place in the
+         * phrase, and start booking again from now.
+         */
+        if (this.nextAt < A.ctx.currentTime) {
+          var missed = Math.ceil((A.ctx.currentTime - this.nextAt) / spb);
+          this.step += missed;
+          this.nextAt += missed * spb;
+        }
+
         while (this.nextAt < A.ctx.currentTime + this.LOOKAHEAD) {
           var i = this.step % t.lead.length;
           this.voice(t.lead[i], this.nextAt, spb * (t.leadLen || 3), t.leadWave || 'square', 0.22);
@@ -137,7 +173,7 @@
       },
 
       voice: function (midi, at, dur, wave, vol) {
-        if (!midi || A.muted) return;
+        if (!midi || A.muted || A.silent) return;
         var osc = A.ctx.createOscillator();
         var g = A.ctx.createGain();
         osc.type = wave;
@@ -151,7 +187,7 @@
 
       /** 1 = kick, 2 = hat. Enough of a kit for eight-bit. */
       hit: function (kind, at) {
-        if (A.muted) return;
+        if (A.muted || A.silent) return;
         if (kind === 1) {
           var osc = A.ctx.createOscillator(), g = A.ctx.createGain();
           osc.type = 'sine';
@@ -176,6 +212,10 @@
     },
 
     sfx: function (name) {
+      // Checked here as well as in tone/noise: several of these book their
+      // later notes with setTimeout, which would fire after the silence had
+      // been lifted again.
+      if (this.silent) return;
       switch (name) {
         case 'jump':     this.tone(330, 0.13, 'square', 0.35, 620); break;
         case 'doubleJump': this.tone(480, 0.18, 'triangle', 0.4, 900); break;

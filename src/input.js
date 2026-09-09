@@ -26,7 +26,8 @@
     KeyT: 'tas',
     Period: 'step',
     Comma: 'rewind',
-    Slash: 'play'
+    Slash: 'play',
+    Semicolon: 'autorun'
   };
 
   var Input = (PL.Input = {
