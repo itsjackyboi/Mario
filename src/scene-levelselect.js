@@ -71,6 +71,24 @@
     // thing to remember: C. Only ever offered on a level already unlocked —
     // it is for drilling a crossing you keep missing, not a way in.
     var wantPractice = In.pressed('mark');
+
+    /* WATCH THE TAS. A time on the tool-assisted board says how fast the level
+     * can go; the replay says how, which is the only part anybody can use. It
+     * opens on any level that has a log, locked or not — reading somebody
+     * else's route is not the same as skipping the level. */
+    if (In.pressed('watch')) {
+      var wdef = levels[this.levelIdx];
+      if (PL.Replay && PL.Replay.has(wdef.id)) {
+        PL.Audio.sfx('select');
+        PL.Game.push(new PL.ReplayScene(wdef, PL.Towns.metaFor(town.id, wdef.id)));
+      } else {
+        this.msg = 2.2;
+        this.msgText = 'No TAS replay recorded for this level yet.';
+        PL.Audio.sfx('trialMiss');
+      }
+      return;
+    }
+
     if (In.pressed('confirm') || In.pressed('jump') || wantPractice) {
       var def = levels[this.levelIdx];
       if (!PL.Towns.isUnlocked(def)) {
@@ -263,7 +281,7 @@
     PL.gfx.text(ctx, 'Town purse: ' + PL.Store.townProgress(town.id).purse + ' grog', 18, 320, {
       font: PL.FONT.small, color: C.grogBand
     });
-    PL.gfx.text(ctx, '↑ ↓ select · ← → column · ENTER play · C practice · ESC title', W - 18, 320, {
+    PL.gfx.text(ctx, '↑ ↓ select · ← → column · ENTER play · C practice · V watch TAS · ESC title', W - 18, 320, {
       font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.5)'
     });
     if (this.msg > 0) {

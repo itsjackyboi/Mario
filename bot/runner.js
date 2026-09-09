@@ -98,11 +98,23 @@ function evaluate(levelId, genome, opts) {
   let bestX = p.x, bestXFrame = 0, deadAt = -1, deaths = 0, finishFrame = -1;
   const limit = Math.min(genome.length, opts.maxFrames || genome.length);
 
+  /* Mobility telemetry. The speed items are pickups, not buttons, so "using"
+   * the Clockheart Tonic means routing through it — and a search that only
+   * scores distance will never do that, because the detour costs ground now
+   * and pays it back later. Counting it is what lets the fitness price it. */
+  let tonicFrames = 0, pouchSpent = 0, prevPouch = 0, dashes = 0, prevDash = false;
+
   for (let f = 0; f < limit; f++) {
     stepTop(PL, base, genome[f] || EMPTY);
     if (base.finished && finishFrame < 0) finishFrame = base.tasFrame;
     if (p.x > bestX) { bestX = p.x; bestXFrame = f; }
     if (p.dead) { deaths++; if (deadAt < 0) deadAt = f; }
+    if (p.tonic > 0) tonicFrames++;
+    if (p.pouch < prevPouch) pouchSpent += prevPouch - p.pouch;
+    prevPouch = p.pouch;
+    const dashing = !!(p.has && p.has('dashing'));
+    if (dashing && !prevDash) dashes++;
+    prevDash = dashing;
     if (finishFrame >= 0) break;
     if (done(PL, base)) break;
   }
@@ -119,7 +131,8 @@ function evaluate(levelId, genome, opts) {
     deaths: deaths,
     grog: p.grogEarned || 0,
     shards: p.shards ? p.shards.length : 0,
-    worldW: world.w
+    worldW: world.w,
+    tonicFrames: tonicFrames, pouchSpent: pouchSpent, dashes: dashes
   };
 }
 

@@ -65,6 +65,28 @@ node bot/run-all.js aleforge-3 tavern-1      just these
 node bot/run-all.js --pop=150 --gens=250 --seed=3
 ```
 
+## Items, and a claim I had to withdraw
+
+The two the levels lean on are pickups, not buttons: the **Clockheart Tonic**
+(1.45x speed for nine seconds) and the **Wind Pouch**. Walking into them is
+enough. What the pouch then needs is a *second* jump press in mid-air — holding
+jump from the ground is one rising edge and buys nothing extra — so
+`hopBurst` now emits a release-and-press-again, and the item button too, for the
+Bellows dash. `runner.js` reports tonic frames, pouch spends and dashes on every
+evaluation, so item use is visible rather than assumed.
+
+I also added a fitness bonus priced off what each item is worth in seconds, on
+the strength of an audit showing **zero tonic seconds on every level**. That
+audit was wrong: it ran on *random* genomes, not the ones a search breeds. Run
+properly — same level, seed and budget, only the bonus differing — an evolved
+genome routes through the tonic either way, and on The Tithe Walk it held it
+*longer without* the bonus (8.93s against 6.15s). So the bonus is **off by
+default**; `itemBonus: true` turns it on for a level where the detour really
+does cost more than it pays, and `items-ab.js` is how to check.
+
+The lesson worth keeping: measure the thing the search actually produces, not a
+sample of the space it starts from.
+
 ## When a level walls the search
 
 Do not reach for the mutation rate. `shantytown-3` is the worked example:
@@ -126,5 +148,7 @@ the date and provenance in the file. Refresh it before trusting a comparison.
 | `tidemap.js`, `diag-st3.js` | diagnosis for The Drowning Tide |
 | `opening2.js`, `seeded-st3.js` | solve the opening, then seed the search |
 | `replaycheck.js` | does the game's own rewind reproduce a genome? |
+| `items-audit.js`, `items-ab.js` | is the search using the tonic, the pouch, the dash? |
+| `export-replay.js` | a bot result, as an entry for `data/tas-replays.js` |
 | `dry-run.js` | what would be submitted, and why — never submits |
 | `submit.md` | the by-hand browser steps |

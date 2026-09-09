@@ -46,9 +46,22 @@ function hopBurst(rng, bias) {
   const hold = climb ? randInt(rng, 8, 14) : randInt(rng, 4, 13);
   const after = climb ? randInt(rng, 4, 16) : randInt(rng, 10, 30);
   const back = !climb && rng() < 0.08;          // occasionally go the other way
-  const useItem = rng() < 0.02;
-  for (let f = 0; f < runUp; f++) out.push(frame(!back, 0, back, 0, useItem && f === 0));
-  for (let f = 0; f < hold; f++) out.push(frame(!back, 1, back, 0, 0));
+  /* A carried item is spent with the item button, and the Bellows dash is
+   * worth most just after take-off, where its 11.5px a frame is added to a
+   * jump instead of scrubbed off by the ground. */
+  const useItem = rng() < 0.12;
+  /* A Wind Pouch is spent by pressing jump AGAIN while already in the air.
+   * Holding jump from the ground is one rising edge and buys nothing extra, so
+   * a second, separate press has to exist in the vocabulary or the pouch is
+   * dead weight for the whole level. */
+  const airJump = rng() < 0.25;
+  const gap = randInt(rng, 2, 8);              // let go, then press again
+  for (let f = 0; f < runUp; f++) out.push(frame(!back, 0, back, 0, 0));
+  for (let f = 0; f < hold; f++) out.push(frame(!back, 1, back, 0, useItem && f === 1));
+  if (airJump) {
+    for (let f = 0; f < gap; f++) out.push(frame(!back, 0, back, 0, 0));
+    for (let f = 0; f < randInt(rng, 6, 12); f++) out.push(frame(!back, 1, back, 0, 0));
+  }
   for (let f = 0; f < after; f++) out.push(frame(!back, 0, back, 0, 0));
   return out;
 }
@@ -108,18 +121,52 @@ function crossover(a, b, rng) {
 
 // --------------------------------------------------------------------- fitness
 
+/* What the mobility items are worth, in seconds saved, so the search can pay
+ * for a detour that costs ground now and returns it later.
+ *
+ * A Clockheart Tonic is 1.45x speed for nine seconds: nine seconds of running
+ * done in 9/1.45, so 2.79s saved if the whole charge is spent moving. A Wind
+ * Pouch is an extra jump in mid-air, worth roughly the second a missed gap
+ * costs. A Bellows dash is 11.5px a frame against 4.3 for about nine frames,
+ * so a little over half a second's worth of ground.
+ *
+ * MEASURED, AND IT DID NOT HELP. The reason for adding this was an audit that
+ * showed zero tonic seconds on every level — but that audit was run on RANDOM
+ * genomes, not on the ones a search breeds, and it was measuring the wrong
+ * thing. Run properly, with the same level, seed and budget and only the bonus
+ * differing, an evolved genome routes through the tonic either way: on The
+ * Tithe Walk it held the tonic for 8.93s without the bonus and 6.15s with it.
+ * The bonus is off by default because of that, not kept on out of hope. It is
+ * still here, and still priced honestly, for a level where the detour really
+ * does cost more than it returns — pass `itemBonus: true` and measure it.
+ */
+const TONIC_WORTH_S = 2.79 / (9 * 60);   // per frame of tonic held
+const POUCH_WORTH_S = 1.0;               // per pouch actually spent
+const DASH_WORTH_S = 0.55;               // per dash
+
+function itemSeconds(res) {
+  return (res.tonicFrames || 0) * TONIC_WORTH_S +
+         (res.pouchSpent || 0) * POUCH_WORTH_S +
+         (res.dashes || 0) * DASH_WORTH_S;
+}
+
 /**
  * Finishers always beat non-finishers, and among finishers only the clock
- * matters. Among the rest, distance along the level dominates — squared, so a
- * genome that pushes the frontier is worth more than one that tidies up the
- * easy opening — with a small bonus for staying alive, capped so that standing
- * still somewhere safe never competes with actually going anywhere.
+ * matters — an item a finished run used has already priced itself into the
+ * time, so there is nothing left to credit.
+ *
+ * Among the rest, distance along the level dominates — squared, so a genome
+ * that pushes the frontier is worth more than one that tidies up the easy
+ * opening — plus a small bonus for staying alive and a capped one for the
+ * mobility items, sized so it can carry a genome through the few generations a
+ * detour costs but never beat actually getting somewhere.
  */
-function fitnessOf(res, width) {
+function fitnessOf(res, width, itemBonus) {
   if (res.finished) return 1 + 100000 / res.frames;
   const reach = Math.min(1, res.bestX / width);
   const alive = Math.min(0.05, (res.deadAt < 0 ? res.frames : res.deadAt) / 20000);
-  return reach * reach + alive;
+  const items = itemBonus ? Math.min(0.06, itemSeconds(res) * 0.02) : 0;
+  return reach * reach + alive + items;
 }
 
 // ---------------------------------------------------------------------- search
@@ -139,6 +186,13 @@ function run(levelId, opts) {
   const stagnationLimit = opts.stagnationLimit || 12;
   const extraAfterRecord = opts.extraAfterRecord === undefined ? 25 : opts.extraAfterRecord;
   const log = opts.log === false ? () => {} : (s) => console.log(s);
+  /* Swappable so the item bonus can be measured against its own absence.
+   * Reaching in and reassigning the module's export does not work — run()
+   * closes over the local function — and a comparison that silently ran the
+   * same code twice would have looked like "the change does nothing". */
+  const wantItemBonus = !!opts.itemBonus;
+  const fitness = opts.fitness ||
+    ((res, width) => fitnessOf(res, width, wantItemBonus));
 
   let population = [];
   for (const seedGenome of (opts.seeds || [])) {
@@ -155,7 +209,7 @@ function run(levelId, opts) {
     const scored = population.map((g) => {
       const res = R.evaluate(levelId, g, { win });
       evals++;
-      return { g, res, fit: fitnessOf(res, info.width) };
+      return { g, res, fit: fitness(res, info.width) };
     });
     scored.sort((a, b) => b.fit - a.fit);
     const top = scored[0];
