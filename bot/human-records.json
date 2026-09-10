@@ -1,25 +1,106 @@
 {
-  "_source": "Google Sheet 1yLsyGVCuzcGocURdTUdp_C_kMSFAGrSp_IL3V1uYqt0, 'runs' log, read 2026-09-09",
-  "_note": "Best non-TAS time per level, in ms. Both 'single' and 'SPEEDRUN' rows count as human; TAS rows are excluded. The game posts timeMs = frames * 1000/60, so frames = round(ms * 60 / 1000).",
-  "_existingTasRecords": {
-    "shantytown-1": { "timeMs": 25917, "player": "Jack_Anqoak", "build": "1.18.0" }
-  },
-  "levels": {
-    "shantytown-1":        { "timeMs": 25933, "player": "Buke",        "build": "1.10.0" },
-    "shantytown-2":        { "timeMs": 28017, "player": "Buke",        "build": "1.8" },
-    "shantytown-3":        { "timeMs": 63383, "player": "Buke",        "build": "1.8" },
-    "aleforge-1":          { "timeMs": 22750, "player": "Buke",        "build": "1.17.0" },
-    "aleforge-2":          { "timeMs": 20467, "player": "Buke",        "build": "1.10.0" },
-    "aleforge-3":          { "timeMs": 39333, "player": "Buke",        "build": "1.8" },
-    "providence-1":        { "timeMs": 28433, "player": "Buke",        "build": "1.9.2" },
-    "providence-2":        { "timeMs": 25533, "player": "Buke",        "build": "1.10.0" },
-    "providence-3":        { "timeMs": 35967, "player": "Buke",        "build": "1.10.0" },
-    "providence-oweblock": { "timeMs": 35800, "player": "Buke",        "build": "1.9.2" },
-    "fenwick-1":           { "timeMs": 24567, "player": "Buke",        "build": "1.10.0" },
-    "fenwick-2":           { "timeMs": 32083, "player": "Buke",        "build": "1.10.0" },
-    "roto-1":              { "timeMs": 26150, "player": "Buke",        "build": "1.17.0" },
-    "roto-2":              { "timeMs": 28267, "player": "Buke",        "build": "1.10.0" },
-    "roto-3":              { "timeMs": 31183, "player": "Buke",        "build": "1.9.2" },
-    "tavern-1":            { "timeMs": 35367, "player": "Buke",        "build": "1.8" }
+ "_source": "Google Sheet 1yLsyGVCuzcGocURdTUdp_C_kMSFAGrSp_IL3V1uYqt0, 'runs' log, read 2026-09-09",
+ "_note": "Best non-TAS time per level, in ms. Both 'single' and 'SPEEDRUN' rows count as human; TAS rows are excluded. The game posts timeMs = frames * 1000/60, so frames = round(ms * 60 / 1000).",
+ "_existingTasRecords": {
+  "shantytown-1": {
+   "timeMs": 25917,
+   "player": "Jack_Anqoak",
+   "build": "1.18.0"
   }
+ },
+ "levels": {
+  "shantytown-1": {
+   "timeMs": 25933,
+   "player": "Buke",
+   "build": "1.10.0"
+  },
+  "shantytown-2": {
+   "timeMs": 28017,
+   "player": "Buke",
+   "build": "1.8"
+  },
+  "shantytown-3": {
+   "timeMs": 63383,
+   "player": "Buke",
+   "build": "1.8"
+  },
+  "aleforge-1": {
+   "timeMs": 22750,
+   "player": "Buke",
+   "build": "1.17.0"
+  },
+  "aleforge-2": {
+   "timeMs": 20467,
+   "player": "Buke",
+   "build": "1.10.0"
+  },
+  "aleforge-3": {
+   "timeMs": 39333,
+   "player": "Buke",
+   "build": "1.8"
+  },
+  "providence-1": {
+   "timeMs": 28433,
+   "player": "Buke",
+   "build": "1.9.2"
+  },
+  "providence-2": {
+   "timeMs": 25533,
+   "player": "Buke",
+   "build": "1.10.0"
+  },
+  "providence-3": {
+   "timeMs": 35967,
+   "player": "Buke",
+   "build": "1.10.0"
+  },
+  "providence-oweblock": {
+   "timeMs": 35800,
+   "player": "Buke",
+   "build": "1.9.2"
+  },
+  "fenwick-1": {
+   "timeMs": 24567,
+   "player": "Buke",
+   "build": "1.10.0"
+  },
+  "fenwick-2": {
+   "timeMs": 32083,
+   "player": "Buke",
+   "build": "1.10.0"
+  },
+  "roto-1": {
+   "timeMs": 26150,
+   "player": "Buke",
+   "build": "1.17.0"
+  },
+  "roto-2": {
+   "timeMs": 28267,
+   "player": "Buke",
+   "build": "1.10.0"
+  },
+  "roto-3": {
+   "timeMs": 31183,
+   "player": "Buke",
+   "build": "1.9.2"
+  },
+  "tavern-1": {
+   "timeMs": 35367,
+   "player": "Buke",
+   "build": "1.8"
+  }
+ },
+ "_rebuiltInV2": {
+  "_note": "These levels were rebuilt from scratch for v2 as three-route technical levels. The times below are for the v1 layout and are not comparable to the v2 one \u2014 a record is a claim about a particular level, and this is no longer that level. Tools that compare against a record must skip these until the v2 board has runs on it.",
+  "ids": [
+   "shantytown-2",
+   "aleforge-2",
+   "providence-2",
+   "fenwick-2",
+   "roto-2"
+  ],
+  "newLevels": [
+   "fenwick-3"
+  ]
+ }
 }

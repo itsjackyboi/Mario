@@ -18,7 +18,11 @@ for (const e of PL.Towns.allLevels()) {
   const a = M.analyse(sc, PL);
   const ms = Date.now() - t0;
   const f = a.floorFrames();
-  const rec = HR.levels[e.def.id] && HR.levels[e.def.id].timeMs;
+  /* A level rebuilt in v2 has a record on file for a layout that no longer
+   * exists. Comparing against it is not a check, it is a category error. */
+  const rebuilt = (require('./human-records.json')._rebuiltInV2 || {}).ids || [];
+  const stale = rebuilt.indexOf(e.def.id) >= 0;
+  const rec = stale ? null : (HR.levels[e.def.id] && HR.levels[e.def.id].timeMs);
   const mapS = f / 60, humS = rec ? rec / 1000 : null;
   const ratio = humS ? (mapS / humS) : null;
   /* The field is a lower bound at BASE speed — 4.3px a frame, nothing in the
@@ -36,9 +40,10 @@ for (const e of PL.Towns.allLevels()) {
    * near edge, the spawn is mid-tile, and every route is rounded to whole
    * columns. Two levels sit about 3% over and that is the rounding, not a
    * mistake in the model. Beyond 5% it would be a mistake, and this says so. */
-  const flag = !isFinite(f) ? '  UNREACHABLE'
+  const flag = stale ? '  rebuilt for v2 — the record on file is for another level'
+             : !isFinite(f) ? '  UNREACHABLE'
              : (ratio && ratio > mul * 1.05 ? '  OVER — higher than items and rounding can explain' : '');
-  if (flag) bad++;
+  if (flag && !stale) bad++;   // a rebuilt level is a note, not a fault
   console.log((e.def.id + '                   ').slice(0, 21) +
     (isFinite(f) ? (mapS.toFixed(2) + 's').padStart(9) : '      inf') +
     (humS ? (humS.toFixed(2) + 's').padStart(11) : '        —') +

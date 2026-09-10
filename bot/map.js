@@ -175,11 +175,20 @@ function build(world, swept, opts) {
   return { world, cols, rows, solid, lethal, floor, stand };
 }
 
-/** Is the straight line between two standing places clear of solid rock? */
+/**
+ * Is the straight line between two standing places clear of solid rock?
+ *
+ * The destination's own column is never counted. A step onto a ledge one column
+ * along and two rows up is a real move — you rise, then go over — but its
+ * straight line clips the corner of the very block you are landing on, and the
+ * check would rule out every short climb in the game. Two of the rebuilt levels
+ * came back "no way through" on exactly that.
+ */
 function clear(m, c0, r0, c1, r1) {
   const n = Math.max(Math.abs(c1 - c0), Math.abs(r1 - r0));
   for (let k = 1; k < n; k++) {
     const c = Math.round(c0 + (c1 - c0) * k / n);
+    if (c === c1) continue;
     const r = Math.round(r0 + (r1 - r0) * k / n);
     const i = r * m.cols + c;
     if (m.solid[i] || m.lethal[i]) return false;

@@ -1,31 +1,48 @@
 /* Aleforge II — "Wolendi Wind Farm"
  *
- * REBUILT FOR v2 AS THREE ROUTES, and the fast one is the opposite of The Bone
- * Stair's: here it is over the top.
+ * REBUILT FOR v2 AS THREE ROUTES, and all three of them are capped.
  *
- *   THE GANTRY — up in the mill's beams, and the quick way. It costs almost
- *   nothing to get onto, which is the whole point: two ordinary ledges and you
- *   are up. What it costs is room. The mill roof sits three rows over the deck
- *   and caps every jump at two tiles of rise, which turns a 4.84-tile jump into
- *   a 3.86-tile one, and the decks are cut against the smaller number. Three
- *   times the gantry becomes a staircase — decks four columns apart alternating
- *   between the walkway and one tile above it. Going up, the jump carries 3.20
- *   tiles against the 3.00 you need: nine pixels, a frame and a half. Coming
- *   back down there is one tile of roof left and it is the same frame and a
- *   half. Six, then five, then seven of those in a row.
+ * THE ONE FACT THE WHOLE LEVEL IS BUILT ON. Corb runs at a constant 4.3 pixels
+ * a frame, so how far a jump carries is decided entirely by how long it stays
+ * in the air — and that is decided by how high it gets. A roof two tiles over
+ * his head turns a 4.84-tile jump into a 3.86-tile one. On a grid of 32-pixel
+ * tiles that is the only way to ask for exact timing: the ROOF sets the
+ * tolerance, not the gap.
  *
- *   THE YARD — the middle. Chutes overhead feed kegs down at you every three
- *   seconds, clock hands sweep the floor, and twice the yard is blocked by a
- *   stack of crates with nothing to run up. Each of those is a dead stop, and
- *   a dead stop is the only thing in this engine that actually costs time.
+ * So there is a roof over all three decks and no open air anywhere to escape
+ * into. Every gap in the level is cut against 3.86 tiles.
  *
- *   THE CELLAR — the slow one, and the one that looks safe. Flat, dark, and
- *   five times the floor comes up two tiles with no run at it. Five dead stops.
+ *   THE GANTRY — up in the mill’s beams.
+ *      THE FAST ONE. Four staircases: islands four columns apart,
+ *   alternating between the floor and one tile above it. Going up, the
+ *   capped jump carries 3.20 tiles against the 3.00 you need — nine
+ *   pixels, a frame and a half. Coming down off the raised island there
+ *   is one tile of roof left and it is the same frame and a half. They
+ *   alternate, so there is nothing ordinary in between to breathe on:
+ *   seven of them, then five, then eight, then four. And nothing to stop
+ *   for anywhere along it, which is the only reason it is quick.
  *
- * Every number here is measured rather than felt — bot/envelope.js flies the
- * arc in the game and reads the reach off it, bot/reach.js proves all three
- * routes go through, bot/routes.js times them against each other, and
- * bot/tightness.js counts the presses in the fast run that have exactly one
+ *   THE YARD — the middle, under the chutes.
+ *      Two staircases of its own — twelve exact jumps, because no road
+ *   here is a rest — and between them the things that cost time: gaps of
+ *   three, lips a tile up, and three or four places where the floor comes
+ *   up two tiles with nothing to run at. A standing stop is the only
+ *   thing in this engine that really costs time, and that is why this
+ *   road is the slower one.
+ *
+ *   THE CELLAR — under the whole mill.
+ *      Two staircases of its own — twelve exact jumps, because no road
+ *   here is a rest — and between them the things that cost time: gaps of
+ *   three, lips a tile up, and three or four places where the floor comes
+ *   up two tiles with nothing to run at. A standing stop is the only
+ *   thing in this engine that really costs time, and that is why this
+ *   road is the slower one.
+ *
+ * Measured, not felt. bot/envelope.js flies the arc in the game and reads the
+ * reach off it; tools/lanes.py refuses to draw a gap that cannot be crossed;
+ * bot/reach.js proves all three routes go through; bot/pick.js searches the
+ * level with nothing confined and reports which route a perfect run actually
+ * takes; bot/tightness.js counts the presses in that run with exactly one
  * frame that works.
  */
 (function (PL) {
@@ -46,7 +63,7 @@
 
     segments: [
 
-      /* 0 — the fork: two ledges to the gantry, or a hole to the cellar */
+      /* 0 — the fork: up into the beams, across the yard, or down the cellar */
       [
         '........................######',
         '........................######',
@@ -54,71 +71,71 @@
         '..............................',
         '..............................',
         '..............................',
-        '............................==',
-        '.........................===..',
+        '####################..........',
+        '####################...===....',
         '..............................',
         '....................===.......',
-        '..@....l.........o...1........',
+        '..@.....l.............1.......',
         '############...###############',
         '############...###############',
         '############...###############',
         '..............................',
         '..............................',
-        '......o...........l...........',
+        '..............................',
         '##############################',
         '##############################',
         '##############################'
       ],
 
-      /* 1 — the gantry’s first chain of six; the first keg chute below */
+      /* 1 — the gantry’s first staircase — eight decks, seven exact jumps */
       [
         '##############################',
         '##############################',
         '##############################',
         '................o.............',
         '..............................',
-        '.......#.......#.......#......',
-        '==.#.......#.......#.......#..',
+        '......#.......#.......#.......',
+        '#x#xxxxxxx#xxxxxxx#xxxxxxx#xxx',
+        '##############################',
         '..............................',
         '..............................',
-        '......k..................CC...',
-        '..............o.......C..CC...',
-        '##################....########',
-        '##################....########',
-        '##################....########',
+        '......#.......#.......#.......',
+        '#x#xxxxxxx#xxxxxxx#xxxxxxx#xxx',
+        '##############################',
+        '##############################',
         '..............................',
-        '................##............',
-        '................##....o.......',
-        '########xxx#################xx',
+        '..............................',
+        '......#.......#.......#.......',
+        '#x#xxxxxxx#xxxxxxx#xxxxxxx#xxx',
         '##############################',
         '##############################'
       ],
 
-      /* 2 — clock hands on the walkway, chutes facing each other in the yard */
+      /* 2 — the two-wide staircase; a keg chute in the yard */
       [
         '##############################',
         '##############################',
         '##############################',
         '..............................',
         '..............................',
-        '...n.........n..........o.....',
-        '=======...=======...=========.',
+        '#.............................',
+        'xx############################',
+        '##############################',
         '..............................',
+        '......###.....................',
+        '#.....###..................###',
+        'xx####k#####xxx#########xxx###',
+        '##############################',
+        '##############################',
         '..............................',
-        '....k.............k...........',
-        '.......................p......',
-        '########....##################',
-        '########....##################',
-        '########....##################',
-        '..............................',
-        '..........##..................',
-        '..........##.........###..c...',
-        'x#################xxx#########',
+        '..................###.........',
+        '#...........c.....###.........',
+        'xx############################',
         '##############################',
         '##############################'
       ],
 
-      /* 3 — the second chain, two-wide decks; the yard’s first stack */
+      /* 3 — the third and longest: nine decks, eight exact jumps */
       [
         '##############################',
         '##############################',
@@ -126,47 +143,47 @@
         '..............o...............',
         '..............................',
         '2.....##........##........##..',
-        '.##........##........##.......',
+        'x##xxxxxxxx##xxxxxxxx##xxxxxx#',
+        '##############################',
         '..............................',
-        '......CC......................',
-        '......CC......................',
-        '......CC....o.......C...p.....',
-        '################....##########',
-        '################....##########',
-        '################....##########',
+        '........###...................',
+        '........###.............p.....',
+        '##############...#xxx#########',
+        '##############...#############',
+        '##############...#############',
         '..............................',
-        '..........##..................',
-        '..........##..o........###....',
-        '####################xxx#######',
+        '..............................',
+        '...........................###',
+        'xxx#####################xxx###',
         '##############################',
         '##############################'
       ],
 
-      /* 4 — the gust column, and a clock hand at ground level */
+      /* 4 — tolls in the yard and the cellar */
       [
         '##############################',
         '##############################',
         '##############################',
         '..............................',
-        '..........g...................',
-        '...................o..........',
-        '==============.=========...===',
         '..............................',
         '..............................',
+        '##############################',
+        '##############################',
         '..............................',
-        '......n.....o...........U3....',
-        '################....##########',
-        '################....##########',
-        '################....##########',
+        '............###...............',
+        '..........F.###.............3.',
+        '##################xxx#k#######',
+        '##############################',
+        '##############################',
         '..............................',
-        '................##............',
-        '................##....c.......',
+        '###.....................###...',
+        '###.......o.............###...',
         '######xxx#####################',
         '##############################',
         '##############################'
       ],
 
-      /* 5 — the longest chain — eight decks, seven exact jumps */
+      /* 5 — the last staircase, and the checkpoint */
       [
         '##############################',
         '##############################',
@@ -174,47 +191,47 @@
         '................R.............',
         '..............................',
         '.....#.......#.......#.......#',
-        '.#.......#.......#.......#....',
+        'x#xxxxxxx#xxxxxxx#xxxxxxx#xxxx',
+        '##############################',
         '..............................',
-        '......CC......................',
-        '......CC......................',
-        '......CC.....F.....o......C...',
-        '######################....####',
-        '######################....####',
-        '######################....####',
         '..............................',
-        '..................##..........',
-        '...........###....##....o.....',
-        '########xxx###################',
+        '.....#.......#.......#.......#',
+        'x#xxxxxxx#xxxxxxx#xxxxxxx#xxxx',
+        '##############################',
+        '##############################',
+        '..............................',
+        '..............................',
+        '.....#.......#.......#.......#',
+        'x#xxxxxxx#xxxxxxx#xxxxxxx#xxxx',
         '##############################',
         '##############################'
       ],
 
-      /* 6 — kegs on the run-in, and the Bellows in the dark */
+      /* 6 — the Bellows, down where nobody looks */
       [
         '##############################',
         '##############################',
         '##############################',
         '..............................',
         '..............................',
-        '.T........n..............o....',
-        '========...========...========',
+        '..............#.......#.......',
+        'xxx#x####x#xxxxxxx#xxxxxxx#x##',
+        '##############################',
         '..............................',
         '..............................',
-        '....k...........k.............',
-        '..........p.............C..N..',
-        '####################....######',
-        '####################....######',
-        '####################....######',
+        '................N.............',
+        'xxx#x#########...#############',
+        '##############...#############',
+        '##############...#############',
         '..............................',
         '..............................',
-        '4...........E......###........',
-        '######xxx#######xxx###########',
+        '......4.....E.................',
+        'xxx#x###############xxx#######',
         '##############################',
         '##############################'
       ],
 
-      /* 7 — off the gantry, up the cellar stair, and the cup */
+      /* 7 — the cellar stair, and the cup */
       [
         '##########....................',
         '##########....................',
@@ -222,14 +239,14 @@
         '..............................',
         '..............................',
         '..............................',
-        '=====.........................',
         '..............................',
         '..............................',
-        '.........===..................',
-        '....o.............5.o...Z.....',
+        '..............................',
+        '..............................',
+        '..................5.....Z.....',
         '##############...#############',
         '...............###############',
-        '......o.....##################',
+        '............##################',
         '.........#####################',
         '......########################',
         '...###########################',

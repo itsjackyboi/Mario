@@ -1,28 +1,49 @@
 /* Roto Kaiishi II — "Netmenders' Row"
  *
- * REBUILT FOR v2 AS THREE ROUTES, and the fast one is over the stalls.
+ * REBUILT FOR v2 AS THREE ROUTES, and all three of them are capped.
  *
- *   THE LOFTS — up among the drying frames, and the quick way. Two ordinary
- *   ledges gets you there, which is deliberate: the lofts must not pay to be
- *   entered. What they cost is room. The frames sit three courses over the
- *   walkway and cap every jump at two tiles of rise, turning a 4.84-tile jump
- *   into a 3.86-tile one, and the racks are cut against the smaller number —
- *   four columns apart, alternating between the walk and one course above it,
- *   which is 3.20 against the 3.00 you need. Nine pixels, a frame and a half,
- *   seven times, then five, then eight, with nothing ordinary in between.
- *   After the last rack there is a Clockheart Tonic, and that is what makes
- *   this route faster rather than merely harder.
+ * THE ONE FACT THE WHOLE LEVEL IS BUILT ON. Corb runs at a constant 4.3 pixels
+ * a frame, so how far a jump carries is decided entirely by how long it stays
+ * in the air — and that is decided by how high it gets. A roof two tiles over
+ * his head turns a 4.84-tile jump into a 3.86-tile one. On a grid of 32-pixel
+ * tiles that is the only way to ask for exact timing: the ROOF sets the
+ * tolerance, not the gap.
  *
- *   THE ROW — the middle. Bobbers that sink the moment you weight them, stalls
- *   leaning across the path, and four stacks of creels you stop dead against.
+ * So there is a roof over all three decks and no open air anywhere to escape
+ * into. Every gap in the level is cut against 3.86 tiles.
  *
- *   UNDER THE PIER — the slow one. Flat and dark, and eight times the pilings
- *   come up two courses with nothing to run at.
+ *   THE LOFTS — up among the drying frames.
+ *      THE FAST ONE. Four staircases: islands four columns apart,
+ *   alternating between the floor and one tile above it. Going up, the
+ *   capped jump carries 3.20 tiles against the 3.00 you need — nine
+ *   pixels, a frame and a half. Coming down off the raised island there
+ *   is one tile of roof left and it is the same frame and a half. They
+ *   alternate, so there is nothing ordinary in between to breathe on:
+ *   seven of them, then five, then eight, then four. And nothing to stop
+ *   for anywhere along it, which is the only reason it is quick.
  *
- * The numbers are measured, not felt: bot/envelope.js flies the arc in the
- * game and reads the reach off it, bot/reach.js proves all three go through,
- * bot/routes.js times them, bot/tightness.js counts the presses in the fast
- * run that have exactly one frame that works.
+ *   THE ROW — the middle, past the stalls.
+ *      Two staircases of its own — twelve exact jumps, because no road
+ *   here is a rest — and between them the things that cost time: gaps of
+ *   three, lips a tile up, and three or four places where the floor comes
+ *   up two tiles with nothing to run at. A standing stop is the only
+ *   thing in this engine that really costs time, and that is why this
+ *   road is the slower one.
+ *
+ *   UNDER THE PIER — the swell, and the pilings.
+ *      Two staircases of its own — twelve exact jumps, because no road
+ *   here is a rest — and between them the things that cost time: gaps of
+ *   three, lips a tile up, and three or four places where the floor comes
+ *   up two tiles with nothing to run at. A standing stop is the only
+ *   thing in this engine that really costs time, and that is why this
+ *   road is the slower one.
+ *
+ * Measured, not felt. bot/envelope.js flies the arc in the game and reads the
+ * reach off it; tools/lanes.py refuses to draw a gap that cannot be crossed;
+ * bot/reach.js proves all three routes go through; bot/pick.js searches the
+ * level with nothing confined and reports which route a perfect run actually
+ * takes; bot/tightness.js counts the presses in that run with exactly one
+ * frame that works.
  */
 (function (PL) {
   'use strict';
@@ -42,25 +63,25 @@
 
     segments: [
 
-      /* 0 — the fork: up to the lofts, along the row, or down under the pier */
+      /* 0 — the fork: up to the lofts, along the row, or under the pier */
       [
-        '........................IIIIII',
-        '........................IIIIII',
-        '........................IIIIII',
+        '........................######',
+        '........................######',
+        '........................######',
         '..............................',
         '..............................',
         '..............................',
-        '............................==',
-        '.........................===..',
+        '####################..........',
+        '####################...===....',
         '..............................',
         '....................===.......',
-        '..@.....l.........o...1.......',
+        '..@.....l.............1.......',
         '############...###############',
         '############...###############',
         '############...###############',
         '..............................',
         '..............................',
-        '......o............l..........',
+        '..............................',
         '##############################',
         '##############################',
         '##############################'
@@ -68,164 +89,164 @@
 
       /* 1 — the first rack — eight racks, seven exact jumps */
       [
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
+        '##############################',
+        '##############################',
+        '##############################',
         '................o.............',
         '..............................',
-        '.......#.......#.......#......',
-        '==.#.......#.......#.......#..',
+        '......#.......#.......#.......',
+        '#x#xxxxxxx#xxxxxxx#xxxxxxx#xxx',
+        '##############################',
         '..............................',
-        '..................CC..........',
-        '..................CC..........',
-        '.....s..s.........CC..........',
-        '######.....###############....',
-        '######.....###############....',
-        '######.....###############....',
         '..............................',
-        '......##....................##',
-        '......##....c...............##',
-        '################~~~###########',
+        '......#.......#.......#.......',
+        '#x#xxxxxxx#xxxxxxx#xxxxxxx#xxx',
+        '##############################',
+        '##############################',
+        '..............................',
+        '..............................',
+        '......#.......#.......#.......',
+        '#~#~~~~~~~#~~~~~~~#~~~~~~~#~~~',
         '##############################',
         '##############################'
       ],
 
-      /* 2 — stalls over the walkway; bobbers in the row */
+      /* 2 — the two-wide rack; the stalls along the row */
       [
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
+        '##############################',
+        '##############################',
+        '##############################',
         '..............................',
         '..............................',
-        '.#........u....o....u.........',
-        '....==========================',
+        '#.............................',
+        'xx############################',
+        '##############################',
         '..............................',
-        '..........................CC..',
-        '..........................CC..',
-        'C.....u....s..s...........CC..',
-        '############......############',
-        '############......############',
-        '############......############',
+        '......###.....................',
+        '#.....u##..................###',
+        'xx##########xxx#########xxx###',
+        '##############################',
+        '##############################',
         '..............................',
-        '....................##........',
-        '....o......###......##....c...',
-        '########~~~###################',
+        '..................###.........',
+        '#...........c.....###.........',
+        '~~############################',
         '##############################',
         '##############################'
       ],
 
-      /* 3 — the second rack, two-wide and five apart */
+      /* 3 — the third and longest: nine racks, eight exact jumps */
       [
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
+        '##############################',
+        '##############################',
+        '##############################',
         '..............^...............',
         '..............................',
         '..2...##........##........##..',
-        '.##........##........##.......',
+        'x##xxxxxxxx##xxxxxxxx##xxxxxx#',
+        '##############################',
+        '..............................',
+        '........###...................',
+        '........###.............s.....',
+        '##############...#xxx#########',
+        '##############...#############',
+        '##############...#############',
         '..............................',
         '..............................',
-        '..............................',
-        '........C.....u....s..s.......',
-        '####....############......####',
-        '####....############......####',
-        '####....############......####',
-        '..............................',
-        '............##................',
-        '............##....o......###..',
-        '~~~###################~~~#####',
+        '...........................###',
+        '~~~#####################~~~###',
         '##############################',
         '##############################'
       ],
 
-      /* 4 — whole walkway, and the third stack of creels */
+      /* 4 — tolls along the row and under the pier */
       [
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
+        '##############################',
+        '##############################',
+        '##############################',
         '..............................',
         '..............................',
-        '............u.......o.........',
-        '==============================',
         '..............................',
-        '....CC........................',
-        '....CC........................',
-        '....CC..........C.....D...3...',
-        '############....##############',
-        '############....##############',
-        '############....##############',
+        '##############################',
+        '##############################',
         '..............................',
-        '....##....................##..',
-        '....##....c...............##..',
-        '##############~~~#############',
+        '............###...............',
+        '..........F.###.......u...3...',
+        '##################xxx#########',
+        '##############################',
+        '##############################',
+        '..............................',
+        '###.....................###...',
+        '###.......o.............###...',
+        '######~~~#####################',
         '##############################',
         '##############################'
       ],
 
-      /* 5 — the longest rack: nine racks, eight exact jumps */
+      /* 5 — the last rack, and the checkpoint */
       [
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
+        '##############################',
+        '##############################',
+        '##############################',
         '................R.............',
         '..............................',
         '.....#.......#.......#.......#',
-        '.#.......#.......#.......#....',
+        'x#xxxxxxx#xxxxxxx#xxxxxxx#xxxx',
+        '##############################',
         '..............................',
-        '......................CC......',
-        '......................CC......',
-        '.F.....s..s...........CC......',
-        '########......################',
-        '########......################',
-        '########......################',
         '..............................',
-        '..................##..........',
-        '..o......###......##....c.....',
-        '######~~~###################~~',
+        '.....#.......#.......#.......#',
+        'x#xxxxxxx#xxxxxxx#xxxxxxx#xxxx',
+        '##############################',
+        '##############################',
+        '..............................',
+        '..............................',
+        '.....#.......#.......#.......#',
+        '~#~~~~~~~#~~~~~~~#~~~~~~~#~~~~',
         '##############################',
         '##############################'
       ],
 
-      /* 6 — the run out, and the eighth piling below */
+      /* 6 — the Ballast, and the last of the swell */
       [
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
-        'IIIIIIIIIIIIIIIIIIIIIIIIIIIIII',
+        '##############################',
+        '##############################',
+        '##############################',
         '..............................',
         '..............................',
-        '.T........u.........o.........',
-        '==============================',
+        '..............#.......#.......',
+        'xxx#x####x#xxxxxxx#xxxxxxx#x##',
+        '##############################',
         '..............................',
         '..............................',
+        '................O.............',
+        'xxx#x#########...#############',
+        '##############...#############',
+        '##############...#############',
         '..............................',
-        '....C.....u....s..s........O..',
-        '....############......########',
-        '....############......########',
-        '....############......########',
         '..............................',
-        '..........##..................',
-        '......4...##....o....###......',
-        '~#################~~~#########',
+        '......4.....D.................',
+        '~~~#~###############~~~#######',
         '##############################',
         '##############################'
       ],
 
       /* 7 — the stair out from under the pier, and the cup */
       [
-        'IIIIIIIIII....................',
-        'IIIIIIIIII....................',
-        'IIIIIIIIII....................',
+        '##########....................',
+        '##########....................',
+        '##########....................',
         '..............................',
         '..............................',
         '..............................',
-        '=====.........................',
         '..............................',
         '..............................',
-        '.........===..................',
-        '....o.............5.o...Z.....',
+        '..............................',
+        '..............................',
+        '..................5.....Z.....',
         '##############...#############',
         '...............###############',
-        '......o.....##################',
+        '............##################',
         '.........#####################',
         '......########################',
         '...###########################',

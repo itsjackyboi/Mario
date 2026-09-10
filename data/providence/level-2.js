@@ -1,32 +1,53 @@
 /* Providence II — "The Tithe Walk"
  *
- * REBUILT FOR v2 AS THREE ROUTES, and the fast one is the middle one — which
- * is the point. Providence charges for everything; the covered walk is the
- * cheapest thing in the city and it is still the hardest.
+ * REBUILT FOR v2 AS THREE ROUTES, and all three of them are capped.
  *
- *   THE WALK — inside the arcade, and the quick way. The vault sits two tiles
- *   over your head for its whole length, and a jump that cannot rise past two
- *   tiles carries 3.86 tiles instead of 4.84. Every course of slabs down there
- *   is cut against the smaller number: four columns apart, alternating between
- *   the floor and one course above it, which is 3.20 against the 3.00 you
- *   need. Nine pixels. A frame and a half, seven times, then five, then eight.
- *   Nothing to climb and nothing on a cycle — the walk's only cost is that it
- *   does not forgive.
+ * THE ONE FACT THE WHOLE LEVEL IS BUILT ON. Corb runs at a constant 4.3 pixels
+ * a frame, so how far a jump carries is decided entirely by how long it stays
+ * in the air — and that is decided by how high it gets. A roof two tiles over
+ * his head turns a 4.84-tile jump into a 3.86-tile one. On a grid of 32-pixel
+ * tiles that is the only way to ask for exact timing: the ROOF sets the
+ * tolerance, not the gap.
  *
- *   THE LEADS — over the roof. No cap on the jump up there, and the gaps are
- *   ordinary. What it costs is the tithe-blocks: three causeways built out of
- *   stone that is only present on every other chime, so half the road is
- *   missing at any moment and you go at the bells' pace rather than your own.
+ * So there is a roof over all three decks and no open air anywhere to escape
+ * into. Every gap in the level is cut against 3.86 tiles.
  *
- *   THE OSSUARY — under the walk, among the paid-for dead. Flat, and slow for
- *   one reason: eight times the floor comes up two courses with nothing to run
- *   at. A standing jump is the only thing in this engine that really costs
- *   time, and there are eight of them down there.
+ *   THE WALK — inside the arcade, and the quick way.
+ *      THE FAST ONE. Four staircases: islands four columns apart,
+ *   alternating between the floor and one tile above it. Going up, the
+ *   capped jump carries 3.20 tiles against the 3.00 you need — nine
+ *   pixels, a frame and a half. Coming down off the raised island there
+ *   is one tile of roof left and it is the same frame and a half. They
+ *   alternate, so there is nothing ordinary in between to breathe on:
+ *   seven of them, then five, then eight, then four. And nothing to stop
+ *   for anywhere along it, which is the only reason it is quick.
  *
- * The numbers are measured, not felt: bot/envelope.js flies the arc and reads
- * the reach off it, bot/reach.js proves all three go through, bot/routes.js
- * times them against each other, bot/tightness.js counts the presses in the
- * fast run with exactly one frame that works.
+ *   THE LEADS — over the roof.
+ *      Two staircases of its own — twelve exact jumps, because no road
+ *   here is a rest — and between them the things that cost time: gaps of
+ *   three, lips a tile up, and three or four places where the floor comes
+ *   up two tiles with nothing to run at. A standing stop is the only
+ *   thing in this engine that really costs time, and that is why this
+ *   road is the slower one.
+ *
+ *   THE OSSUARY — among the paid-for dead.
+ *      Two staircases of its own — twelve exact jumps, because no road
+ *   here is a rest — and between them the things that cost time: gaps of
+ *   three, lips a tile up, and three or four places where the floor comes
+ *   up two tiles with nothing to run at. A standing stop is the only
+ *   thing in this engine that really costs time, and that is why this
+ *   road is the slower one.
+ *
+ * The fast route being the middle one is the point: Providence charges
+ * for everything, and the covered walk is the cheapest thing in the city
+ * and still the hardest.
+
+ * Measured, not felt. bot/envelope.js flies the arc in the game and reads the
+ * reach off it; tools/lanes.py refuses to draw a gap that cannot be crossed;
+ * bot/reach.js proves all three routes go through; bot/pick.js searches the
+ * level with nothing confined and reports which route a perfect run actually
+ * takes; bot/tightness.js counts the presses in that run with exactly one
+ * frame that works.
  */
 (function (PL) {
   'use strict';
@@ -34,7 +55,7 @@
   PL.Towns.addLevel('providence', {
     id: 'providence-2',
     name: 'The Tithe Walk',
-    blurb: 'Under the vault, over the leads, or down among the paid-for dead.',
+    blurb: 'Over the leads, under the vault, or down among the paid-for dead.',
     diff: 1.3,
     quips: {
       '1': '@buke4',
@@ -48,23 +69,23 @@
 
       /* 0 — the fork: into the arcade, up to the leads, or down to the bones */
       [
+        '........................######',
+        '........................######',
+        '........................######',
         '..............................',
         '..............................',
         '..............................',
-        '..............................',
-        '..............................',
-        '..............................',
-        '..........................BBBB',
-        '.......................===BBBB',
+        '####################..........',
+        '####################...===....',
         '..............................',
         '....................===.......',
-        '..@......l........o...1.......',
+        '..@.....l.............1.......',
         '############...###############',
         '############...###############',
         '############...###############',
         '..............................',
         '..............................',
-        '......o............l..........',
+        '..............................',
         '##############################',
         '##############################',
         '##############################'
@@ -72,164 +93,164 @@
 
       /* 1 — the first course — eight slabs, seven exact jumps */
       [
+        '##############################',
+        '##############################',
+        '##############################',
         '..............................',
         '..............................',
-        '..............................',
-        '..............................',
-        '..............................',
-        '..........................o...',
-        '=====....=B()()()()()B========',
-        'BBBBB....BBBBBBBBBBBBBBBBBBBBB',
-        '...............o..............',
+        '......#.......#.......#.......',
+        '#x#xxxxxxx#xxxxxxx#xxxxxxx#xxx',
+        '##############################',
+        '................o.............',
         '..............................',
         '......#.......#.......#.......',
         '#x#xxxxxxx#xxxxxxx#xxxxxxx#xxx',
         '##############################',
         '##############################',
         '..............................',
-        '......##....................##',
-        '......##....c...............##',
-        '################xxx###########',
+        '..............................',
+        '......#.......#.......#.......',
+        '#x#xxxxxxx#xxxxxxx#xxxxxxx#xxx',
         '##############################',
         '##############################'
       ],
 
-      /* 2 — friars and an apostle on a whole floor; the first tithe causeway */
+      /* 2 — the two-wide course; the bell tower on the leads */
       [
-        '..............................',
-        '..............................',
-        '..............................',
-        '..............................',
-        '..............................',
-        '.......===........===....o..2.',
-        '===....=======....============',
-        'BBB....BBBBBBB....BBBBBBBBBBBB',
-        '..............................',
-        '..............................',
-        '#...f.......a.......f.....o...',
         '##############################',
         '##############################',
         '##############################',
         '..............................',
-        '....................##........',
-        '....o......###......##....c...',
-        '########xxx###################',
+        '......###.....................',
+        '#.....###..................#2#',
+        'xx##########xxx#########xxx###',
+        '######b#######################',
+        '..............................',
+        '..............................',
+        '#.............................',
+        'xx############################',
+        '##############################',
+        '##############################',
+        '..............................',
+        '..................###.........',
+        '#...........c.....###.........',
+        'xx############################',
         '##############################',
         '##############################'
       ],
 
-      /* 3 — the second course, two-wide slabs; the long causeway above */
+      /* 3 — the third and longest: nine slabs, eight exact jumps */
       [
+        '##############################',
+        '##############################',
+        '##############################',
         '..............................',
-        '..............................',
-        '..............................',
-        '..............................',
-        '..............................',
-        '.......................o......',
-        'BB)()()()()()()(BB============',
-        'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+        '........###...................',
+        '........###...................',
+        '##############...#xxx#########',
+        '##############...#############',
         '..............K...............',
         '..............................',
         '......##........##........##..',
-        'x##xxxxxxxx##xxxxxxxx##xxxxxxx',
+        'x##xxxxxxxx##xxxxxxxx##xxxxxx#',
         '##############################',
         '##############################',
         '..............................',
-        '............##................',
-        '............##....o......###..',
-        'xxx###################xxx#####',
-        '##############################',
-        '##############################'
-      ],
-
-      /* 4 — the apostles march; the bell tower splits the roof */
-      [
         '..............................',
-        '..............................',
-        '..........b...................',
-        '..........BB..................',
-        '..........BB..................',
-        '..........BB.......===........',
-        '==....=========....======....=',
-        'BB....BBBBBBBBB....BBBBBB....B',
-        '..............................',
-        '..............................',
-        '.....a...o...a...U...a......3.',
-        '##############################',
-        '##############################',
-        '##############################',
-        '..............................',
-        '....##....................##..',
-        '....##....c...............##..',
-        '##############xxx#############',
+        '...........................###',
+        'xxx#####################xxx###',
         '##############################',
         '##############################'
       ],
 
-      /* 5 — the longest course: nine slabs, eight exact jumps */
+      /* 4 — tolls on the leads and among the bones */
       [
+        '##############################',
+        '##############################',
+        '##############################',
+        '..............................',
+        '............###...............',
+        'o...........###...............',
+        '##################xxx#########',
+        '##############################',
         '..............................',
         '..............................',
+        '..........F...................',
+        '##############################',
+        '##############################',
+        '##############################',
+        '..............................',
+        '###.....................###...',
+        '###.......Q.............###...',
+        '######xxx#####################',
+        '##############################',
+        '##############################'
+      ],
+
+      /* 5 — the last course, and the checkpoint */
+      [
+        '##############################',
+        '##############################',
+        '##############################',
         '..............................',
         '..............................',
-        '..............................',
-        '..........................R...',
-        'BB=========B()()()()()B=======',
-        'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+        '.....#.......#.......#....R..#',
+        'x#xxxxxxx#xxxxxxx#xxxxxxx#xxxx',
+        '##############################',
         '................o.............',
         '..............................',
-        '.....#.......#.......#.......#',
+        '3....#.......#.......#.......#',
         'x#xxxxxxx#xxxxxxx#xxxxxxx#xxxx',
         '##############################',
         '##############################',
         '..............................',
-        '..................##..........',
-        'Q.o......###......##....c.....',
-        '######xxx###################xx',
+        '..............................',
+        '.....#.......#.......#.......#',
+        'x#xxxxxxx#xxxxxxx#xxxxxxx#xxxx',
         '##############################',
         '##############################'
       ],
 
-      /* 6 — the last of the tithe, and the ossuary’s eighth ledge */
+      /* 6 — the last of the tithe */
       [
-        '..............................',
-        '..............................',
-        '..............................',
-        '..............................',
-        '..............................',
-        '......==.........o............',
-        '==....=================....===',
-        'BB....BBBBBBBBBBBBBBBBB....BBB',
-        '..............................',
-        '..............................',
-        '....fT.........#.......#..a...',
-        '##########x#xxxxxxx#xxx#######',
+        '##############################',
         '##############################',
         '##############################',
         '..............................',
-        '..........##..................',
-        '....4.....##....o....###......',
-        'x#################xxx#########',
+        '..............................',
+        '..............................',
+        'xxx#x#########...#############',
+        '##############...#############',
+        '..............................',
+        '..............................',
+        '..............#.......#.......',
+        'xxx#x####x#xxxxxxx#xxxxxxx#x##',
+        '##############################',
+        '##############################',
+        '..............................',
+        '..............................',
+        '....4.......o.................',
+        'xxx#x###############xxx#######',
         '##############################',
         '##############################'
       ],
 
-      /* 7 — the stair out of the bones, and the cup */
+      /* 7 — the stair out of the ossuary, and the cup */
       [
+        '##########....................',
+        '##########....................',
+        '##########....................',
         '..............................',
         '..............................',
         '..............................',
         '..............................',
         '..............................',
         '..............................',
-        '=====BBB......................',
-        'BBBBBBBB......................',
         '..............................',
-        '.........===..................',
-        '....o.............5.o...Z.....',
+        '..................5.....Z.....',
         '##############...#############',
         '...............###############',
-        '......o.....##################',
+        '............##################',
         '.........#####################',
         '......########################',
         '...###########################',
