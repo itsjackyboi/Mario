@@ -19,7 +19,215 @@ ROOT = os.path.dirname(HERE)
 
 from mklevel import Canvas, emit
 from threeroutes import (W, Deck, skeleton, fork, ramp_out, hole, deck_hole,
-                         check, SKY, LAND, TUN, SKYF, LANDF, TUNF)
+                         chimney, check, SKY, LAND, TUN, SKYF, LANDF, TUNF)
+
+# ============================================================== THE MACHINERY
+#
+# WHY THIS SECTION EXISTS. The five levels above this line are all cut from one
+# idea — a roof two tiles overhead turns a 4.84-tile jump into a 3.86-tile one,
+# and footing set against the smaller number leaves nine pixels to take off in.
+# It is a good idea. It is also, on its own, ONE idea, and five levels built
+# out of nothing else are five pictures of the same corridor. Screenshots of
+# the first version showed exactly that.
+#
+# So each level now gets one thing that no other level has, and every one of
+# them changes a DIFFERENT term in the same equation rather than adding another
+# spike somewhere:
+#
+#   SHANTY TOWN — BELTS.        How long a stretch of ground TAKES, which is
+#     the one term nothing else in this engine touches. Running with a capstan
+#     rope is 5.40 px a frame, against one is 3.20, against a bare floor's
+#     4.30 — and the ropes run through crawlways four pixels taller than Corb,
+#     so there is no jumping over them. The fast road gets two ropes running
+#     its way and the two slow roads get one each running the other, which is
+#     the first time in these five levels that one route is actually QUICKER
+#     rather than merely harder.
+#
+#     A rope also decides the hardest jump in the game, though not the way it
+#     was first written down here: see belt_gate below, where a claim that
+#     turned out to be false is kept next to the measurement that replaced it.
+#
+#   ALEFORGE — PRESSES, AND THE POUCH.    When you may be somewhere, and what
+#     you are allowed to bring. Measured under two tiles of headroom by
+#     sweeping every take-off frame and hold length: legs cross a void of four
+#     columns and a wind pouch crosses seven. So a void of SIX is a locked door
+#     with the key sixty columns behind it, and the key itself is out on a
+#     one-column spur that has to be jumped to and jumped back off.
+#
+#   PROVIDENCE — CLOCK ARMS, AND THE LIFT.    What time it is. The city runs on
+#     a chime and now the level does too: sweeping arms across the walk, and a
+#     tithe-lift on an eleven-second cycle that is only at the top of its
+#     travel for about two of them. It is the only way across the walk's one
+#     impossible gap. Miss it and you do not die — you fall into the ossuary,
+#     which is the slow road, and that is the whole penalty for being late.
+#
+#   FENWICK — SPRINGS.          How high, and who decides. A spring sets the
+#     rise for you: 4.79 tiles against your own legs' 3.10, and you cannot cut
+#     it short. Two and a half tiles more than the lane has overhead, so every
+#     one of them needs a hole in the roof over it — and through that hole is
+#     the only climbing anywhere in these five levels.
+#
+#   ROTO KAIISHI — THE HOIST, AND THE BOBBERS.    Where the ground is. A
+#     horizontal hoist on the same eleven-second swell, sized so that both hops
+#     only make it while it is near the middle of its sweep — which is where it
+#     is moving fastest and therefore where it spends the least time. And a
+#     rack of net-floats that sink while you stand on them, so the one thing
+#     you may not do is hesitate.
+#
+# Every number quoted above was measured in the running game, not derived:
+# scratch scripts flew the arcs, and tools/lanes.py refuses to draw a step that
+# the measured envelope cannot make.
+
+
+def belt_gate(deck, col, taken, back=False, run=26, void=4):
+    """A belt run, and at the end of it the hardest jump in the game.
+
+    THE FIRST VERSION OF THIS COMMENT WAS WRONG and it is worth saying how,
+    because the truth turned out to be better. The claim was that a belt lets
+    you cross a gap legs cannot: air time is set by the roof, so leaving faster
+    must carry further. But you do not leave faster — a belt drags whatever is
+    STANDING on it and never touches the player's own vx, and doJump drops the
+    ride on the take-off frame. The instant you are airborne you are doing 4.30
+    like everybody else.
+
+    What a belt really changes is WHEN you may jump. Coyote time gives six
+    frames after the lip in which the jump still counts, and those six frames
+    are worth 26 pixels of run-up on a bare floor — which is most of why a void
+    of four columns is crossable under a two-tile roof at all. On a forward
+    belt the ground is moving him at 5.40, so he crosses that same band of
+    useful take-off positions in fewer whole frames.
+
+    Measured, sweeping every take-off frame and every hold length — the number
+    of distinct ways over a void of four under a two-tile roof:
+
+            bare floor   20 ways
+            forward belt  1 way
+            back belt     0 ways — it cannot be done at all
+
+    One way. That is the frame-perfect jump these levels were asking for, and
+    it is the belt that makes it so, just not for the reason first written down.
+    """
+    deck.belt(col, col + run - 1, back=back)
+    deck.clear(col + run, col + run + void - 1)
+    taken.append((col - 1, col + run + void))
+
+
+def press_row(deck, cols, taken):
+    """Stamps hanging over the road, each phased off the column it stands in.
+
+    Not a wall and not a wait: the cycle is short enough to be a rhythm, and
+    the phases are far enough apart that a runner who does not break stride is
+    threading a pattern rather than queueing at each one.
+    """
+    for col in cols:
+        deck.press(col)
+    taken.append((cols[0] - 2, cols[-1] + 2))
+
+
+def pouch_spur(deck, col, taken):
+    """One column of footing, one tile up, three columns of nothing either side.
+
+    Everything else in these levels is a jump you have to make. This is a jump
+    you have to make TWICE, out and back, for a thing you will not need for
+    another hundred columns — and under a one-tile roof, which is where the
+    nine-pixel window comes from.
+    """
+    deck.clear(col - 3, col + 3)
+    deck.island(col, 1, high=True)
+    deck.put(col, 'W', up=1)
+    taken.append((col - 5, col + 5))
+
+
+def pouch_gate(deck, col, taken, void=6):
+    """Six columns of nothing under a full roof.
+
+    Measured by sweeping every take-off frame and hold length under two tiles
+    of headroom: legs cross four columns and no more, and a wind pouch crosses
+    seven. Six therefore has no version that is done on foot and is not at the
+    pouch's limit either — the lock turns, and it turns with room to be played
+    rather than only to be solved.
+    """
+    deck.clear(col, col + void - 1)
+    taken.append((col - 2, col + void + 1))
+
+
+def spring_well(c, deck, col, taken):
+    """A pillar, a spring on top of it, and three columns of open ceiling.
+
+    THE ONE PLACE IN THESE LEVELS WHERE YOU GO UP. Everywhere else height is an
+    asset you spend by falling out of it and never get back, which is the rule
+    that makes three stacked routes a choice rather than a ladder. A well is
+    the deliberate exception, and it costs two exact jumps to use.
+
+    It takes two stages because one will not do it, and the arithmetic is why:
+    a spring rises 4.79 tiles, and from a lane's own body row that peak is a
+    fifth of a tile SHORT of standing on the deck above. So the spring goes on
+    top of a two-tile pillar, which is itself a landing two tiles up — 3.76
+    tiles of reach against three columns of nothing to get onto it.
+
+    THE HOLE IS THREE COLUMNS AND NOT ONE MORE. It is a hole in the floor of
+    the lane above as well, and that lane is somebody's road: three columns is
+    exactly the standard capped jump, so the route up there crosses its own
+    well without noticing. Four would cut that road in half.
+    """
+    deck.step(col - 2, w=3)                        # the pillar: floor-2..floor
+    c.put(col, deck.floor - 2, '/')                # the spring, on top of it
+    chimney(c, deck.name, col - 1, col + 1)
+    taken.append((col - 6, col + 4))
+
+
+def lift(c, col, taken_land, taken_tun, void=6):
+    """The tithe-lift: a vertical mover in a gap the walk cannot jump.
+
+    The gap is six columns under a full roof and legs cross three, so there is
+    no version of this that is done on foot. The mover swings three tiles
+    either side of its anchor on an eleven-and-a-half second cycle, and at the
+    top of that swing its deck is exactly the walk's own floor — for about two
+    seconds in eleven.
+
+    The crust is opened under it so the thing has somewhere to swing, which
+    means the penalty for arriving at the wrong moment is not death. You drop
+    into the ossuary and finish on the slow road. Providence charges for
+    everything, and what it charges here is the time you did not have.
+    """
+    c.row(LANDF, col, col + void - 1, '.')
+    c.rect(col, 12, col + void - 1, 13, '.')
+    c.put(col + 2, 14, 'V')          # two tiles wide, so it spans col+2..col+3
+    taken_land.append((col - 2, col + void + 1))
+    taken_tun.append((col - 2, col + void + 1))
+
+
+def hoist(deck, col, taken, void=6):
+    """A horizontal hoist, sized so only the middle of its sweep will do.
+
+    Seven columns of nothing, lips either side, and a two-tile platform that
+    slides three tiles each way. To board it from the near lip its left edge
+    has to be within three columns; to leave it for the far lip its right edge
+    has to be within three of that. Both at once is a window about a tile and a
+    half wide in the middle of the sweep — which is exactly where it is moving
+    fastest, so it is the part of the cycle it spends the least time in.
+
+    Miss it and nothing kills you. You wait, and waiting is the point.
+    """
+    deck.clear(col, col + void - 1)
+    # A mover's deck sits ten pixels below the row its marker is on, so the
+    # marker goes on the BODY row and what you stand on is the row above that
+    # — the same convention every bobber in Roto Kaiishi already uses.
+    deck.c.put(col + 2, deck.body, 'H')
+    taken.append((col - 2, col + void + 1))
+
+
+def bobber_rack(deck, start, n, taken, step=4):
+    """Net-floats: footing that sinks twenty pixels while you stand on it.
+
+    The rack is cut at five columns apart, which is a void of three — the same
+    jump the staircases use. What is different is that the take-off is falling
+    while you are deciding to make it, so the window does not sit still.
+    """
+    deck.clear(start - 1, start + (n - 1) * step + 2)
+    for k in range(n):
+        deck.c.put(start + k * step, deck.body, 's')
+    taken.append((start - 2, start + (n - 1) * step + 3))
 
 # WHERE THE CHAINS GO, AND WHY THEY GO ON ALL THREE ROUTES.
 #
@@ -122,16 +330,27 @@ def build(spec):
             start, n = chain
             fast.chain(start, n)
             taken[spec['fast']].append((start - 1, start + (n - 1) * 4 + 1))
-    for col, glyph, up in spec['fast_things']:
-        safe(spec['fast'], col, glyph, up)
 
-    # --- the two slow routes: two chains each, and everything that costs ----
+    # --- the two slow routes: two chains each ------------------------------
     shift = spec['shift']
     for k, deck in enumerate(slow):
         for start, n in CHAINS_SLOW[k]:
             at = start + shift * (k + 1)
             deck.chain(at, n)
             taken[deck.name].append((at - 1, at + (n - 1) * 4 + 1))
+
+    # --- this level's own machinery ----------------------------------------
+    #
+    # Placed BEFORE the tolls below, not after, and that ordering is the whole
+    # reason the tolls know to go around it. Everything a machine occupies is
+    # written into `taken`, and `spread` picks the slow routes' gaps and steps
+    # out of what is left — so a belt run can never have a two-tile step
+    # dropped into the middle of it, and a lift can never share a column with a
+    # hole cut for something else.
+    spec['machines'](c, decks, taken)
+
+    # --- and then everything that costs the slow routes time ----------------
+    for k, deck in enumerate(slow):
         cols = spread(taken[deck.name], 9, start=k)
         for col in cols[0::3]:
             deck.step(col)
@@ -159,6 +378,8 @@ def build(spec):
         if spec['fast'] != 'sky':
             deck_hole(c, col, col + 2)
 
+    for col, glyph, up in spec['fast_things']:
+        safe(spec['fast'], col, glyph, up)
     for name, things in spec['things'].items():
         for col, glyph, up in things:
             safe(name, col, glyph, up)
@@ -173,7 +394,7 @@ def build(spec):
         'town': spec['town'], 'id': spec['id'], 'name': spec['name'],
         'blurb': spec['blurb'], 'diff': spec['diff'], 'quips': spec['quips'],
     }, c, spec['notes'])
-    bad = check(c, segs, spec['id'], spec['fast'])
+    bad = check(c, segs, spec['id'], spec['fast'], spec.get('intended', ()))
     return bad
 
 
@@ -232,9 +453,136 @@ SLOW = ('   Two staircases of its own — twelve exact jumps, because no road\n'
         ' *   road is the slower one.')
 
 
+# ------------------------------------------- what each level's machinery is
+#
+# The columns are hand-picked and they have to be: everything here has to land
+# in the windows the chains leave free (62-89, 119-149, 184-188 on the fast
+# route, and whatever each slow route's own staggered chains leave), and the
+# whole point of the staggering is that those windows are different on every
+# deck and every level. `check` at the bottom of build() is what proves it.
+
+
+def shantytown_machines(c, decks, taken):
+    """CAPSTAN ROPES. The tide turns them and they never stop turning.
+
+    The fast road gets two of them running its way, and at the end of each, a
+    void of four columns. Four is one more than legs cross under a roof — that
+    was measured, not assumed — so the belt is not a slope to enjoy, it is the
+    only reason the far lip is reachable. Step off the rope early and the jump
+    is simply not there.
+
+    The two slow roads get a rope running the other way, and that is the rarer
+    thing: something in this engine that genuinely costs TIME. Twenty columns
+    against the belt is 3.20 pixels a frame instead of 4.30, which is fifty
+    frames neither of them gets back.
+    """
+    belt_gate(decks['tunnel'], 62, taken['tunnel'])          # 62-87, void 88-91
+    belt_gate(decks['tunnel'], 119, taken['tunnel'])         # 119-144, void 145-148
+    # The tolls. Twenty-eight columns of crawlway with the rope running the
+    # wrong way is 896 pixels at 3.20 a frame instead of 4.30 — 280 frames
+    # against 208, so a hair over a second that neither slow road gets back.
+    # There is no jumping out of it and no way round it; the roof is four
+    # pixels over his head for the whole length.
+    decks['sky'].belt(88, 115, back=True)
+    taken['sky'].append((87, 116))
+    decks['land'].belt(130, 157, back=True)
+    taken['land'].append((129, 158))
+
+
+def aleforge_machines(c, decks, taken):
+    """THE MILL STAMPS, AND ONE POUCH THREE HUNDRED COLUMNS EARLY.
+
+    The gantry is threaded between falling stamps twice, and somewhere in the
+    middle of it the road simply stops for five columns. Legs cross three. The
+    pouch that crosses five is out on a one-column spur forty columns back,
+    across a gap with a tile of roof on it — nine pixels — and it has to be
+    jumped twice, because there is no way off the spur except the way on.
+
+    Nothing warns you. That is the point: the first run through, the gap at 124
+    is where you find out what the thing on the spur was for.
+    """
+    press_row(decks['sky'], [62, 67, 72, 77], taken['sky'])
+    pouch_spur(decks['sky'], 84, taken['sky'])
+    pouch_gate(decks['sky'], 124, taken['sky'])
+    press_row(decks['sky'], [136, 141, 146], taken['sky'])
+    press_row(decks['land'], [95, 100], taken['land'])
+    press_row(decks['tunnel'], [140, 145], taken['tunnel'])
+
+
+def providence_machines(c, decks, taken):
+    """THE CHIME, WHICH IS THE ONLY THING IN THIS CITY THAT IS NOT FOR SALE.
+
+    Four sweeping arms across the covered walk and two on each of the other
+    roads — the same clockwork that runs the crossing in providence-3, brought
+    down to street level where you have to run past it.
+
+    And the tithe-lift. Six columns of nothing in the middle of the walk, which
+    is twice what legs cross, and a lift on an eleven-and-a-half second swing
+    that is level with the walk for about two of them. Being late is not fatal
+    and it is not meant to be: the crust is open under it, so you drop into the
+    ossuary and finish on the slow road. The city takes the time instead.
+    """
+    for col in (66, 76, 86, 140):
+        decks['land'].put(col, 'n')
+    taken['land'].append((62, 90))
+    taken['land'].append((136, 144))
+    lift(c, 124, taken['land'], taken['tunnel'])
+    for col in (100, 110):
+        decks['sky'].put(col, 'n')
+    taken['sky'].append((96, 114))
+    for col in (155, 165):
+        decks['tunnel'].put(col, 'n')
+    taken['tunnel'].append((151, 169))
+
+
+def fenwick_machines(c, decks, taken):
+    """SPRUNG ROOTS, AND THE ONLY WAY UP IN ANY OF THESE FIVE LEVELS.
+
+    The Overturned Wood is the level about the ground and the canopy changing
+    places, so it is the one that gets to break the rule the other four are
+    built on. Three wells: two out of the roots and one out of the bog. Each is
+    a two-tile pillar you have to land on — three columns of nothing and 3.76
+    tiles of reach — with a root coiled on top that throws you the rest of the
+    way, whether you wanted the whole of it or not.
+
+    The holes they open are three columns wide, which is exactly the jump the
+    road above already asks for everywhere else. So the bog crosses the roots'
+    chimneys without knowing they are there, and the canopy crosses the bog's.
+    """
+    spring_well(c, decks['tunnel'], 70, taken['tunnel'])
+    taken['land'].append((67, 73))          # the hole it opens in the bog floor
+    spring_well(c, decks['tunnel'], 140, taken['tunnel'])
+    taken['land'].append((137, 143))
+    spring_well(c, decks['land'], 94, taken['land'])
+    taken['sky'].append((91, 97))           # and the one it opens in the canopy
+
+
+def roto_machines(c, decks, taken):
+    """THE SWELL. Nothing on this pier is standing still and neither are you.
+
+    Racks of net-floats, which are footing that sinks twenty pixels while your
+    weight is on it — so the take-off is dropping away underneath you while you
+    are deciding to make it, and the one thing you cannot do on a rack is
+    hesitate. Three racks, one on each road.
+
+    And the tide-hoist. Six columns of nothing in the lofts, and a hoist that
+    slides three tiles either side of its anchor on the same eleven-and-a-half
+    second swell. Getting on needs its near edge within three columns; getting
+    off needs its far edge within three of the other lip; both at once is about
+    a tile and a half in the middle of the sweep, which is the fastest part of
+    it and therefore the part it spends least time in. Nothing there kills you.
+    You wait, and the waiting is the whole toll.
+    """
+    bobber_rack(decks['sky'], 64, 6, taken['sky'])
+    hoist(decks['sky'], 124, taken['sky'])
+    bobber_rack(decks['sky'], 136, 3, taken['sky'])
+    bobber_rack(decks['land'], 100, 4, taken['land'])
+    bobber_rack(decks['tunnel'], 150, 4, taken['tunnel'])
+
+
 SPECS = [
     dict(
-        town='shantytown', id='shantytown-2', shift=0, name='The Bone Stair',
+        town='shantytown', id='shantytown-2', machines=shantytown_machines, shift=0, name='The Bone Stair',
         file='data/shantytown/level-2.js', diff=1.0, fast='tunnel',
         blurb='Over the boards, along them, or under them. All three will drown you.',
         hazard={'sky': 'x', 'land': 'x', 'tunnel': '~'},
@@ -260,7 +608,11 @@ SPECS = [
                       ' * That is what a level looks like when there is nothing in it to decide.\n')),
 
     dict(
-        town='aleforge', id='aleforge-2', shift=7, name='Wolendi Wind Farm',
+        town='aleforge', id='aleforge-2', machines=aleforge_machines, shift=7,
+        # The gate. Legs cross a void of three under a roof and this is five,
+        # measured both ways in the running game — so it is not a gap, it is a
+        # lock, and the pouch on the spur at 84 is the key.
+        intended=[('sky', 123, 130, 'the pouch gate — measured: legs cross 4 columns, a pouch crosses 7')], name='Wolendi Wind Farm',
         file='data/aleforge/level-2.js', diff=1.15, fast='sky',
         blurb='Through the beams, across the yard, or under the whole mill.',
         hazard={'sky': 'x', 'land': 'x', 'tunnel': 'x'},
@@ -283,7 +635,10 @@ SPECS = [
                       'THE CELLAR — under the whole mill.', SLOW)),
 
     dict(
-        town='providence', id='providence-2', shift=13, name='The Tithe Walk',
+        town='providence', id='providence-2', machines=providence_machines, shift=13,
+        # The tithe-lift. Six columns against the three legs cross, and what
+        # bridges it is somewhere else entirely at nine seconds in eleven.
+        intended=[('land', 123, 130, 'the tithe-lift — crossed by the mover at 126, on its own clock')], name='The Tithe Walk',
         file='data/providence/level-2.js', diff=1.3, fast='land',
         blurb='Over the leads, under the vault, or down among the paid-for dead.',
         hazard={'sky': 'x', 'land': 'x', 'tunnel': 'x'},
@@ -309,7 +664,7 @@ SPECS = [
                       ' * and still the hardest.\n')),
 
     dict(
-        town='fenwick', id='fenwick-2', shift=4, name='The Overturned Wood',
+        town='fenwick', id='fenwick-2', machines=fenwick_machines, shift=4, name='The Overturned Wood',
         file='data/fenwick/level-2.js', diff=1.5, fast='tunnel',
         blurb='Under the roots, through the bog, or up where the light is.',
         hazard={'sky': 'x', 'land': '~', 'tunnel': '~'},
@@ -336,7 +691,7 @@ SPECS = [
                       ' * Nothing here is a minigame any more.\n')),
 
     dict(
-        town='roto', id='roto-2', shift=10, name="Netmenders' Row",
+        town='roto', id='roto-2', machines=roto_machines, shift=10, name="Netmenders' Row",
         file='data/roto/level-2.js', diff=1.45, fast='sky',
         blurb='Over the frames, along the stalls, or under the whole pier.',
         hazard={'sky': 'x', 'land': 'x', 'tunnel': '~'},

@@ -80,6 +80,7 @@
 
     this.coyote = 0;
     this.buffer = 0;
+    this.launch = 0;        // a rise something else chose for you: not cuttable
     this.airJumpsLeft = 0;
     this.jumpHeld = false;
     this.runPhase = 0;
@@ -119,8 +120,20 @@
     return m;
   };
 
+  /* A launched rise falls under its own, lighter gravity.
+   *
+   * Not decoration: vy is clamped to ±MAXFALL every frame, so no impulse — a
+   * spring's included — can ever start faster than 12.5, and 12.5 against
+   * normal gravity is 4.1 tiles. If a spring is to reach anywhere an ordinary
+   * jump cannot, the only term left to change is the one pulling it back down.
+   * At 0.79 the rise is five tiles and the arc hangs, which is also how you can
+   * see at a glance that the thing that threw you was not you. */
+  var LAUNCH_G = 0.79;
+
   Player.prototype.gravMul = function () {
-    return this.has('spiritweed') ? 0.60 : 1;
+    var m = this.has('spiritweed') ? 0.60 : 1;
+    if (this.launch) m *= LAUNCH_G;
+    return m;
   };
 
   Player.prototype.invulnerable = function () {
@@ -196,8 +209,13 @@
       }
     }
 
-    // Variable jump height: let go early and the arc is cut short.
-    if (!In.down('jump') && this.vy * this.gsign < 0) {
+    /* Variable jump height: let go early and the arc is cut short.
+     *
+     * Unless the rise was not yours. A spring decides how high you go, and the
+     * whole point of it is that there is one variable left instead of two — so
+     * the cut is suspended until the rise it gave you is spent. */
+    if (this.launch && this.vy * this.gsign >= 0) this.launch = 0;
+    if (!In.down('jump') && this.vy * this.gsign < 0 && !this.launch) {
       this.vy *= (1 - (1 - JUMP_CUT) * 0.55);
     }
 
@@ -287,6 +305,7 @@
     this.vy = v;
     this.buffer = 0;
     this.coyote = 0;
+    this.launch = 0;        // your jump, your arc, cuttable again
     this.grounded = false;
     this.riding = null;
     if (isAir) {
@@ -492,6 +511,7 @@
     this.clearBuffs();       // timed effects lapse; carried things do not
     this.airJumpsLeft = 0;
     this.dropThrough = 0;
+    this.launch = 0;
     this.safe = null;
     this.deathToll = 0;
     this.setGravity(1);

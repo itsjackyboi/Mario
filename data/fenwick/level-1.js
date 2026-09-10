@@ -48,10 +48,12 @@
         '####~~~~~~~~~~~~~~~~~~~~~~####'
       ],
 
-      /* 3 — the flag, with bramble in the path. */
+      /* 3 — the flag, with bramble in the path, and a Wolendi pouch just past
+       *     it. Take it: the deep bog in segment 5 is four vine crossings with
+       *     no light and no phantoms, and a gust is a second chance at each. */
       [
         '..............................',
-        '...F...*..o....M..o.....l...2.',
+        '...F...*..o..W.M..o.....l...2.',
         '########xxx#######xxx#########',
         '##############################',
         '##############################'

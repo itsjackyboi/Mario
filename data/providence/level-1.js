@@ -62,14 +62,17 @@
         '##############################'
       ],
 
-      /* 4 — iron in the floor, laid in threes, Apostles on top of it. */
+      /* 4 — iron in the floor, laid in threes, Apostles on top of it. A Wolendi
+       *     pouch on the one safe island in the middle of it, which is the
+       *     first one Providence has ever offered: the gust is worth an extra
+       *     jump, and everything after this segment is jumps. */
       [
         '.....o....a....Q....o.a.......',
         '..==========...==========.....',
         '..............................',
         '..............................',
         '.......o.......o.......o......',
-        '..a....a...........a..........',
+        '..a....a....W......a..........',
         '###xxx###xxx###xxx###xxx######',
         '##############################',
         '##############################'

@@ -62,11 +62,13 @@
         '##############################'
       ],
 
-      /* 4 — traders on the fixed decks, floats in between. */
+      /* 4 — traders on the fixed decks, floats in between, and a Wolendi pouch
+       *     on the last of the solid boards. The outer floats are two segments
+       *     away and the surf is awake out there. */
       [
         '........o....o..........o.....',
         '........s....s..........s.....',
-        '..p...........o...p.......c...',
+        '..p...........o...p...W...c...',
         '########~~~~~~~~########~~~~##',
         '########~~~~~~~~########~~~~##',
         '########~~~~~~~~########~~~~##'

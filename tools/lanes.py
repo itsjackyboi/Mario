@@ -54,8 +54,36 @@ SOLID = set('#BCI')
 # has a plank crossing. They sit at the top of their own row, so standing on
 # one puts Corb in the row above it — the same as a tile.
 FOOTING = set('LHVsheto()')
+# The machine parts (src/machines.js) REPLACE the floor tile they are written
+# on, so they are footing too. A press is not here on purpose: it is a hazard
+# on a cycle that hangs in the air, and a checker with no clock has nothing
+# true to say about it.
+FOOTING |= set('><')
+SPRINGS = set('/')
+FOOTING |= SPRINGS
 FLOOR = SOLID | set('=') | FOOTING
 DEADLY = set('~x')
+
+# A spring sets the rise for you and it is a tile and a half more than legs:
+# measured 4.79 against 3.10. A roof still clamps it, so a spring only reaches
+# this far where the ceiling has been opened over it.
+SPRING_PEAK = 4.79
+
+# A BELT DOES NOT CHANGE A JUMP, and the first version of this file said it
+# did. The reasoning was that air time is fixed by the roof, so leaving faster
+# must carry you further — which is true, but you do not leave faster. A belt
+# moves you by dragging whatever is STANDING on it; the player's own vx never
+# changes, and Player.doJump drops the ride on the take-off frame. So the
+# instant you are airborne you are travelling at 4.3 like everybody else.
+#
+# It was caught by flying the gap in the real level: a void of four columns at
+# the end of a belt, which the arithmetic here said was crossable, is a wall.
+#
+# What a belt really changes is the only thing nothing else in this engine
+# touches — how long a stretch of ground TAKES. 5.40 px a frame with it, 3.20
+# against it, against a bare floor's 4.30. That is a route being faster or
+# slower rather than harder or easier, which is exactly what these levels had
+# no way of expressing.
 
 # Lanes, as body rows — the row Corb's body occupies while standing.
 SKY_LO, SKY_HI = 0, 6
@@ -63,22 +91,26 @@ LAND_LO, LAND_HI = 8, 11
 TUN_LO, TUN_HI = 14, 17
 
 
-def reach_tiles(rise, roof=PEAK):
+def reach_tiles(rise, roof=PEAK, peak=PEAK, speed=MAXRUN):
     """How far a jump carries, in tiles, gaining `rise` rows under `roof`.
 
     Derived, then trimmed by 3% because the derivation runs a percent or two
     over what the game actually does — and a generator that rounds towards
     "possible" builds levels that are not.
+
+    `peak` is how high this particular take-off gets: legs by default, more if
+    it is off a spring. `roof` still clamps it, because a ceiling does not care
+    what threw you at it.
     """
-    h = min(PEAK, roof)
+    h = min(peak, roof)
     if h < rise:
         return None
     up = math.sqrt(2 * h * T / GRAV)
     down = math.sqrt(2 * max(0.0, h - rise) * T / GRAV)
-    return (up + down) * MAXRUN / T * 0.97
+    return (up + down) * speed / T * 0.97
 
 
-def slack_frames(dc, rise, roof=PEAK):
+def slack_frames(dc, rise, roof=PEAK, peak=PEAK, speed=MAXRUN):
     """Frames of take-off window for a step of `dc` columns.
 
     What has to be crossed is the VOID, not the column difference. Standing on
@@ -90,10 +122,60 @@ def slack_frames(dc, rise, roof=PEAK):
 
     One frame of running is 4.3 pixels, so that is what a frame of slack means.
     """
-    r = reach_tiles(rise, roof)
+    r = reach_tiles(rise, roof, peak, speed)
     if r is None:
         return None
-    return (r - (dc - 1)) * T / MAXRUN
+    return (r - (dc - 1)) * T / speed
+
+
+# ---------------------------------------------------------- what actually goes
+#
+# TWO DIFFERENT QUESTIONS, and this file used to answer both with the same
+# derivation. They are:
+#
+#   "can this step be made at all?"   — answered below, from a MEASUREMENT
+#   "how much room is in it?"         — answered by slack_frames, derived
+#
+# The derivation is air time from the roof height times 4.3 pixels a frame, and
+# it is systematically pessimistic by most of a tile, because it does not know
+# two things the game does. He can stand with his box hanging nineteen pixels
+# off a lip; and coyote time gives him six more frames after leaving it in
+# which the jump still counts, worth another twenty-six pixels of run-up. Both
+# are free reach the arithmetic never sees.
+#
+# So the possible/impossible verdict comes from this table instead, which was
+# built by sweeping every take-off frame and every hold length against real
+# gaps in the real engine (scratch script envcap.js). The numbers are the
+# WIDEST VOID IN COLUMNS that goes, by headroom over his body row and by how
+# many tiles up the far lip is:
+MEASURED = {
+    (3, 0): 5, (3, 1): 5, (3, 2): 4,        # three tiles of headroom or more
+    (2, 0): 4, (2, 1): 3, (2, 2): 2,        # the lanes these levels are built in
+    (1, 0): 3, (1, 1): 2, (1, 2): 0,        # under a raised island
+    (0, 0): 0, (0, 1): 0, (0, 2): 0,        # a crawlway: no jumping at all
+}
+
+
+def possible(void, rise, roof):
+    """Does this step go? Measured, not derived. `void` is columns of nothing.
+
+    STEPPING DOWN IS NOT A JUMP and the table above is a table of jumps. Walk
+    off a ledge one tile above the next and you are in the air for ten frames
+    on the way down, which carries you a tile and a third with no button
+    pressed at all — and it works under a ceiling four pixels over your head,
+    where jumping is not a thing that exists. Without this, the mouth of every
+    crawlway reads as a wall, because the crawlway's own roof is what the
+    checker measures the headroom against.
+    """
+    if rise < 0:
+        drop = math.sqrt(2 * (-rise) * T / GRAV) * MAXRUN / T
+        if void <= int(drop):
+            return True
+        rise = 0
+    h = int(min(3, max(0, round(roof))))
+    if rise > 2:
+        return False
+    return void <= MEASURED[(h, int(rise))]
 
 
 class Lane:
@@ -101,12 +183,22 @@ class Lane:
         self.name, self.lo, self.hi, self.c0, self.c1 = name, lo, hi, c0, c1
 
 
+# Footing that is TWO TILES WIDE, written from its left-hand column: movers,
+# bobbers and Aleforge's gear platforms are all 64 pixels across. A checker
+# that reads one glyph as one column of footing measures every gap in a rack of
+# net-floats as a column wider than it is, and calls a rack that plays fine
+# thirteen impossible steps.
+WIDE = set('sHVe')
+
+
 def standing(g, cols, c, r):
     if not (0 <= c < cols and 0 <= r < ROWS - 1):
         return False
     if g[r][c] in SOLID or g[r][c] in DEADLY:
         return False
-    return g[r + 1][c] in FLOOR
+    if g[r + 1][c] in FLOOR:
+        return True
+    return c > 0 and g[r + 1][c - 1] in WIDE and g[r][c - 1] not in SOLID
 
 
 def roof_over(g, cols, c0, c1, body_row):
@@ -144,20 +236,49 @@ def lane_check(canvas, lane):
         best = None
         for ra in places[a]:
             roof = roof_over(g, cols, a, b, ra)
+            # what is under his feet at the take-off column decides both how
+            # high this particular jump gets and how fast he left
+            under = g[ra + 1][a]
+            spring = under in SPRINGS
+            peak = SPRING_PEAK if spring else PEAK
             for rb in places[b]:
-                s = slack_frames(dc, ra - rb, roof)
-                if s is not None and s >= 0 and (best is None or s < best[0]):
-                    best = (s, ra, rb, roof)
+                rise = ra - rb
+                # A spring is measured separately and is far outside the table.
+                ok = (slack_frames(dc, rise, roof, peak) or -1) >= 0 if spring \
+                    else possible(dc - 1, rise, roof)
+                if not ok:
+                    continue
+                # The verdict is the measurement's; the NUMBER is the
+                # derivation's, and it is only ever used to rank one step
+                # against another, so its pessimism costs nothing.
+                s = slack_frames(dc, rise, roof, peak)
+                if s is None:
+                    s = 0.0
+                if best is None or s < best[0]:
+                    best = (max(0.0, s), ra, rb, roof)
         steps.append((a, b, dc, best, places[a], places[b]))
     return places, steps
 
 
-def report(canvas, lanes, label, tight_at=3.0):
+def report(canvas, lanes, label, tight_at=3.0, intended=()):
+    """`intended` is ((lane, from_col, to_col, why), ...) — gaps no pair of legs
+    is supposed to cross. They are printed as what they are and not counted."""
     print(label)
     broken = 0
+    want = {(l, a, b): why for l, a, b, why in intended}
+    seen = set()
     for lane in lanes:
         places, steps = lane_check(canvas, lane)
-        impossible = [s for s in steps if s[3] is None]
+        impossible, bydesign = [], []
+        for s in steps:
+            if s[3] is not None:
+                continue
+            key = (lane.name, s[0], s[1])
+            if key in want:
+                seen.add(key)
+                bydesign.append((s, want[key]))
+            else:
+                impossible.append(s)
         tight = [(s[0], s[3][0]) for s in steps if s[3] and s[3][0] < tight_at]
         chains = 0
         run = 0
@@ -172,8 +293,19 @@ def report(canvas, lanes, label, tight_at=3.0):
               % (lane.name, len(places), len(steps), len(tight), tight_at, chains, len(impossible)))
         if tight:
             print('          tight: ' + ' '.join('c%d(%.1f)' % t for t in tight[:16]))
+        for s, why in bydesign:
+            print('          BY DESIGN   col %d -> col %d, %d across: %s'
+                  % (s[0], s[1], s[2], why))
         for a, b, dc, _, ra, rb in impossible[:8]:
             print('          IMPOSSIBLE  col %d rows %s -> col %d rows %s  (%d across)'
                   % (a, ra, b, rb, dc))
         broken += len(impossible)
+
+    # A declared gate that is no longer there is worse than an undeclared one:
+    # it means a column moved and the level quietly stopped having a lock on it.
+    for key in want:
+        if key not in seen:
+            print('          DECLARED BUT NOT THERE: %s col %d -> col %d is '
+                  'crossable on foot now — the gate is not a gate' % key)
+            broken += 1
     return broken

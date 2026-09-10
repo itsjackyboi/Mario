@@ -99,6 +99,9 @@
   if (PL.Mechanics) {
     for (var mg in PL.Mechanics.GLYPHS) MARKERS[mg] = PL.Mechanics.GLYPHS[mg];
   }
+  if (PL.Machines) {
+    for (var kg in PL.Machines.GLYPHS) MARKERS[kg] = PL.Machines.GLYPHS[kg];
+  }
 
   function World(def) {
     this.def = def;

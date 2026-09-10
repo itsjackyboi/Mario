@@ -138,6 +138,67 @@ class Deck:
     def put(self, col, glyph, up=0):
         self.c.put(col, self.body - up, glyph)
 
+    # ------------------------------------------------------------- machinery
+    #
+    # Everything above changes the SHAPE of a lane. These change its
+    # ARITHMETIC, which is the only way to stop five levels built out of one
+    # good idea from being five copies of one level. See src/machines.js.
+
+    def belt(self, c0, c1, back=False, crawl=True):
+        """Floor that carries, in a crawlway low enough that you cannot jump out.
+
+        The floor tile is REPLACED, not decorated — a belt is the footing. What
+        it buys is the one thing a level cannot otherwise touch: running with a
+        belt is 5.40 px a frame against a bare floor's 4.30, and against one it
+        is 3.20.
+
+        THE CRAWLWAY IS NOT SCENERY. A belt only drags what is standing on it,
+        so the first version of a twenty-column belt running the wrong way was
+        worth nothing at all: a perfect run simply jumped over it, four tiles at
+        a time, moving at the ordinary 4.30 the whole way. The search proved it
+        — a hundred percent of one level's frames in a lane with a back-belt in
+        it, and six frames of actually riding the thing.
+
+        So the roof comes down to the row directly over his head. Corb is 28
+        pixels tall in a 32-pixel tile, which leaves four pixels of clearance:
+        enough to run, not enough to leave the ground. In a crawlway the belt
+        is the only speed there is.
+
+        THE FILL GOES ALL THE WAY UP TO THE LANE'S OWN CEILING, and it has to.
+        The first version laid one course of rock over his head and left the
+        row above that open — which is a surface, and a surface is a road. The
+        search walked the whole twenty-eight columns along the TOP of the
+        crawlway at the ordinary 4.30 and paid the toll no mind at all. It is
+        the same escape hatch this whole level format is built to avoid, only
+        this time it was one tile thick and put there on purpose.
+
+        The LAST column is left open, because the far end of a belt run is
+        usually a jump and a jump wants somewhere to happen.
+        """
+        self.c.row(self.floor, c0, c1, '<' if back else '>')
+        if crawl and c1 > c0:
+            self.c.rect(c0, self.lo, c1 - 1, self.body - 1, '#')
+
+    def spring(self, col):
+        """Footing that decides how high you go: 4.79 tiles, not cuttable.
+
+        That is a tile and a half more than a jump and it is the only way to
+        climb four rows without a pouch — but it is two and a half tiles more
+        than this lane has overhead, so a spring under an intact roof is a way
+        of dying. Every one of these wants a `chimney` over it.
+        """
+        self.c.put(col, self.floor, '/')
+
+    def press(self, col):
+        """A stamp hanging from this lane's ceiling, on a 2.2s cycle.
+
+        The marker goes two rows over the body row, which puts the head at rest
+        inside the ceiling it hangs from and puts it, when it drops, exactly
+        across the road. That arithmetic holds on all three decks, so a press
+        is written the same way wherever it goes.
+        """
+        self.c.put(col, self.body - 2, '|')
+
 
 def hole(c, c0, c1):
     """A hole through the land floor and the crust: the way down, one way.
@@ -152,6 +213,27 @@ def hole(c, c0, c1):
 def deck_hole(c, c0, c1):
     """A hole through the sky's floor: the way down from the roof."""
     c.rect(c0, 6, c1, 7, '.')
+
+
+def chimney(c, lane, c0, c1):
+    """Open this lane's ceiling, so a spring under it has somewhere to go.
+
+    The one rule these levels are built on is that every lane is capped, and a
+    chimney is a deliberate hole in that rule — so it is written as its own
+    word rather than as a hole that happens to be somewhere. It is always
+    short, it is always over a spring, and there is never anything to land on
+    up there except the deck's own floor: a chimney is a way UP, which is the
+    only thing this engine otherwise refuses to give you.
+
+    Nothing opens the sky's roof. Above that is the open air, and open air is
+    an escape hatch that undoes the whole level.
+    """
+    if lane == 'tunnel':
+        hole(c, c0, c1)          # the crust, and the land floor over it
+    elif lane == 'land':
+        deck_hole(c, c0, c1)     # the deck, which is the sky's floor
+    else:
+        raise ValueError('the sky has no ceiling to open')
 
 
 def fork(c, sky_climb=(20, 29)):
@@ -180,11 +262,25 @@ def ramp_out(c, at=210):
     c.rect(at, 6, 239, 7, '.')
 
 
-def check(canvas, segs, label, fast):
+def check(canvas, segs, label, fast, intended=()):
+    """Report the geometry, and subtract the gaps that are impossible ON PURPOSE.
+
+    Two things in these levels cannot be crossed by a pair of legs and are not
+    meant to be: the pouch gate, and the tithe-lift's gap. A checker that knows
+    nothing about pouches or about where a mover is at a given second will call
+    both of them broken, and a build that prints "3 impossible" every time is a
+    build nobody reads.
+
+    So they are DECLARED, with the reason, and the report says which gaps were
+    forgiven and why. An undeclared impossible step is still an error; a
+    declared one that turns out to be crossable on foot would mean the gate is
+    not a gate, so `intended` names the exact columns and the width.
+    """
     lanes = [Lane('sky', 3, 5, 30, 209),
              Lane('land', 8, 10, 30, 209),
              Lane('tunnel', 14, 16, 30, 209)]
-    bad = report(canvas, lanes, '\n' + label + ' — geometry, on the measured envelope')
+    bad = report(canvas, lanes, '\n' + label + ' — geometry, on the measured envelope',
+                 intended=intended)
     for i, s in enumerate(segs):
         for r in s:
             if len(r) != 30:
