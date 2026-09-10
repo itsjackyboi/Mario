@@ -136,6 +136,45 @@ untested.
 `human-records.json` holds the records, read from the sheet's `runs` log, with
 the date and provenance in the file. Refresh it before trusting a comparison.
 
+## Building levels with it
+
+The v2 second levels were cut against measurements from this harness rather
+than by eye, and four tools did that work:
+
+- **`envelope.js`** flies the jump arc in the real game and reads the reach off
+  it. Everything else takes its numbers from here. It found that the table the
+  map had been using was wrong by a whole row.
+- **`reach.js`** asks, in about a fifth of a second, whether a route goes
+  through at all — and when it does not, which two columns it breaks between.
+  Fast enough to keep in the loop while a level is being drawn.
+- **`pick.js`** searches a level with nothing confined and reports which route a
+  perfect run actually takes, as a percentage of frames spent in each band. This
+  is the only honest test of "the fast route is the fast route", and it
+  contradicted the design twice.
+- **`tightness.js`** takes a finishing run, moves each press one frame earlier
+  and one frame later, and counts the ones where neither works. Chains of those
+  — with no forgiving press in between to correct on — are what "frame perfect"
+  means in a form that can be checked.
+
+`routes.js` times each route with the others walled off, using the same
+map-confining trick as `reach.js`. It is thorough and slow; use `reach.js`
+while drawing and `routes.js` once.
+
+## What the search cannot do: trials
+
+**The beam cannot cross a trial gate.** A gate pushes a minigame scene that is
+played with up, down and confirm, and the search's whole vocabulary is left,
+right, down, jump and item — there is no up in it. So a level with a trial in
+the middle stalls at the gate and reports no run.
+
+That is the explanation for the four levels the first full pass never finished:
+shantytown-3, aleforge-3, providence-3 and roto-3 are exactly the four trial
+levels. It is not that they are hard. It is that the bot cannot play the trial.
+
+To check a trial level end to end, take the gate out of a copy of the level and
+search that — which is how fenwick-3 was verified (32.47s, replays frame for
+frame, with the gate removed).
+
 ## Files
 
 | | |
@@ -150,5 +189,10 @@ the date and provenance in the file. Refresh it before trusting a comparison.
 | `replaycheck.js` | does the game's own rewind reproduce a genome? |
 | `items-audit.js`, `items-ab.js` | is the search using the tonic, the pouch, the dash? |
 | `export-replay.js` | a bot result, as an entry for `data/tas-replays.js` |
+| `reach.js` | does each route go through? and if not, where does it break |
+| `pick.js` | which route does a perfect run actually take |
+| `tightness.js` | how many presses have exactly one frame that works |
+| `routes.js` | time each route with the others walled off |
+| `envelope.js` | fly the jump arc and read the reach off it |
 | `dry-run.js` | what would be submitted, and why — never submits |
 | `submit.md` | the by-hand browser steps |
