@@ -53,6 +53,17 @@ function run(band) {
       if (m.assistFrom === undefined || c < m.assistFrom) m.assistFrom = c;
     }
   }
+  /* Veil gates join a lane to the ceiling above it, and without them the map
+   * has no edge between a level's two gravities — which reads as a hole in the
+   * route rather than as the mechanic the level is built on. */
+  if (inverts) {
+    m.flips = new Uint8Array(m.cols);
+    for (const e of world.entities) {
+      if (e.type !== 'veilGate') continue;
+      const c0 = Math.floor(e.x / T), c1 = Math.floor((e.x + (e.w || T) - 1) / T);
+      for (let cc = c0 - 1; cc <= c1 + 1; cc++) if (cc >= 0 && cc < m.cols) m.flips[cc] = 1;
+    }
+  }
   if (band) {
     for (let r = 0; r < m.rows; r++) {
       if (r >= band.lo && r <= band.hi) continue;

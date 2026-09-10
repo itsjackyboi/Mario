@@ -61,35 +61,29 @@ c.text(80, GND, 'h'); c.text(84, GND, 'h')
 ledge(70, 72, 13)
 c.text(71, 12, 'o')
 
-# 90-119 — the climb to the first veil gate. Fenwick's whole trick is that the
-# gate turns gravity over: past it the ceiling is the floor.
-knot(93, 95, 14)
-knot(99, 101, 12)
-knot(105, 107, 10)
-c.rect(90, 8, 119, 8, 'B')        # the ceiling the gate hands you
-c.text(112, 9, '%')               # the veil gate
-c.text(101, 11, 'o')
-
-# 120-149 — upside down. The old floor is a long way below and it is all rot;
-# what you are running on is the underside of the canopy.
-c.rect(120, 8, 149, 8, 'B')
-rot(120, 149)
-c.row(9, 126, 128, '.')           # holes in the ceiling: mind the gap
-c.row(9, 134, 136, '.')
-c.row(9, 142, 144, '.')
-c.rect(126, 8, 128, 8, '.')
-c.rect(134, 8, 136, 8, '.')
-c.rect(142, 8, 144, 8, '.')
+# 90-165 — THE VEIL GATES, and the reason to come here.
+#
+# The gate is a touch trigger, so it goes on the FLOOR and the flip does the
+# lifting: you run into it at ground level, gravity turns over, and you fall
+# seven tiles UP onto the underside of the canopy. The first version made you
+# jump up to the canopy and touch the gate in mid-air, and the search spent six
+# million states failing to do it — a flip is enough to ask for on its own
+# without also asking for the jump that sets it up.
+c.rect(90, 8, 165, 8, 'B')        # the canopy: the floor you are about to get
+c.text(112, GND, '%')             # in, at a run, on the ground
+rot(120, 157)                     # what is under you once you are over it
+c.text(127, 9, ',')               # spines hanging from the canopy — now the floor
+c.text(136, 9, ',')
+c.text(145, 9, ',')
 c.text(131, 9, 'o')
-c.text(139, 9, 'o')
+c.text(141, 9, 'o')
+c.text(154, 9, ',')
+c.text(162, 9, '%')               # and out again, onto solid ground
+c.text(103, GND, 'o')
 
-# 150-179 — the second gate turns you back the right way up, and drops you.
-c.rect(150, 8, 166, 8, 'B')
-c.text(158, 9, '%')
-rot(150, 168)
-knot(169, 172)
-c.text(176, GND, 'o')
-c.text(179, GND, ',')
+# 166-179 — landing, and a breath before the gate of the trial.
+c.text(170, GND, 'o')
+c.text(176, GND, ',')
 
 # 180-209 — the gate of the trial, on solid ground so nobody arrives at it in
 # mid-air. The Lantern of Roots is played here.

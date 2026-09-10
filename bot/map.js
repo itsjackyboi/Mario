@@ -178,17 +178,18 @@ function build(world, swept, opts) {
 /**
  * Is the straight line between two standing places clear of solid rock?
  *
- * The destination's own column is never counted. A step onto a ledge one column
- * along and two rows up is a real move — you rise, then go over — but its
- * straight line clips the corner of the very block you are landing on, and the
- * check would rule out every short climb in the game. Two of the rebuilt levels
- * came back "no way through" on exactly that.
+ * Neither end's own column is counted. A step onto a ledge one column along and
+ * two rows up is a real move — you rise, then go over — but its straight line
+ * clips the corner of the very block it lands on. Walking off the end of a
+ * ledge and dropping is the same thing mirrored: the line clips the ledge you
+ * just left. Counting either corner rules out every short climb and every step
+ * off an edge in the game, and levels come back "no way through" on it.
  */
 function clear(m, c0, r0, c1, r1) {
   const n = Math.max(Math.abs(c1 - c0), Math.abs(r1 - r0));
   for (let k = 1; k < n; k++) {
     const c = Math.round(c0 + (c1 - c0) * k / n);
-    if (c === c1) continue;
+    if (c === c1 || c === c0) continue;
     const r = Math.round(r0 + (r1 - r0) * k / n);
     const i = r * m.cols + c;
     if (m.solid[i] || m.lethal[i]) return false;

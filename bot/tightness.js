@@ -92,14 +92,35 @@ for (const e of edges) {
   if (e.exact) exact++;
 }
 
-/* Chains: exact presses with no forgiving press between them. */
+/* Chains, and what breaks one.
+ *
+ * Counting simply "exact edges that are next to each other" cannot work, and
+ * the first version of this measured 96 presses on a level built out of eight
+ * back-to-back exact jumps and reported the longest chain as two. A jump is a
+ * press AND a release, and the release almost always has room in it — so
+ * between any two exact presses there is a forgiving edge, and no two exact
+ * edges are ever adjacent.
+ *
+ * What a player actually feels is where they can breathe, and you can breathe
+ * at a press with room in it, not at a release. So a chain runs until a PRESS
+ * turns up that has more than one frame that works.
+ */
 const chains = [];
-for (let i = 0; i < edges.length; i++) {
-  if (!edges[i].exact) continue;
-  let j = i;
-  while (j + 1 < edges.length && edges[j + 1].exact) j++;
-  chains.push({ at: edges[i].f, n: j - i + 1, end: edges[j].f });
-  i = j;
+{
+  let start = -1, n = 0, last = -1;
+  const close = () => {
+    if (n >= 1) chains.push({ at: start, n: n, end: last });
+    start = -1; n = 0;
+  };
+  for (const e of edges) {
+    if (e.exact) {
+      if (start < 0) start = e.f;
+      n++; last = e.f;
+    } else if (e.to) {
+      close();          // a press with room in it: somewhere to correct
+    }
+  }
+  close();
 }
 chains.sort((u, v) => v.n - u.n);
 
