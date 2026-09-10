@@ -40,11 +40,43 @@ from threeroutes import (W, Deck, skeleton, fork, ramp_out, hole, deck_hole,
 # live in the three windows between and after them. A toll dropped on the last
 # island of a chain leaves a two-tile step with no run-up to it, which is four
 # pixels past what a capped jump reaches — a wall, not a jump.
+# AND WHY NO TWO OF THEM LINE UP. The first version put every lane's chains at
+# the same columns, so a level read as one motif stacked three times — the floor
+# of all three decks opening into spikes at once, over and over — and all five
+# levels were the same picture. The chains are staggered now: each deck has its
+# own columns, and each level shifts them again, so what is under you is never
+# doing what you are doing.
+#
+# Everything that is not a chain is placed by `spread` below, into whatever
+# columns that deck has left. Hand-picked constants for that could not survive
+# the staggering: a toll dropped on the last island of a chain leaves a
+# two-tile step with no run-up, which is four pixels past what a capped jump
+# reaches — a wall, not a jump.
 CHAINS_FAST = [(32, 8), (91, 6, 2, 5), (151, 9), (190, 5)]
-CHAINS_SLOW = [(32, 8), (151, 9)]
-TOLLS = (66, 78, 98, 120, 132, 144)                 # step-ups, slow routes only
-GAPS = (72, 90, 108, 126, 138, 200)                 # three of nothing
-GAPS_UP = (84, 114)                                 # three, far lip a tile up
+CHAINS_SLOW = [[(58, 7), (128, 8)], [(96, 8), (168, 7)]]
+
+
+def spread(taken, n, lo=32, hi=206, pad=5, start=0, apart=10):
+    """`n` columns in this deck's own free space, clear of its chains and of
+    each other.
+
+    `apart` is not decoration. A gap is three columns of nothing and a gap with
+    a raised lip is six, so two of them landing four columns apart merge into
+    seven columns of void — and seven is three past what a capped jump reaches.
+    Picking evenly and hoping is how four of those got built; the spacing is a
+    rule now.
+    """
+    free = [c for c in range(lo, hi)
+            if all(not (a - pad <= c <= b + pad) for a, b in taken)]
+    if not free or n <= 0:
+        return []
+    out = []
+    for c in free[start:]:
+        if all(abs(c - o) >= apart for o in out):
+            out.append(c)
+            if len(out) == n:
+                break
+    return out
 
 
 def build(spec):
@@ -56,26 +88,56 @@ def build(spec):
              for name in ('sky', 'land', 'tunnel')}
     fast = decks[spec['fast']]
     slow = [decks[n] for n in ('sky', 'land', 'tunnel') if n != spec['fast']]
+    taken = {name: [] for name in decks}
+
+    def safe(name, col, glyph, up=0):
+        """Put something on a deck, but never on top of one of its islands.
+
+        A raised island sits on the deck's own body row — the row everything is
+        placed at — so a grog coin or a quip marker dropped inside a chain does
+        not decorate the island, it deletes it. Two whole islands went missing
+        out of one chain that way and the route simply stopped. Anything placed
+        inside a chain slides out to the nearest column that is not one.
+        """
+        ivs = taken[name]
+        if any(a <= col <= b for a, b in ivs):
+            for d in range(1, 60):
+                for cand in (col - d, col + d):
+                    if 31 < cand < 208 and not any(a <= cand <= b for a, b in ivs):
+                        col = cand
+                        d = 999
+                        break
+                if d == 999:
+                    break
+        decks[name].put(col, glyph, up)
+        return col
 
     # --- the fast route: four chains, and nothing to stop for ---------------
     for chain in CHAINS_FAST:
         if len(chain) == 4:
             start, n, w, step = chain
             fast.chain(start, n, w=w, step=step)
+            taken[spec['fast']].append((start - 1, start + (n - 1) * step + w))
         else:
-            fast.chain(*chain)
+            start, n = chain
+            fast.chain(start, n)
+            taken[spec['fast']].append((start - 1, start + (n - 1) * 4 + 1))
     for col, glyph, up in spec['fast_things']:
-        fast.put(col, glyph, up)
+        safe(spec['fast'], col, glyph, up)
 
     # --- the two slow routes: two chains each, and everything that costs ----
+    shift = spec['shift']
     for k, deck in enumerate(slow):
-        for chain in CHAINS_SLOW:
-            deck.chain(*chain)
-        for col in TOLLS[k::2]:
+        for start, n in CHAINS_SLOW[k]:
+            at = start + shift * (k + 1)
+            deck.chain(at, n)
+            taken[deck.name].append((at - 1, at + (n - 1) * 4 + 1))
+        cols = spread(taken[deck.name], 9, start=k)
+        for col in cols[0::3]:
             deck.step(col)
-        for col in GAPS[k::2]:
+        for col in cols[1::3]:
             deck.gap(col)
-        for col in GAPS_UP[k % 2::2]:
+        for col in cols[2::3]:
             deck.gap_up(col)
 
     # Holes down through the decks, so the choice can still be changed —
@@ -86,24 +148,26 @@ def build(spec):
     # Two of them, at the only columns that are clear of every toll and gap on
     # both slow routes. A hole overlapping a gap makes five columns of void out
     # of two lots of three, and five is two past what a capped jump reaches.
-    if spec['fast'] != 'land':
-        for col in (104, 194):
+    # The two ways down, put wherever both slow decks have room for them.
+    both = []
+    for ivs in taken.values():
+        both.extend(ivs)
+    drops = spread(both, 2, lo=40, hi=200, pad=6)
+    for col in drops:
+        if spec['fast'] != 'land':
             hole(c, col, col + 2)
-    if spec['fast'] != 'sky':
-        for col in (104, 194):
+        if spec['fast'] != 'sky':
             deck_hole(c, col, col + 2)
 
     for name, things in spec['things'].items():
         for col, glyph, up in things:
-            decks[name].put(col, glyph, up)
+            safe(name, col, glyph, up)
 
     ramp_out(c)
     c.text(234, LAND, 'Z')
-    # The checkpoint goes where no chain runs, or it lands in the middle of one
-    # and takes a slab out of it.
-    c.text(130, LANDF - 1, 'F')
+    safe('land', 130, 'F')
     for i, (col, row) in enumerate(spec['quip_at']):
-        c.text(col, row, str(i + 1))
+        safe({5: 'sky', 10: 'land', 16: 'tunnel'}[row], col, str(i + 1))
 
     segs = emit(os.path.join(ROOT, spec['file']), spec['header'], {
         'town': spec['town'], 'id': spec['id'], 'name': spec['name'],
@@ -170,7 +234,7 @@ SLOW = ('   Two staircases of its own — twelve exact jumps, because no road\n'
 
 SPECS = [
     dict(
-        town='shantytown', id='shantytown-2', name='The Bone Stair',
+        town='shantytown', id='shantytown-2', shift=0, name='The Bone Stair',
         file='data/shantytown/level-2.js', diff=1.0, fast='tunnel',
         blurb='Over the boards, along them, or under them. All three will drown you.',
         hazard={'sky': 'x', 'land': 'x', 'tunnel': '~'},
@@ -196,7 +260,7 @@ SPECS = [
                       ' * That is what a level looks like when there is nothing in it to decide.\n')),
 
     dict(
-        town='aleforge', id='aleforge-2', name='Wolendi Wind Farm',
+        town='aleforge', id='aleforge-2', shift=7, name='Wolendi Wind Farm',
         file='data/aleforge/level-2.js', diff=1.15, fast='sky',
         blurb='Through the beams, across the yard, or under the whole mill.',
         hazard={'sky': 'x', 'land': 'x', 'tunnel': 'x'},
@@ -219,7 +283,7 @@ SPECS = [
                       'THE CELLAR — under the whole mill.', SLOW)),
 
     dict(
-        town='providence', id='providence-2', name='The Tithe Walk',
+        town='providence', id='providence-2', shift=13, name='The Tithe Walk',
         file='data/providence/level-2.js', diff=1.3, fast='land',
         blurb='Over the leads, under the vault, or down among the paid-for dead.',
         hazard={'sky': 'x', 'land': 'x', 'tunnel': 'x'},
@@ -245,7 +309,7 @@ SPECS = [
                       ' * and still the hardest.\n')),
 
     dict(
-        town='fenwick', id='fenwick-2', name='The Overturned Wood',
+        town='fenwick', id='fenwick-2', shift=4, name='The Overturned Wood',
         file='data/fenwick/level-2.js', diff=1.5, fast='tunnel',
         blurb='Under the roots, through the bog, or up where the light is.',
         hazard={'sky': 'x', 'land': '~', 'tunnel': '~'},
@@ -272,7 +336,7 @@ SPECS = [
                       ' * Nothing here is a minigame any more.\n')),
 
     dict(
-        town='roto', id='roto-2', name="Netmenders' Row",
+        town='roto', id='roto-2', shift=10, name="Netmenders' Row",
         file='data/roto/level-2.js', diff=1.45, fast='sky',
         blurb='Over the frames, along the stalls, or under the whole pier.',
         hazard={'sky': 'x', 'land': 'x', 'tunnel': '~'},
