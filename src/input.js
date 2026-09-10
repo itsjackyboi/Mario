@@ -21,6 +21,7 @@
     KeyC: 'mark',
     KeyB: 'bank',
     KeyH: 'records',
+    KeyV: 'watch',        // watch the TAS replay of a level
     /* TAS mode, inside practice. Frame-at-a-time playback needs keys of its
      * own that no ordinary run touches. */
     KeyT: 'tas',

@@ -147,8 +147,14 @@
       }
       this.effects(ctx, live, W, H);
 
-      // ---- practice mode ---------------------------------------------------
-      if (scene.practice) {
+      /* ---- practice mode --------------------------------------------------
+       * A replay runs on a practice scene with TAS on, because that is what
+       * makes the world deterministic — but the replay screen draws its own
+       * banner, frame counter and button strip, and the practice hint and TAS
+       * panel underneath would be two sets of the same information arguing
+       * with each other. The clock and the purse stay; they are part of the
+       * run being read. */
+      if (scene.practice && !scene.replaying) {
         PL.gfx.text(ctx, 'PRACTICE  ·  nothing is recorded', W / 2, 42, {
           font: PL.FONT.tiny, align: 'center', color: C.teal
         });
