@@ -1,0 +1,6 @@
+{
+  "name": "pintland-bot",
+  "private": true,
+  "description": "Tool-assisted route finder for Pintland Isles. Runs the real game headless; cannot post.",
+  "dependencies": { "jsdom": "^24.0.0" }
+}

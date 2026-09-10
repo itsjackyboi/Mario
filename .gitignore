@@ -1,2 +1,4 @@
 # Build output. tools/bundle.js writes here; nothing in the repo is built from it.
 dist/
+node_modules
+node_modules/
