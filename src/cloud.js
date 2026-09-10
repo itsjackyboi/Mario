@@ -76,6 +76,10 @@
     rows: [],
     byLevel: {},
     tasByLevel: {},
+    /* Rows from THIS era only — what the boards below actually show. `rows`
+     * holds everything the sheet sent back, v1 times included, because the
+     * archive still wants them; this is the number a player is looking at. */
+    eraRows: 0,
     fetchedAt: 0,
     sending: 0,
 
@@ -190,7 +194,7 @@
      * make the level's board useless to the people running it.
      */
     index: function () {
-      var by = {}, tas = {};
+      var by = {}, tas = {}, kept = 0;
       for (var i = 0; i < this.rows.length; i++) {
         var r = this.rows[i];
         if (!r || !r.level) continue;
@@ -200,6 +204,7 @@
         // still racing. The era is the build's major version, which every row
         // has always carried, so nothing had to be added to say so.
         if (era(r.version) < currentEra()) continue;
+        kept++;
         r.timeMs = Number(r.timeMs) || 0;
         r.speedrun = r.speedrun === true || r.speedrun === 'true' || r.speedrun === 1;
         // Either signal counts, and the marker is taken off the build string
@@ -222,6 +227,7 @@
       order(tas);
       this.byLevel = by;
       this.tasByLevel = tas;
+      this.eraRows = kept;
     },
 
     /** Every submitted run for one level, best first. Never TAS rows. */
@@ -260,8 +266,15 @@
       if (this.state === 'error') return 'Shared board unreachable: ' + this.error;
       if (this.state === 'ready') {
         var n = this.pending();
-        return this.rows.length + ' runs on the shared board' +
-               (n ? '  ·  ' + n + ' of yours still to send' : '');
+        var mine = n ? '  ·  ' + n + ' of yours still to send' : '';
+        /* This era's runs, not every row in the sheet. v2 changed the levels,
+         * so a v1 time is a time on a different game: it is kept in the log
+         * and shown on the pre-release board, and it is not something anyone
+         * is still racing. Counting all 601 of them under a board showing
+         * none of them was the headline disagreeing with the table under it. */
+        if (!this.eraRows) return 'No runs on the board yet — v2 starts clean.' + mine;
+        return this.eraRows + (this.eraRows === 1 ? ' run' : ' runs') +
+               ' on the shared board' + mine;
       }
       return 'Shared board ready to load.';
     }

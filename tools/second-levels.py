@@ -79,6 +79,34 @@ from threeroutes import (W, Deck, skeleton, fork, ramp_out, hole, deck_hole,
 # the measured envelope cannot make.
 
 
+def grog_run(deck, n=24, lo=32, hi=206):
+    """Barrels down the length of a lane, wherever the lane has room for one.
+
+    GROG IS THE LIFE POOL, not a score: a death costs five barrels and dying
+    with an empty purse ends the run. So a level with four barrels in it is not
+    a level that is stingy, it is a level with no margin for error at all —
+    and the first cut of these five had between two and five, against
+    twenty-one to thirty-two in every other level in the game. On the hardest
+    levels in the game. A bot run came out of them with one barrel.
+
+    Placed LAST, after the chains, the machinery, the tolls and the holes, and
+    only where the lane's body row is still empty. That is the one rule that
+    makes this safe to do late: a raised chain island sits ON the body row, and
+    so does the top of a two-tile step, so anything written there without
+    looking does not decorate the level, it deletes a piece of it. Checking the
+    canvas is cheaper than trying to predict it.
+    """
+    g = deck.c.g
+    free = [c for c in range(lo, hi) if g[deck.body][c] == '.']
+    if not free:
+        return 0
+    step = max(1, len(free) // n)
+    cols = free[::step][:n]
+    for c in cols:
+        deck.put(c, 'o')
+    return len(cols)
+
+
 def belt_gate(deck, col, taken, back=False, run=26, void=4):
     """A belt run, and at the end of it the hardest jump in the game.
 
@@ -390,11 +418,16 @@ def build(spec):
     for i, (col, row) in enumerate(spec['quip_at']):
         safe({5: 'sky', 10: 'land', 16: 'tunnel'}[row], col, str(i + 1))
 
+    # The purse, last of all — every road gets its own, because a player who
+    # picks the tunnel should not be poorer for it than one who picks the sky.
+    barrels = sum(grog_run(decks[n]) for n in ('sky', 'land', 'tunnel'))
+
     segs = emit(os.path.join(ROOT, spec['file']), spec['header'], {
         'town': spec['town'], 'id': spec['id'], 'name': spec['name'],
         'blurb': spec['blurb'], 'diff': spec['diff'], 'quips': spec['quips'],
     }, c, spec['notes'])
     bad = check(c, segs, spec['id'], spec['fast'], spec.get('intended', ()))
+    print('  %d barrels of grog, across all three roads' % barrels)
     return bad
 
 

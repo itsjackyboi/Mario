@@ -8,6 +8,7 @@ is that level: one road, Fenwick's own furniture, and the gate two thirds of
 the way along it.
 """
 import os
+import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -109,6 +110,28 @@ rot(248, 251)
 knot(253, 254)
 c.text(258, GND, 'o')
 c.text(264, GND, 'Z')
+
+# --- the purse ---------------------------------------------------------------
+#
+# Ten barrels was what this level shipped with and it is nowhere near enough:
+# grog is the life pool, a death costs five, and every other level in the game
+# carries between twenty-one and thirty-two. So the rest go down the road
+# wherever the road has room, placed after everything else and only where the
+# body row is still empty — a barrel written over a knot or a ledge does not
+# decorate this level, it deletes a piece of it.
+placed = 0
+for col in range(6, W - 8):
+    if placed >= 22:
+        break
+    if col % 8:
+        continue
+    if c.g[GND][col] != '.':
+        continue
+    # only where there is something under it, so nothing floats over the rot
+    if c.g[GNDF][col] not in '#=B':
+        continue
+    c.put(col, GND, 'o')
+    placed += 1
 
 c.text(24, GND, '1')
 c.text(88, GND, '2')

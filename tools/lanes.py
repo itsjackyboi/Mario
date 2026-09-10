@@ -53,7 +53,14 @@ SOLID = set('#BCI')
 # checker that only reads tiles sees a twenty-nine column hole where the level
 # has a plank crossing. They sit at the top of their own row, so standing on
 # one puts Corb in the row above it — the same as a tile.
-FOOTING = set('LHVsheto()')
+#
+# 'o' IS NOT ONE OF THEM. It was in this string for a long time — nine things
+# described in the sentence above, ten characters in the set — and a grog
+# barrel is not something you can stand on. It went unnoticed while these
+# levels had four barrels each; the moment they had seventy-two, the checker
+# decided the barrels floating over the pouch gate were a bridge across it and
+# reported that the gate was no longer a gate.
+FOOTING = set('LHVshet()')
 # The machine parts (src/machines.js) REPLACE the floor tile they are written
 # on, so they are footing too. A press is not here on purpose: it is a hazard
 # on a cycle that hangs in the air, and a checker with no clock has nothing
@@ -174,7 +181,14 @@ def possible(void, rise, roof):
         rise = 0
     h = int(min(3, max(0, round(roof))))
     if rise > 2:
-        return False
+        # Off the end of the table, so fall back to the derivation. It is
+        # pessimistic, which is the right way to be wrong about a climb this
+        # steep — a bare jump rises 3.10 tiles, so three rows is nearly all of
+        # it and there is no room left over to be generous with. Returning
+        # False here instead was a regression: it called both of Fenwick III's
+        # three-row climbs walls, and they are not.
+        s = slack_frames(void + 1, rise, roof)
+        return s is not None and s >= 0
     return void <= MEASURED[(h, int(rise))]
 
 
