@@ -75,8 +75,12 @@
     /* WATCH THE TAS. A time on the tool-assisted board says how fast the level
      * can go; the replay says how, which is the only part anybody can use. It
      * opens on any level that has a log, locked or not — reading somebody
-     * else's route is not the same as skipping the level. */
-    if (In.pressed('watch')) {
+     * else's route is not the same as skipping the level.
+     *
+     * Switched off for the v2 launch (config.js, `tasReplay`), and switched off
+     * silently: the key does nothing and the prompt does not mention it, so
+     * there is nothing to find rather than a locked door to rattle. */
+    if (In.pressed('watch') && PL.Replay && PL.Replay.enabled()) {
       var wdef = levels[this.levelIdx];
       if (PL.Replay && PL.Replay.has(wdef.id)) {
         PL.Audio.sfx('select');
@@ -281,7 +285,9 @@
     PL.gfx.text(ctx, 'Town purse: ' + PL.Store.townProgress(town.id).purse + ' grog', 18, 320, {
       font: PL.FONT.small, color: C.grogBand
     });
-    PL.gfx.text(ctx, '↑ ↓ select · ← → column · ENTER play · C practice · V watch TAS · ESC title', W - 18, 320, {
+    var keyHint = '↑ ↓ select · ← → column · ENTER play · C practice · ' +
+                  (PL.Replay && PL.Replay.enabled() ? 'V watch TAS · ' : '') + 'ESC title';
+    PL.gfx.text(ctx, keyHint, W - 18, 320, {
       font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.5)'
     });
     if (this.msg > 0) {

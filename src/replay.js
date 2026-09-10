@@ -61,8 +61,22 @@
       return out;
     },
 
+    /**
+     * Is watching a run switched on at all?
+     *
+     * One gate, read by everything: the key that opens the screen, the prompt
+     * that says the key exists, and the screen itself. Off by default and off
+     * if the setting is missing entirely — a feature that hides an answer
+     * should fail closed, so a config that gets lost in a merge cannot quietly
+     * put the answers back in front of everybody.
+     */
+    enabled: function () {
+      return !!(PL.CONFIG && PL.CONFIG.tasReplay);
+    },
+
     /** The stored replay for a level, or null. Data lives in data/tas-replays.js. */
     forLevel: function (levelId) {
+      if (!Replay.enabled()) return null;
       var all = PL.TasReplays || {};
       var r = all[levelId];
       if (!r || !r.log) return null;
