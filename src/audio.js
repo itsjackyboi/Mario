@@ -18,9 +18,32 @@
     silent: 0,
 
     /** Run `fn` with every sound suppressed, whatever it throws. */
+    /**
+     * Run `fn` with every sound suppressed, and put the tune back on the clock
+     * afterwards.
+     *
+     * The re-anchor is the important half. Whatever ran inside took real time
+     * that the music did not get to play through — a TAS rewind replays a
+     * whole run between two scheduler wake-ups — so when it lets go, the
+     * sequencer is holding a `nextAt` from before it all started. Left alone
+     * it books every note between then and now, all at times already gone,
+     * and the browser fires them together: the tune arriving at once, loud and
+     * fast, which is exactly what rewinding used to sound like.
+     *
+     * tick() has a catch-up branch that computes its way out of the same hole,
+     * and it works. This does not need computing: the bar that should have
+     * played while nobody was listening is gone either way, so say so at the
+     * one moment we know for certain the gap has ended, rather than inferring
+     * it afterwards from two clocks.
+     */
     quiet: function (fn) {
       this.silent++;
-      try { return fn(); } finally { this.silent--; }
+      try {
+        return fn();
+      } finally {
+        this.silent--;
+        if (!this.silent) this.music.reanchor();
+      }
     },
 
     init: function () {
@@ -134,8 +157,22 @@
         this.id = null;
       },
 
+      /** Pick the tune up from now, keeping its place in the phrase. */
+      reanchor: function () {
+        if (!A.ctx || !this.track) return;
+        this.nextAt = A.ctx.currentTime + 0.06;
+      },
+
       tick: function () {
         if (!A.ctx || !this.track) return;
+        /* A context that is not running has a FROZEN clock — currentTime stops
+         * where it was while this scheduler keeps waking up on its interval.
+         * Anything booked against a clock that is not moving is booked for a
+         * moment that never arrives until the context comes back, and then it
+         * is overdue. Suspension is not a hypothetical: an artifact runs in an
+         * iframe, which is the likeliest place in the world to have audio
+         * taken away and handed back. */
+        if (A.ctx.state !== 'running') { this.reanchor(); return; }
         var t = this.track;
         var spb = 60 / t.bpm / 4;                // seconds per sixteenth
 

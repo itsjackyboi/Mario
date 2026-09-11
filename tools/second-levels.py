@@ -79,6 +79,80 @@ from threeroutes import (W, Deck, skeleton, fork, ramp_out, hole, deck_hole,
 # the measured envelope cannot make.
 
 
+def room(taken, width, after=32, hi=206):
+    """The first column where `width` clear columns fit on this road.
+
+    The machinery used to carry hand-picked columns, which worked exactly as
+    long as nothing else moved. Shortening the chains from four to three moved
+    all of them, and Fenwick's first sprung root landed inside a staircase —
+    the pillar and the chain's third island writing over each other, which is
+    not a hard jump, it is a hole where a level used to be.
+
+    So nothing picks a column by hand any more. It asks what is free.
+    """
+    col = after
+    while col + width <= hi:
+        clash = next((b for a, b in taken if a - 2 <= col + width and b + 2 >= col), None)
+        if clash is None:
+            return col
+        col = clash + 3
+    return None
+
+
+def shard_spot(deck, taken, want=118):
+    """A column for the shard: clear of everything, and near the middle.
+
+    Near the middle on purpose. At the start it is free, at the end it is a
+    victory lap; two thirds of the way along a road you have already committed
+    to is where going and getting it is a decision.
+    """
+    g = deck.c.g
+    free = [c for c in range(40, 200)
+            if g[deck.body][c] == '.' and g[deck.body - 1][c] == '.'
+            and all(not (a - 3 <= c <= b + 3) for a, b in taken)]
+    return min(free, key=lambda c: abs(c - want)) if free else None
+
+
+def easy_road(deck, taken):
+    """The road that asks nothing of you, and can never be the quick one.
+
+    WHY THIS ROAD EXISTS. Three roads that are all punishing is not three
+    choices, it is the same choice printed three times — and it leaves a player
+    who is stuck with nowhere to go but the thing they are stuck on. So one
+    road on each of these levels is passable by anybody: no chains, no jump
+    wider than two columns, nothing on a cycle, nothing that kills you for
+    being a frame late.
+
+    WHY IT CANNOT WIN, which is the harder half. Almost nothing in this engine
+    costs time. A jump costs no horizontal speed, so an obstacle course and a
+    flat run of the same length come in within a frame of each other; even a
+    two-tile step, which reads like a dead stop, turns out to cost a handful of
+    frames because you bonk the ceiling and slide over it. Three things really
+    do cost time, and only one of them can be laid down by the yard:
+
+        a rope running against you.
+
+    Four crawlways of twenty-four columns, at 3.20 pixels a frame instead of
+    4.30. That is 768 pixels covered in 240 frames rather than 179, four times
+    over: about four seconds, on a road the others run in twenty-nine. The roof
+    is four pixels above his head for the whole length, so there is no jumping
+    over it and no way round it — that was the lesson from the first version,
+    where a perfect run simply walked along the top of the crawlway and paid
+    nothing at all.
+
+    Two-tile steps between them, which cost little but read as effort, and one
+    detour up onto a shelf and back down: the road visibly doubling back on
+    itself, so that it looks as slow as it is.
+    """
+    ropes = [(40, 24), (86, 24), (132, 24), (178, 24)]
+    for col, run in ropes:
+        deck.belt(col, col + run - 1, back=True)
+        taken.append((col - 1, col + run))
+    for col in spread(taken, 3, lo=34, hi=200, pad=3, apart=30):
+        deck.step(col)
+    return len(ropes)
+
+
 def grog_run(deck, n=24, lo=32, hi=206):
     """Barrels down the length of a lane, wherever the lane has room for one.
 
@@ -288,8 +362,35 @@ def bobber_rack(deck, start, n, taken, step=4):
 # the staggering: a toll dropped on the last island of a chain leaves a
 # two-tile step with no run-up, which is four pixels past what a capped jump
 # reaches — a wall, not a jump.
-CHAINS_FAST = [(32, 8), (91, 6, 2, 5), (151, 9), (190, 5)]
-CHAINS_SLOW = [[(58, 7), (128, 8)], [(96, 8), (168, 7)]]
+# THREE ROADS WITH THREE DIFFERENT JOBS, which is the shape the second draft
+# did not have. Every road used to carry chains — the reasoning was that
+# whichever one a player settled on, it could not be run without back-to-back
+# exact presses, and the level would be hard whatever happened. It was, and it
+# was also exhausting and samey: twenty-four exact jumps down the fast road
+# with tolls in the gaps, and no stretch anywhere on any road where a player
+# could simply run.
+#
+# A hard level is not one with no easy parts in it. It is one where the easy
+# parts are what let you see the hard parts coming. So:
+#
+#   THE HARD ROAD   three chains and nothing else. Between them, thirty and
+#                   forty columns of ordinary running, which is where the
+#                   speed and the nerve come from — you arrive at a chain at a
+#                   full run having had time to know it is coming, and then
+#                   there are six exact presses with nowhere to breathe.
+#
+#   THE MIDDLE ROAD one chain, and the tolls: gaps, raised lips, and the
+#                   two-tile steps. Hard in places, never for long.
+#
+#   THE EASY ROAD   no chains at all, nothing above a two-column gap, and long
+#                   crawlways with the rope running the wrong way. It asks for
+#                   no skill whatever and it cannot win: see easy_road below.
+#
+# The chains are shorter than they were — six, seven and five against eight,
+# six, nine and four — and there are three instead of four, so a hard road is
+# now about a quarter chain and three quarters running.
+CHAINS_HARD = [(62, 6), (120, 7), (178, 5)]
+CHAINS_MID = [(96, 5)]
 
 
 def spread(taken, n, lo=32, hi=206, pad=5, start=0, apart=10):
@@ -322,8 +423,10 @@ def build(spec):
 
     decks = {name: Deck(c, name, hazard=spec['hazard'][name])
              for name in ('sky', 'land', 'tunnel')}
-    fast = decks[spec['fast']]
-    slow = [decks[n] for n in ('sky', 'land', 'tunnel') if n != spec['fast']]
+    hard = decks[spec['fast']]
+    easy = decks[spec['easy']]
+    mid = decks[[n for n in ('sky', 'land', 'tunnel')
+                 if n not in (spec['fast'], spec['easy'])][0]]
     taken = {name: [] for name in decks}
 
     def safe(name, col, glyph, up=0):
@@ -348,24 +451,18 @@ def build(spec):
         decks[name].put(col, glyph, up)
         return col
 
-    # --- the fast route: four chains, and nothing to stop for ---------------
-    for chain in CHAINS_FAST:
-        if len(chain) == 4:
-            start, n, w, step = chain
-            fast.chain(start, n, w=w, step=step)
-            taken[spec['fast']].append((start - 1, start + (n - 1) * step + w))
-        else:
-            start, n = chain
-            fast.chain(start, n)
-            taken[spec['fast']].append((start - 1, start + (n - 1) * 4 + 1))
-
-    # --- the two slow routes: two chains each ------------------------------
+    # --- the hard road: three chains, and long clear runs between them ------
     shift = spec['shift']
-    for k, deck in enumerate(slow):
-        for start, n in CHAINS_SLOW[k]:
-            at = start + shift * (k + 1)
-            deck.chain(at, n)
-            taken[deck.name].append((at - 1, at + (n - 1) * 4 + 1))
+    for start, n in CHAINS_HARD:
+        at = start + shift
+        hard.chain(at, n)
+        taken[hard.name].append((at - 1, at + (n - 1) * 4 + 1))
+
+    # --- the middle road: one chain, and the tolls further down -------------
+    for start, n in CHAINS_MID:
+        at = start + shift * 2
+        mid.chain(at, n)
+        taken[mid.name].append((at - 1, at + (n - 1) * 4 + 1))
 
     # --- this level's own machinery ----------------------------------------
     #
@@ -375,17 +472,45 @@ def build(spec):
     # out of what is left — so a belt run can never have a two-tile step
     # dropped into the middle of it, and a lift can never share a column with a
     # hole cut for something else.
-    spec['machines'](c, decks, taken)
+    intents = []
+    spec['machines'](c, decks, taken,
+                     {'hard': hard.name, 'mid': mid.name, 'easy': easy.name},
+                     intents)
 
-    # --- and then everything that costs the slow routes time ----------------
-    for k, deck in enumerate(slow):
-        cols = spread(taken[deck.name], 9, start=k)
-        for col in cols[0::3]:
-            deck.step(col)
-        for col in cols[1::3]:
-            deck.gap(col)
-        for col in cols[2::3]:
-            deck.gap_up(col)
+    # --- the middle road's tolls -------------------------------------------
+    cols = spread(taken[mid.name], 9)
+    for col in cols[0::3]:
+        mid.step(col)
+        taken[mid.name].append((col - 1, col + 3))
+    for col in cols[1::3]:
+        mid.gap(col)
+        taken[mid.name].append((col - 1, col + 3))
+    for col in cols[2::3]:
+        mid.gap_up(col)
+        taken[mid.name].append((col - 1, col + 6))
+    # The tolls go into `taken` like everything else. They did not, and the
+    # things placed afterwards had no idea they were there: Aleforge's keg
+    # chute is written on the FLOOR row, and it landed one column from a
+    # three-column gap, taking the lip out and turning the gap into four.
+
+    # --- and the easy road, which is not a road you can hurry --------------
+    easy_road(easy, taken[easy.name])
+
+    # --- the shard, on all three roads -------------------------------------
+    #
+    # It is ONE shard: src/level.js gives every shard in a level the same id, so
+    # whichever road you are on you can have it, and meeting another copy later
+    # is nothing. Choosing the tunnel should not be choosing to go without.
+    #
+    # Out of the way on each road, though, not on the racing line — one tile up
+    # on a lip you have to go and get. On the easy road that lip is reachable
+    # by walking; on the other two it is a jump, which is as it should be.
+    for deck in (hard, mid, easy):
+        col = shard_spot(deck, taken[deck.name])
+        if col is not None:
+            deck.c.row(deck.floor - 1, col - 1, col + 1, '=')
+            deck.put(col, 'R', up=1)
+            taken[deck.name].append((col - 3, col + 3))
 
     # Holes down through the decks, so the choice can still be changed —
     # downwards only, because you can always fall and never climb. They are cut
@@ -426,7 +551,7 @@ def build(spec):
         'town': spec['town'], 'id': spec['id'], 'name': spec['name'],
         'blurb': spec['blurb'], 'diff': spec['diff'], 'quips': spec['quips'],
     }, c, spec['notes'])
-    bad = check(c, segs, spec['id'], spec['fast'], spec.get('intended', ()))
+    bad = check(c, segs, spec['id'], spec['fast'], intents)
     print('  %d barrels of grog, across all three roads' % barrels)
     return bad
 
@@ -495,7 +620,7 @@ SLOW = ('   Two staircases of its own — twelve exact jumps, because no road\n'
 # deck and every level. `check` at the bottom of build() is what proves it.
 
 
-def shantytown_machines(c, decks, taken):
+def shantytown_machines(c, decks, taken, road, intents):
     """CAPSTAN ROPES. The tide turns them and they never stop turning.
 
     The fast road gets two of them running its way, and at the end of each, a
@@ -509,20 +634,20 @@ def shantytown_machines(c, decks, taken):
     against the belt is 3.20 pixels a frame instead of 4.30, which is fifty
     frames neither of them gets back.
     """
-    belt_gate(decks['tunnel'], 62, taken['tunnel'])          # 62-87, void 88-91
-    belt_gate(decks['tunnel'], 119, taken['tunnel'])         # 119-144, void 145-148
-    # The tolls. Twenty-eight columns of crawlway with the rope running the
-    # wrong way is 896 pixels at 3.20 a frame instead of 4.30 — 280 frames
-    # against 208, so a hair over a second that neither slow road gets back.
-    # There is no jumping out of it and no way round it; the roof is four
-    # pixels over his head for the whole length.
-    decks['sky'].belt(88, 115, back=True)
-    taken['sky'].append((87, 116))
-    decks['land'].belt(130, 157, back=True)
-    taken['land'].append((129, 158))
+    hard, mid = decks[road['hard']], decks[road['mid']]
+    for _ in range(2):
+        at = room(taken[hard.name], 31)
+        if at is not None:
+            belt_gate(hard, at, taken[hard.name])
+    # One rope the wrong way on the middle road. The easy road gets four of
+    # them from easy_road() and does not need any help from here.
+    at = room(taken[mid.name], 29)
+    if at is not None:
+        mid.belt(at, at + 27, back=True)
+        taken[mid.name].append((at - 1, at + 28))
 
 
-def aleforge_machines(c, decks, taken):
+def aleforge_machines(c, decks, taken, road, intents):
     """THE MILL STAMPS, AND ONE POUCH THREE HUNDRED COLUMNS EARLY.
 
     The gantry is threaded between falling stamps twice, and somewhere in the
@@ -534,15 +659,30 @@ def aleforge_machines(c, decks, taken):
     Nothing warns you. That is the point: the first run through, the gap at 124
     is where you find out what the thing on the spur was for.
     """
-    press_row(decks['sky'], [62, 67, 72, 77], taken['sky'])
-    pouch_spur(decks['sky'], 84, taken['sky'])
-    pouch_gate(decks['sky'], 124, taken['sky'])
-    press_row(decks['sky'], [136, 141, 146], taken['sky'])
-    press_row(decks['land'], [95, 100], taken['land'])
-    press_row(decks['tunnel'], [140, 145], taken['tunnel'])
+    hard, mid = decks[road['hard']], decks[road['mid']]
+    at = room(taken[hard.name], 18)
+    if at is not None:
+        press_row(hard, [at + 2, at + 7, at + 12], taken[hard.name])
+    at = room(taken[hard.name], 12)
+    if at is not None:
+        pouch_spur(hard, at + 5, taken[hard.name])
+    at = room(taken[hard.name], 11)
+    if at is not None:
+        pouch_gate(hard, at + 2, taken[hard.name])
+        intents.append((hard.name, at + 1, at + 8,
+                        'the pouch gate — measured: legs cross 4 columns, '
+                        'a pouch crosses 7'))
+    at = room(taken[hard.name], 14)
+    if at is not None:
+        press_row(hard, [at + 2, at + 7], taken[hard.name])
+    at = room(taken[mid.name], 12)
+    if at is not None:
+        press_row(mid, [at + 2, at + 7], taken[mid.name])
+    # Nothing on the easy road. A stamp on a cycle is a thing you have to read,
+    # and the whole point of that road is that it asks you to read nothing.
 
 
-def providence_machines(c, decks, taken):
+def providence_machines(c, decks, taken, road, intents):
     """THE CHIME, WHICH IS THE ONLY THING IN THIS CITY THAT IS NOT FOR SALE.
 
     Four sweeping arms across the covered walk and two on each of the other
@@ -555,20 +695,26 @@ def providence_machines(c, decks, taken):
     and it is not meant to be: the crust is open under it, so you drop into the
     ossuary and finish on the slow road. The city takes the time instead.
     """
-    for col in (66, 76, 86, 140):
-        decks['land'].put(col, 'n')
-    taken['land'].append((62, 90))
-    taken['land'].append((136, 144))
-    lift(c, 124, taken['land'], taken['tunnel'])
-    for col in (100, 110):
-        decks['sky'].put(col, 'n')
-    taken['sky'].append((96, 114))
-    for col in (155, 165):
-        decks['tunnel'].put(col, 'n')
-    taken['tunnel'].append((151, 169))
+    hard, mid = decks[road['hard']], decks[road['mid']]
+    at = room(taken[hard.name], 28)
+    if at is not None:
+        for k in range(3):
+            hard.put(at + 4 + k * 10, 'n')
+        taken[hard.name].append((at, at + 27))
+    at = room(taken[hard.name], 11)
+    if at is not None:
+        lift(c, at + 2, taken[hard.name], taken[mid.name])
+        intents.append((hard.name, at + 1, at + 8,
+                        'the tithe-lift — crossed by the mover on its own clock'))
+    at = room(taken[mid.name], 18)
+    if at is not None:
+        for k in range(2):
+            mid.put(at + 4 + k * 10, 'n')
+        taken[mid.name].append((at, at + 17))
+    # The easy road runs under no arms at all — see easy_road().
 
 
-def fenwick_machines(c, decks, taken):
+def fenwick_machines(c, decks, taken, road, intents):
     """SPRUNG ROOTS, AND THE ONLY WAY UP IN ANY OF THESE FIVE LEVELS.
 
     The Overturned Wood is the level about the ground and the canopy changing
@@ -582,15 +728,21 @@ def fenwick_machines(c, decks, taken):
     road above already asks for everywhere else. So the bog crosses the roots'
     chimneys without knowing they are there, and the canopy crosses the bog's.
     """
-    spring_well(c, decks['tunnel'], 70, taken['tunnel'])
-    taken['land'].append((67, 73))          # the hole it opens in the bog floor
-    spring_well(c, decks['tunnel'], 140, taken['tunnel'])
-    taken['land'].append((137, 143))
-    spring_well(c, decks['land'], 94, taken['land'])
-    taken['sky'].append((91, 97))           # and the one it opens in the canopy
+    hard, mid = decks[road['hard']], decks[road['mid']]
+    for _ in range(2):
+        at = room(taken[hard.name], 12)
+        if at is None:
+            break
+        spring_well(c, hard, at + 6, taken[hard.name])
+        taken[mid.name].append((at + 3, at + 9))   # the hole it opens above
+    # There was a third well, out of the bog and up into the canopy. It is gone:
+    # the canopy is the easy road now, and a well punches a three-column hole in
+    # the floor of the road above it. Three columns is the standard capped jump
+    # — fine on a road that is meant to ask for jumps, and not fine on the one
+    # road in this level that is meant to ask for none.
 
 
-def roto_machines(c, decks, taken):
+def roto_machines(c, decks, taken, road, intents):
     """THE SWELL. Nothing on this pier is standing still and neither are you.
 
     Racks of net-floats, which are footing that sinks twenty pixels while your
@@ -606,21 +758,29 @@ def roto_machines(c, decks, taken):
     it and therefore the part it spends least time in. Nothing there kills you.
     You wait, and the waiting is the whole toll.
     """
-    bobber_rack(decks['sky'], 64, 6, taken['sky'])
-    hoist(decks['sky'], 124, taken['sky'])
-    bobber_rack(decks['sky'], 136, 3, taken['sky'])
-    bobber_rack(decks['land'], 100, 4, taken['land'])
-    bobber_rack(decks['tunnel'], 150, 4, taken['tunnel'])
+    hard, mid = decks[road['hard']], decks[road['mid']]
+    at = room(taken[hard.name], 26)
+    if at is not None:
+        bobber_rack(hard, at + 2, 5, taken[hard.name])
+    at = room(taken[hard.name], 11)
+    if at is not None:
+        hoist(hard, at + 2, taken[hard.name])
+    at = room(taken[mid.name], 20)
+    if at is not None:
+        bobber_rack(mid, at + 2, 4, taken[mid.name])
+    # No rack on the easy road: footing that sinks while you stand on it is the
+    # one thing on this pier that punishes hesitating, and hesitating is
+    # exactly what that road is for.
 
 
 SPECS = [
     dict(
-        town='shantytown', id='shantytown-2', machines=shantytown_machines, shift=0, name='The Bone Stair',
+        town='shantytown', id='shantytown-2', easy='sky', machines=shantytown_machines, shift=0, name='The Bone Stair',
         file='data/shantytown/level-2.js', diff=1.0, fast='tunnel',
         blurb='Over the boards, along them, or under them. All three will drown you.',
         hazard={'sky': 'x', 'land': 'x', 'tunnel': '~'},
         fast_things=[(76, 'o', 3), (166, 'o', 3), (120, 'o', 0)],
-        things={'sky': [(46, 'R', 0), (100, 'o', 0), (170, 'o', 0)],
+        things={'sky': [(100, 'o', 0), (170, 'o', 0)],
                 'land': [(72, 'p', 0), (128, 'c', 0), (178, 'p', 0), (206, 'W', 0)]},
         quips=[('1', '@jager1'), ('2', '@buke1'), ('3', '@jp2'), ('4', '@?ru'), ('5', '@?in,cr')],
         quip_at=[(22, LAND), (88, TUN), (150, LAND), (200, SKY), (228, LAND)],
@@ -641,15 +801,11 @@ SPECS = [
                       ' * That is what a level looks like when there is nothing in it to decide.\n')),
 
     dict(
-        town='aleforge', id='aleforge-2', machines=aleforge_machines, shift=7,
-        # The gate. Legs cross a void of three under a roof and this is five,
-        # measured both ways in the running game — so it is not a gap, it is a
-        # lock, and the pouch on the spur at 84 is the key.
-        intended=[('sky', 123, 130, 'the pouch gate — measured: legs cross 4 columns, a pouch crosses 7')], name='Wolendi Wind Farm',
+        town='aleforge', id='aleforge-2', easy='tunnel', machines=aleforge_machines, shift=7, name='Wolendi Wind Farm',
         file='data/aleforge/level-2.js', diff=1.15, fast='sky',
         blurb='Through the beams, across the yard, or under the whole mill.',
         hazard={'sky': 'x', 'land': 'x', 'tunnel': 'x'},
-        fast_things=[(46, 'o', 2), (104, 'o', 2), (166, 'R', 2)],
+        fast_things=[(46, 'o', 2), (104, 'o', 2)],
         things={'land': [(66, 'k', -1), (114, 'p', 0), (142, 'k', -1), (196, 'N', 0)],
                 'tunnel': [(72, 'c', 0), (130, 'o', 0), (192, 'E', 0)]},
         quips=[('1', '@buke3'), ('2', '@jager2'), ('3', '@six2'), ('4', '@?ru'), ('5', '@?in,cr')],
@@ -668,15 +824,12 @@ SPECS = [
                       'THE CELLAR — under the whole mill.', SLOW)),
 
     dict(
-        town='providence', id='providence-2', machines=providence_machines, shift=13,
-        # The tithe-lift. Six columns against the three legs cross, and what
-        # bridges it is somewhere else entirely at nine seconds in eleven.
-        intended=[('land', 123, 130, 'the tithe-lift — crossed by the mover at 126, on its own clock')], name='The Tithe Walk',
+        town='providence', id='providence-2', easy='sky', machines=providence_machines, shift=13, name='The Tithe Walk',
         file='data/providence/level-2.js', diff=1.3, fast='land',
         blurb='Over the leads, under the vault, or down among the paid-for dead.',
         hazard={'sky': 'x', 'land': 'x', 'tunnel': 'x'},
         fast_things=[(46, 'o', 2), (104, 'K', 2), (166, 'o', 2)],
-        things={'sky': [(66, 'b', -2), (120, 'o', 0), (176, 'R', 0)],
+        things={'sky': [(66, 'b', -2), (120, 'o', 0)],
                 'tunnel': [(72, 'c', 0), (130, 'Q', 0), (192, 'o', 0)]},
         quips=[('1', '@buke4'), ('2', '@guinnie1'), ('3', '@jp1'), ('4', '@?ru'), ('5', '@?in,cr')],
         quip_at=[(22, LAND), (88, SKY), (150, LAND), (184, TUN), (228, LAND)],
@@ -697,12 +850,12 @@ SPECS = [
                       ' * and still the hardest.\n')),
 
     dict(
-        town='fenwick', id='fenwick-2', machines=fenwick_machines, shift=4, name='The Overturned Wood',
+        town='fenwick', id='fenwick-2', easy='sky', machines=fenwick_machines, shift=4, name='The Overturned Wood',
         file='data/fenwick/level-2.js', diff=1.5, fast='tunnel',
         blurb='Under the roots, through the bog, or up where the light is.',
         hazard={'sky': 'x', 'land': '~', 'tunnel': '~'},
         fast_things=[(46, 'o', 2), (104, 'w', 2), (166, 'o', 2)],
-        things={'sky': [(66, 'R', 0), (120, 'o', 0), (176, 'o', 0)],
+        things={'sky': [(120, 'o', 0), (176, 'o', 0)],
                 'land': [(72, 'i', 0), (76, 'h', 0), (80, 'h', 0), (130, 't', 0),
                          (176, 'M', 0), (206, '*', 0)]},
         quips=[('1', '@buke5'), ('2', '@guinnie3'), ('3', '@six3'), ('4', '@?ru'), ('5', '@?in,cr')],
@@ -724,11 +877,11 @@ SPECS = [
                       ' * Nothing here is a minigame any more.\n')),
 
     dict(
-        town='roto', id='roto-2', machines=roto_machines, shift=10, name="Netmenders' Row",
+        town='roto', id='roto-2', easy='land', machines=roto_machines, shift=10, name="Netmenders' Row",
         file='data/roto/level-2.js', diff=1.45, fast='sky',
         blurb='Over the frames, along the stalls, or under the whole pier.',
         hazard={'sky': 'x', 'land': 'x', 'tunnel': '~'},
-        fast_things=[(46, 'o', 2), (104, '^', 2), (166, 'R', 2)],
+        fast_things=[(46, 'o', 2), (104, '^', 2)],
         things={'land': [(66, 'u', 0), (114, 's', 0), (142, 'u', 0), (196, 'O', 0)],
                 'tunnel': [(72, 'c', 0), (130, 'o', 0), (192, 'D', 0)]},
         quips=[('1', '@buke6'), ('2', '@anqoak1'), ('3', '@jager3'), ('4', '@?ru'), ('5', '@?in,cr')],

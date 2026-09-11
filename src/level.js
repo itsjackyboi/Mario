@@ -162,7 +162,19 @@
           continue;
         }
         var opts = { tx: tx, ty: ty, x: tx * T, y: ty * T, world: this, def: def, glyph: ch };
-        if (type === 'shard') opts.shardId = def.id + ':' + (shardIndex++);
+        /* ONE SHARD PER LEVEL, however many places it is written.
+         *
+         * The three-route levels put a shard on each road, so that choosing
+         * the tunnel is not choosing to go without. They are the same shard:
+         * same id, so taking any one of them is taking the level's shard, and
+         * meeting another later adds nothing. Numbering them would have made a
+         * level worth three, and a player who crossed between roads could
+         * collect the same prize twice.
+         *
+         * The id is the one the first shard has always had, so a save from
+         * before this keeps its shards.
+         */
+        if (type === 'shard') { opts.shardId = def.id + ':0'; shardIndex = 1; }
         if (type === 'trialGate') opts.trial = def.trial;
         var ent = PL.Entities.create(type, opts);
         this.add(ent);

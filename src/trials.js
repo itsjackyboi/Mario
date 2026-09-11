@@ -52,7 +52,20 @@
     this.play.elapsedMs = this.play.baseMs + this.play.levelMs;
 
     if (this.state === 'intro') {
-      if (this.stateT > 1.5 || PL.Input.pressed('jump') || PL.Input.pressed('confirm')) {
+      /* A HELD button counts, not only a fresh press, and that is the whole
+       * fix. You reach a trial gate by running at it, and running at it very
+       * often means arriving mid-jump with the jump button still down — so
+       * `pressed` wanted a release and another press that the player had no
+       * reason to think was being asked for. Holding the button did nothing,
+       * and the trial looked like it simply took a second and a half to start.
+       *
+       * The floor is a tenth of a second so the card is on screen rather than
+       * flashing past, and the ceiling is two fifths of a second for someone
+       * touching nothing at all. Before, it was a second and a half either
+       * way. */
+      var asked = PL.Input.down('jump') || PL.Input.down('confirm') ||
+                  PL.Input.pressed('jump') || PL.Input.pressed('confirm');
+      if (this.stateT > 0.4 || (asked && this.stateT > 0.1)) {
         this.state = 'play';
         this.stateT = 0;
       }

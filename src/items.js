@@ -282,6 +282,15 @@
 
   Shard.prototype.touch = function (player, world) {
     if (this.taken) return;
+    /* The same shard is written on all three roads of a v2 second level. If
+     * this one is already in the purse it is a copy, and a copy takes itself
+     * off the board quietly — no ring, no label, no second chime for a thing
+     * you already have. */
+    if (this.shardId && player.shards.indexOf(this.shardId) !== -1) {
+      this.taken = true;
+      this.remove = true;
+      return;
+    }
     this.take(world, player);
     player.collectShard(this.shardId);
     world.fx.ring(this.cx(), this.cy(), 'rgba(212,87,78,0.95)', 56);
