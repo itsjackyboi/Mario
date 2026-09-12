@@ -11,7 +11,33 @@
 
 * { box-sizing: border-box; }
 
+/* NOTHING ON THIS PAGE IS TEXT TO BE SELECTED.
+ *
+ * Holding RIGHT is a long press, and a long press on a canvas is — as far as a
+ * phone is concerned — somebody trying to select something. iOS puts the blue
+ * selection wash over the screen and offers Copy; Android raises the context
+ * menu. Either way the thing you were actually doing (running) is interrupted
+ * by an offer to copy a game.
+ *
+ * Four separate behaviours have to be turned off, because they are four
+ * separate features and no one property covers them:
+ *
+ *   user-select        the selection itself, and the blue wash
+ *   touch-callout      the iOS long-press menu (Copy, Look Up, Share)
+ *   tap-highlight      the grey flash Android paints over a tapped element
+ *   overscroll-behavior  the rubber-band and pull-to-refresh a drag can start
+ *
+ * The hidden name field opts every one of them back in below, because it IS
+ * text, and a name you cannot select or paste into is a worse bug than this.
+ */
 html, body {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
   margin: 0;
   padding: 0;
   height: 100%;
@@ -24,6 +50,7 @@ html, body {
 #stage {
   position: fixed;
   inset: 0;
+  touch-action: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -63,6 +90,8 @@ html, body {
     0 18px 60px rgba(0, 0, 0, 0.65),
     0 0 90px rgba(255, 179, 71, 0.12);
   touch-action: none;
+  -webkit-user-drag: none;
+  user-drag: none;
 }
 
 #loading {
@@ -113,7 +142,13 @@ noscript {
  * given a 16px font because anything smaller makes iOS zoom the whole page in
  * when it takes focus. Pointer events pass straight through to the canvas —
  * clicks are the game's, keystrokes are the field's. */
+/* The one thing on the page that really is text. Everything the rules above
+ * switch off is switched back on here: this is a real <input>, and a name you
+ * cannot select, correct or paste into would be the worse bug by far. */
 #text-catcher {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
   position: fixed;
   left: 50%;
   top: 50%;

@@ -16,7 +16,7 @@
    * Not to be confused with the save-schema version in storage.js, which is
    * about the shape of the stored JSON and only moves when that shape does.
    */
-  PL.VERSION = '2.2.1';
+  PL.VERSION = '2.2.2';
 
   PL.VIEW_W = 640;
   PL.VIEW_H = 360;
@@ -101,6 +101,23 @@
       if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', function () { self.resize(); });
       }
+      /* CSS turns the selection off; these turn off what is left.
+       *
+       * A long press is how you hold RIGHT, and it is also how a browser is
+       * told to select something or open a context menu. `user-select: none`
+       * stops the blue wash, but several engines still raise the menu anyway —
+       * and on a desktop this is also what stops a right-click from putting
+       * "Save image as…" over the level.
+       *
+       * Bound to the canvas rather than the document, so the hidden name field
+       * keeps every one of them: it is a real text box and long-pressing it to
+       * paste a name is a thing somebody should be able to do.
+       */
+      var stop = function (e) { e.preventDefault(); return false; };
+      canvas.addEventListener('contextmenu', stop);
+      canvas.addEventListener('selectstart', stop);
+      canvas.addEventListener('dragstart', stop);
+
       // Audio contexts need a user gesture before they will make noise.
       var wake = function () { PL.Audio.resume(); };
       window.addEventListener('keydown', wake);

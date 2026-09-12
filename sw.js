@@ -28,7 +28,7 @@
  */
 'use strict';
 
-var CACHE = 'pintland-v2.2.1';
+var CACHE = 'pintland-v2.2.2';
 var PAGE = './';
 
 self.addEventListener('install', function (e) {
