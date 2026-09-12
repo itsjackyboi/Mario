@@ -71,7 +71,7 @@ you would rather it went too; it is one line.
    first.)
 
 4. **Check the version corner.** Open the live page and read the number in the top-left of
-   the title screen. It should say `v2.2.2`. If it still says `v1.17.0`, the browser is
+   the title screen. It should say `v2.2.3`. If it still says `v1.17.0`, the browser is
    holding a cached copy of `index.html` — hard-refresh (Ctrl/Cmd-Shift-R). Every other file
    is cache-busted by the version, so once the index is fresh, everything is.
 
@@ -93,6 +93,53 @@ git push
 Local saves already wiped by the era bump stay wiped — that part is on players' machines,
 not in the repo — but the pre-release board, the sheet and its log are all untouched by a
 rollback.
+
+## The offline copy, and how 2.2.0–2.2.2 could strand a phone on an old build
+
+`sw.js` keeps the whole game on the device so it opens with no network. Up to and including
+v2.2.2 it answered **navigations out of that cache first**, and refreshed the cached page
+with a background fetch that was never passed to `event.waitUntil()`. Both halves have to be
+read together to see the trap:
+
+- `index.html` is the only file with no `?v=` on it, and it is the file that *names* the
+  version of every other file. Serving it from the cache means the device keeps asking for
+  the old build's scripts for ever, and refreshing cannot help, because the refresh is
+  answered out of the cache too.
+- The background fetch that was supposed to replace the cached page had nothing keeping the
+  worker alive. `respondWith` settles the moment the cached page is found, and a worker with
+  no outstanding work may be killed on the spot — which Safari does eagerly. So the refresh
+  of the cached page was routinely killed before it finished.
+
+Cache-first plus an update that never lands is a version somebody is stuck on permanently,
+which is exactly what happened: a phone on 2.2.1 never saw 2.2.2 no matter how many times it
+was reloaded.
+
+**What 2.2.3 changes.** The page is fetched from the network when there is one and from the
+cache only when there is not; every cache write is inside `waitUntil()`; the registration
+passes `updateViaCache: 'none'` and calls `update()` on load, so `sw.js` is checked against
+the server rather than the browser's own HTTP cache; and a `controllerchange` reloads the
+page once when a new worker replaces an old one, so the build on screen matches the worker
+that is serving it. Everything except `index.html` stays cache-first — it all carries a `?v=`
+and a stale hit is impossible.
+
+**A device already stuck gets out on its own, eventually.** The one thing the old worker
+cannot block is the browser's own update check on `sw.js`, and the fixed worker installs
+fine at the old `?v=` url. Reproduced end to end against the real 2.2.2 tree:
+
+```
+seated on old build:      page=2.2.2  cache=pintland-v2.2.2  worker=sw.js?v=2.2.2
+refresh, no update check: page=2.2.2  cache=pintland-v2.2.2  worker=sw.js?v=2.2.2
+after the update check:   page=2.2.2  cache=pintland-v2.2.3  worker=sw.js?v=2.2.2
+one refresh after that:   page=2.2.3  cache=pintland-v2.2.3  worker=sw.js?v=2.2.3
+```
+
+The middle line is the browser's own schedule, which is up to 24 hours. Not waiting for it
+means clearing the site: on a home-screen icon, delete the icon and add it again; in a
+Safari tab, Settings → Safari → Advanced → Website Data → swipe the site away. **That is a
+real cost, not a free reset:** the save lives in `localStorage` and a site wipe takes it —
+bank balance, unlocks, skins and every local best. Times already posted to the sheet are
+safe, and so is anything sitting in the outbox only if it has actually gone up, so get back
+on wifi and let it flush before wiping anything.
 
 ## What a returning player sees
 

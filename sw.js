@@ -28,7 +28,7 @@
  */
 'use strict';
 
-var CACHE = 'pintland-v2.2.2';
+var CACHE = 'pintland-v2.2.3';
 var PAGE = './';
 
 self.addEventListener('install', function (e) {
@@ -70,27 +70,65 @@ self.addEventListener('activate', function (e) {
   );
 });
 
+/* THE PAGE IS FETCHED FROM THE NETWORK FIRST. Everything else is not.
+ *
+ * This was the other way round and it was a trap that could not be escaped
+ * from. index.html is the one file with no ?v= on it, and it is the file that
+ * NAMES the version of everything else — so serving it from the cache first
+ * means a browser keeps asking for the old build's scripts for ever, and no
+ * amount of refreshing changes anything, because the refresh is answered out
+ * of the cache too.
+ *
+ * It was worse than one stale visit, because the background update that was
+ * supposed to fix it was never waited on. `respondWith` settles the moment the
+ * cached page is found, and a service worker with nothing left to do may be
+ * terminated on the spot — which Safari does eagerly. So the fetch that would
+ * have refreshed the cached page was routinely killed before it finished, and
+ * the stale page stayed stale. Cache-first plus an update that never lands is
+ * a version somebody is stuck on permanently.
+ *
+ * So: the page comes from the network whenever there is one, and from the
+ * cache only when there is not — which is the whole point of the cache and
+ * costs one small request per open. Everything else keeps cache-first, because
+ * everything else carries a ?v= and a stale hit is impossible: a new build
+ * asks for URLs the cache has never heard of.
+ */
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   if (req.method !== 'GET') return;                       // a run being filed
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) return;        // the leaderboard
 
-  var navigating = req.mode === 'navigate';
-  e.respondWith(
-    caches.match(navigating ? PAGE : req).then(function (hit) {
-      var live = fetch(req).then(function (res) {
+  if (req.mode === 'navigate') {
+    e.respondWith(
+      fetch(req).then(function (res) {
         if (res && res.ok) {
           var copy = res.clone();
-          caches.open(CACHE).then(function (c) {
-            c.put(navigating ? PAGE : req, copy);
-          });
+          // waitUntil, not a bare promise: this is the write that keeps the
+          // offline copy current, and it has to outlive the response.
+          e.waitUntil(caches.open(CACHE).then(function (c) { return c.put(PAGE, copy); }));
         }
         return res;
-      })['catch'](function () { return hit; });
-      // The page is refreshed in the background so a new build is picked up on
-      // the next open; everything else is stamped, so the cache is the truth.
-      return hit || live;
+      })['catch'](function () {
+        return caches.match(PAGE).then(function (hit) {
+          return hit || new Response('Offline, and this page was never cached.',
+                                     { status: 503, headers: { 'Content-Type': 'text/plain' } });
+        });
+      })
+    );
+    return;
+  }
+
+  e.respondWith(
+    caches.match(req).then(function (hit) {
+      if (hit) return hit;
+      return fetch(req).then(function (res) {
+        if (res && res.ok) {
+          var copy = res.clone();
+          e.waitUntil(caches.open(CACHE).then(function (c) { return c.put(req, copy); }));
+        }
+        return res;
+      });
     })
   );
 });
