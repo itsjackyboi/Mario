@@ -88,6 +88,24 @@
     init: function () {
       this.endpoint = (PL.CONFIG && PL.CONFIG.leaderboardUrl) || '';
       this.state = this.enabled() ? 'idle' : 'off';
+
+      /* THE FLIGHT CASE. Runs set with no network go into the outbox in
+       * localStorage and stay there — that part always worked. What did not is
+       * that the outbox was only ever emptied by submit(), so the times from a
+       * whole flight sat there until you happened to finish one more level
+       * after landing. Now the outbox is pushed the moment the browser says
+       * the network is back, and again on every load, so opening the game on
+       * the airport wifi is enough.
+       *
+       * navigator.onLine is famously only half-trustworthy — it reports a
+       * connection, not a route to anything in particular — which is exactly
+       * why the queue survives a failed post rather than emptying optimistically.
+       * A false alarm costs one request that fails and changes nothing. */
+      var self = this;
+      if (this.enabled()) {
+        window.addEventListener('online', function () { self.flush(); });
+        this.flush();
+      }
     },
 
     /**

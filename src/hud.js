@@ -163,10 +163,14 @@
             'R  frame 0  ·  finish it to post it to the TAS board'
           : (scene.mark ? 'C  lift the marker   ·   T  TAS mode'
                         : 'C  drop a marker   ·   T  TAS mode');
-        PL.gfx.text(ctx, hint, W / 2, H - 8, {
-          font: PL.FONT.tiny, align: 'center',
-          color: scene.markFlash > 0 ? C.lanternHi : 'rgba(242,227,196,0.45)'
-        });
+        /* Not on a phone. Every key it names is a key that is not there, and
+         * the line sits exactly where the thumb pad's MENU button goes. */
+        if (!(PL.Touch && PL.Touch.on)) {
+          PL.gfx.text(ctx, hint, W / 2, H - 8, {
+            font: PL.FONT.tiny, align: 'center',
+            color: scene.markFlash > 0 ? C.lanternHi : 'rgba(242,227,196,0.45)'
+          });
+        }
         if (scene.tas) this.tasPanel(ctx, scene);
       }
 

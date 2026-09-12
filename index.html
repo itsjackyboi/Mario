@@ -6,6 +6,11 @@
 <title>Pintland Isles: The Drunken Trials Tryout</title>
 <meta name="description" content="A side-scrolling platformer across the Pintland Isles. You are Corb. The drunk with a dream.">
 <meta name="theme-color" content="#140f14">
+<link rel="manifest" href="manifest.json?v=2.1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png?v=2.1.0">
 <link rel="stylesheet" href="styles.css?v=2.1.0">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23140f14'/><rect x='7' y='11' width='16' height='17' fill='%237a5130'/><rect x='7' y='8' width='16' height='5' fill='%23fbf3dc'/><rect x='7' y='16' width='16' height='3' fill='%23a8926a'/></svg>">
 </head>
@@ -29,6 +34,7 @@
 <script src="src/palette.js?v=2.1.0"></script>
 <script src="src/themes.js?v=2.1.0"></script>
 <script src="src/input.js?v=2.1.0"></script>
+<script src="src/touch.js?v=2.1.0"></script>
 <script src="src/music.js?v=2.1.0"></script>
 <script src="src/audio.js?v=2.1.0"></script>
 <script src="src/storage.js?v=2.1.0"></script>
@@ -99,5 +105,15 @@
 <script src="data/tavern/level-1.js?v=2.1.0"></script>
 
 <script src="src/main.js?v=2.1.0"></script>
+<script>
+/* Keep a copy of the game on the device. Served from a file:// path there is
+ * no worker to register and nothing to keep — the files are already local —
+ * so this quietly does nothing, which is also what an old browser does. */
+if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js?v=2.1.0')['catch'](function () {});
+  });
+}
+</script>
 </body>
 </html>

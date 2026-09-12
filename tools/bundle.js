@@ -58,6 +58,18 @@ function isLocal(url) {
   return url && !/^[a-z]+:/i.test(url) && url.indexOf('//') !== 0;
 }
 
+/* THE SERVICE WORKER AND THE MANIFEST COME OUT.
+ *
+ * Both exist to keep the game on a device across visits, and a bundle has no
+ * visits: it is one file, already whole, opened from wherever somebody put it.
+ * There is no sw.js beside it to register and no manifest to read, so leaving
+ * the tags in buys nothing and costs two 404s in the console of anybody who
+ * opens it — which reads like the build is broken when it is doing precisely
+ * what it was asked to.
+ */
+html = html.replace(/<link rel="manifest"[^>]*>\s*/g, '');
+html = html.replace(/<script>[\s\S]*?serviceWorker[\s\S]*?<\/script>\s*/g, '');
+
 var scripts = 0, styles = 0;
 
 html = html.replace(/<link[^>]+rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g,

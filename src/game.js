@@ -84,6 +84,7 @@
       this.ctx.imageSmoothingEnabled = false;
       PL.Input.install();
       PL.Input.installPointer(canvas);
+      if (PL.Touch) PL.Touch.install(canvas);
       this.resize();
       var self = this;
       window.addEventListener('resize', function () { self.resize(); });
@@ -193,6 +194,10 @@
         var s = this.scenes[j];
         if (s.draw) s.draw(ctx);
       }
+      // Over everything, including the pause and level-complete overlays: the
+      // thumb pad is how a phone presses the button those screens are asking
+      // for, so it cannot be underneath them.
+      if (PL.Touch) PL.Touch.draw(ctx);
       if (PL.Audio.muted) {
         PL.gfx.text(ctx, 'MUTED', PL.VIEW_W - 6, PL.VIEW_H - 6, {
           font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.45)'

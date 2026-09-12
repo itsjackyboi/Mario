@@ -207,6 +207,12 @@
       this.state = {};
       this.hits = {};
       this.lifts = {};
+      /* A finger still on the glass is still holding its button, though. A
+       * held KEY is cleared here because there is no way to see it is down
+       * until it moves; a held touch we can see, so it is put straight back —
+       * otherwise crossing a checkpoint or opening a trial would silently let
+       * go of RIGHT and leave a phone player standing still. */
+      if (PL.Touch) PL.Touch.reassert();
     },
 
     install: function () {

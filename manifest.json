@@ -1,0 +1,16 @@
+{
+  "name": "Pintland Isles: The Drunken Trials Tryout",
+  "short_name": "Pintland Isles",
+  "description": "A side-scrolling platformer across the Pintland Isles. You are Corb. The drunk with a dream.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#140f14",
+  "theme_color": "#140f14",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
