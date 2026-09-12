@@ -34,6 +34,29 @@
     this.opaque = true;
   }
 
+  /* PRACTICE, ON A PHONE.
+   *
+   * Practice mode's whole control set was letters — C to drop a marker, T for
+   * TAS, then a period, a comma, a slash and a semicolon to walk a run frame
+   * by frame. The HUD already stops naming them to a touch screen, because
+   * naming a key nobody has is worse than saying nothing; this is the other
+   * half of that, and it is why the hint line could be dropped rather than
+   * rewritten.
+   *
+   * Along the top, because the bottom of a level is the thumb pad. RUN and
+   * REWIND are held rather than tapped, which costs nothing here: a finger on
+   * a button is a held button already.
+   */
+  PlayScene.prototype.touchKeys = function () {
+    if (!this.practice || this.replaying) return null;
+    var keys = this.tas
+      ? [{ a: 'step', label: 'STEP' }, { a: 'play', label: 'RUN' },
+         { a: 'rewind', label: 'REW' }, { a: 'autorun', label: 'AUTO' },
+         { a: 'tas', label: 'EXIT TAS' }]
+      : [{ a: 'mark', label: this.mark ? 'LIFT' : 'MARK' }, { a: 'tas', label: 'TAS' }];
+    return PL.Touch.strip(keys, { y: 6, h: 22 });
+  };
+
   PlayScene.prototype.enter = function () {
     var self = this;
     // Swap the live palette and tile styles to this town's before anything is
@@ -888,7 +911,8 @@
     PL.gfx.text(ctx,
       'The TAS board is its own board. Nothing here touches the times people set by hand.',
       W / 2, 288, { font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.45)' });
-    PL.gfx.text(ctx, '↑ ↓ choose · ENTER confirm · ESC level select', W / 2, 320, {
+    PL.gfx.text(ctx, U.touch() ? 'tap one · tap it again to take it'
+                               : '↑ ↓ choose · ENTER confirm · ESC level select', W / 2, 320, {
       font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.4)'
     });
   };
@@ -903,6 +927,15 @@
       ? ['Resume', 'Restart level', 'Abandon the run']
       : ['Resume', 'Restart level', 'Level select', 'Abandon to title'];
   }
+
+  /* Muting is the one thing a paused phone could not do. It is worth a button
+   * here rather than only on the title, because the moment anybody wants the
+   * sound off is the moment somebody else walks in — and pausing is what they
+   * do first. Every other row on this screen is already a tap target. */
+  PauseScene.prototype.touchKeys = function () {
+    return PL.Touch.strip(
+      [{ a: 'mute', label: PL.Audio.muted ? 'UNMUTE' : 'MUTE' }], { y: 322 });
+  };
 
   PauseScene.prototype.update = function () {
     var In = PL.Input;
@@ -959,7 +992,8 @@
         color: on ? C.parchment : 'rgba(242,227,196,0.55)'
       });
     }
-    PL.gfx.text(ctx, 'ESC resumes · M mutes', W / 2, H / 2 + 66, {
+    PL.gfx.text(ctx, U.touch() ? 'tap Resume to carry on' : 'ESC resumes · M mutes',
+      W / 2, H / 2 + 66, {
       font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.45)'
     });
   };

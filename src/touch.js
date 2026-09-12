@@ -19,6 +19,18 @@
  * IT ONLY APPEARS FOR A FINGER. The pad stays hidden until a `touch` pointer
  * actually lands, so a desktop never sees it; after that it stays up, because
  * a tablet with a keyboard should not have the controls flicker away mid-jump.
+ *
+ * THE PAD IS NOT THE ONLY THING IN HERE. A menu is a list of things to tap, so
+ * it does not want a d-pad — but half of what a menu does was never a row to
+ * tap in the first place. Going back was ESC, opening the full board was
+ * ENTER, swapping shelves was LEFT and RIGHT, and practice mode was C. Every
+ * one of those is a key somebody holding a phone has not got.
+ *
+ * So a scene can hand back a few small buttons of its own (`touchKeys`), and
+ * they go through exactly the same machinery as the pad: same hit-testing,
+ * same finger tracking, same writing into Input.hits. That is what makes them
+ * cheap — a scene names an action and a label, and every line of code that
+ * already listens for that action keeps working, untouched and unaware.
  */
 (function (PL) {
   'use strict';
@@ -51,8 +63,14 @@
     live: {},                  // pointerId -> the button it is holding
     held: {},                  // action -> true, for drawing
 
+    /** The scene everything here is asking about. */
+    scene: function () {
+      var g = PL.Game;
+      return (g && g.top && g.top()) || null;
+    },
+
     /**
-     * Is the pad up right now?
+     * Is the d-pad up right now?
      *
      * Only while something is being PLAYED. A menu is a list of things to tap,
      * and a d-pad floating over it is both useless and in the way — it covers
@@ -60,19 +78,73 @@
      * Scenes say so themselves with `wantsPad`, rather than this file keeping
      * a list of scene names that would go stale the moment one is added.
      */
-    active: function () {
-      if (!this.on) return false;
-      var top = PL.Game && PL.Game.top && PL.Game.top();
-      return !!(top && top.wantsPad);
+    padOn: function () {
+      var top = this.scene();
+      return !!(this.on && top && top.wantsPad);
     },
+
+    /**
+     * Everything tappable this frame: the pad if the scene is being played,
+     * plus whatever buttons the scene asked for.
+     *
+     * Rebuilt every frame on purpose. These things appear and disappear with
+     * the state of the screen — the TAS strip only exists in TAS mode, the
+     * board swap only where there is a second board — and a list cached at
+     * enter() would be a list that is wrong the moment anything changes.
+     */
+    buttons: function () {
+      if (!this.on) return [];
+      var top = this.scene();
+      var out = this.padOn() ? PAD.slice() : [];
+      if (top && top.touchKeys) {
+        var mine = top.touchKeys();
+        if (mine && mine.length) out = out.concat(mine);
+      }
+      return out;
+    },
+
+    /** Is there anything of ours on screen at all? */
+    active: function () { return this.buttons().length > 0; },
 
     /** Which button is under this logical point, if any. */
     at: function (x, y) {
-      for (var i = 0; i < PAD.length; i++) {
-        var b = PAD[i];
+      var list = this.buttons();
+      for (var i = 0; i < list.length; i++) {
+        var b = list[i];
         if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return b;
       }
       return null;
+    },
+
+    /**
+     * Lay a handful of labelled buttons out in a row, right-aligned by default.
+     *
+     * Scenes describe what they want ({ a: 'back', label: 'BACK' }) and the
+     * geometry is worked out here, because a menu should be saying which
+     * actions it has rather than doing arithmetic. Widths come from the label
+     * length rather than a measured string: the hit test runs on pointerdown,
+     * outside any draw, where there is no canvas to measure with — and these
+     * are five or six upper-case characters, where an estimate is exact
+     * enough and a guaranteed minimum keeps every one of them thumb-sized.
+     */
+    strip: function (list, opts) {
+      opts = opts || {};
+      var h = opts.h || 24;
+      var y = opts.y == null ? PL.VIEW_H - 30 : opts.y;
+      var gap = opts.gap == null ? 6 : opts.gap;
+      var out = [], w = [], total = 0, i;
+      for (i = 0; i < list.length; i++) {
+        w[i] = Math.max(opts.min || 34, list[i].label.length * 6 + 16);
+        total += w[i] + (i ? gap : 0);
+      }
+      var x = opts.left != null ? opts.left
+                                : (opts.right == null ? PL.VIEW_W - 10 : opts.right) - total;
+      for (i = 0; i < list.length; i++) {
+        out.push({ a: list[i].a, label: list[i].label, look: 'flat',
+                   x: x, y: y, w: w[i], h: h });
+        x += w[i] + gap;
+      }
+      return out;
     },
 
     press: function (b) {
@@ -126,13 +198,18 @@
         if (e.pointerType !== 'touch') return;
         self.on = true;
         if (PL.Input.typing) return;       // the keyboard is up; let it have the tap
-        if (!self.active()) return;        // a menu: the tap is the menu's
         var pt = toLogical(e);
         if (!pt) return;
         var b = self.at(pt.x, pt.y);
-        if (!b) return;
+        if (!b) return;                    // not ours: the tap belongs to the scene
         self.live[e.pointerId] = b;
         self.press(b);
+        /* And it is ONLY ours. Input's own pointer handler runs first — it is
+         * installed first, in Game.init — so by now the tap has already been
+         * latched as a click, and a scene testing its rows would find one
+         * under the button. Taking the latch back is what stops a BACK button
+         * sitting over a list from also selecting whatever it covers. */
+        PL.Input.mouse.clicked = false;
         e.preventDefault();
       });
 
@@ -171,9 +248,10 @@
     // ------------------------------------------------------------------ paint
 
     draw: function (ctx) {
-      if (!this.active()) { this.clear(); return; }
-      for (var i = 0; i < PAD.length; i++) {
-        var b = PAD[i];
+      var list = this.buttons();
+      if (!list.length) { this.clear(); return; }
+      for (var i = 0; i < list.length; i++) {
+        var b = list[i];
         var hot = !!this.held[b.a];
         ctx.save();
         ctx.globalAlpha = hot ? 0.96 : 0.62;
@@ -221,7 +299,7 @@
       ctx.strokeStyle = hot ? C.parchment : C.rope;
       ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2);
       PL.gfx.text(ctx, b.label, b.x + b.w / 2, b.y + b.h / 2 + 4, {
-        font: PL.FONT.tiny, align: 'center', color: hot ? C.ink : C.parchment
+        font: PL.FONT.small, align: 'center', color: hot ? C.ink : C.parchment
       });
     }
   });

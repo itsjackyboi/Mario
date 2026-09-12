@@ -94,9 +94,67 @@
                        : PL.Store.runsFor(sel.townId, sel.def.id);
   };
 
+  /* WHERE A ROW IS, and where the two board tabs are. Both are read by the
+   * draw below as well, so the target is always under the thing it opens. */
+  LeaderboardScene.prototype.rowRect = function (i) {
+    return { x: LIST_X + 6, y: FIRST_ROW_Y + (i - this.scroll) * ROW_H - 15,
+             w: LIST_W - 12, h: 30 };
+  };
+  LeaderboardScene.prototype.tabRect = function (i) {
+    var w = 62;
+    return { x: PL.VIEW_W - 20 - (2 - i) * (w + 6), y: 18, w: w, h: 20 };
+  };
+
+  /* This screen is two pages and they want different buttons: page one picks
+   * a level and opens it, page two is a long list to scroll and close. The
+   * board swap only appears where there is a second board to swap to — the
+   * archive is one board, and so is a game with no shared ledger configured. */
+  LeaderboardScene.prototype.touchKeys = function () {
+    var keys = [{ a: 'up', label: '▲' }, { a: 'down', label: '▼' }];
+    if (this.page === 'top' && this.rows.length) keys.push({ a: 'confirm', label: 'EVERY RUN' });
+    keys.push({ a: 'back', label: this.page === 'full' ? 'CLOSE' : 'BACK' });
+    return PL.Touch.strip(keys, { y: 330 });
+  };
+
+  /**
+   * A tap on a level row, or on one of the board tabs.
+   *
+   * One tap picks the level, a second opens every run behind it. The board is
+   * a thing people read down — the top five, the gap to first, who set it —
+   * and a list that jumps to page two on first contact cannot be read at all.
+   */
+  LeaderboardScene.prototype.tapped = function () {
+    var In = PL.Input, i, r;
+    if (!In.mouse.clicked) return false;
+    if (!this.archive && PL.Cloud.enabled()) {
+      for (i = 0; i < 2; i++) {
+        r = this.tabRect(i);
+        if (In.clickedIn(r.x, r.y, r.w, r.h)) {
+          if ((i === 0) !== this.shared) this.flip();
+          return true;
+        }
+      }
+    }
+    if (this.page !== 'top') return false;
+    var last = Math.min(this.rows.length, this.scroll + VISIBLE);
+    for (i = this.scroll; i < last; i++) {
+      r = this.rowRect(i);
+      if (In.clickedIn(r.x, r.y, r.w, r.h)) {
+        if (this.sel === i) {
+          this.page = 'full'; this.fullScroll = 0; PL.Audio.sfx('select');
+        } else {
+          this.sel = i; PL.Audio.sfx('menu');
+        }
+        return true;
+      }
+    }
+    return false;
+  };
+
   LeaderboardScene.prototype.update = function (dt) {
     this.t += dt;
     var In = PL.Input;
+    if (this.tapped()) return;
 
     if (this.page === 'full') {
       if (In.pressed('back') || In.pressed('confirm')) {
@@ -188,8 +246,8 @@
     var labels = ['SHARED', 'LOCAL'];
     for (var i = 0; i < 2; i++) {
       var on = (i === 0) === this.shared;
-      var w = 62, x = W - 20 - (2 - i) * (w + 6);
-      PL.gfx.panel(ctx, x, 18, w, 20, {
+      var t = this.tabRect(i), w = t.w, x = t.x;
+      PL.gfx.panel(ctx, x, t.y, w, t.h, {
         r: 4, alpha: 1,
         fill: on ? 'rgba(255,179,71,0.22)' : 'rgba(18,12,17,0.7)',
         stroke: on ? C.lantern : 'rgba(156,124,82,0.4)'
@@ -216,7 +274,8 @@
       var y = FIRST_ROW_Y + (i - this.scroll) * ROW_H;
       var on = i === this.sel;
       if (on) {
-        PL.gfx.rect(ctx, LIST_X + 6, y - 15, LIST_W - 12, 30,
+        var rr = this.rowRect(i);
+        PL.gfx.rect(ctx, rr.x, rr.y, rr.w, rr.h,
           r.speedrun ? 'rgba(255,179,71,0.28)' : 'rgba(255,179,71,0.2)');
       }
       PL.gfx.text(ctx, r.townName, LIST_X + 16, y - 3, {
@@ -284,7 +343,8 @@
     });
 
     if (runs.length > TOP_N) {
-      PL.gfx.text(ctx, '+ ' + (runs.length - TOP_N) + ' more — ENTER for every run',
+      PL.gfx.text(ctx, '+ ' + (runs.length - TOP_N) + ' more — ' +
+        (U.touch() ? 'tap the level again for every run' : 'ENTER for every run'),
         244, LIST_Y + LIST_H - 12, {
           font: PL.FONT.tiny, color: 'rgba(242,227,196,0.45)'
         });
@@ -292,8 +352,12 @@
 
     this.tasStrip(ctx, sel, 244, 226, W - 286);
 
-    PL.gfx.text(ctx, '↑ ↓ pick a level · ENTER every run · ' +
-      (!this.archive && PL.Cloud.enabled() ? '← → board · ' : '') + 'ESC back', W / 2, 332, {
+    PL.gfx.text(ctx, (PL.Touch && PL.Touch.on)
+      ? 'tap a level · tap it again for every run' +
+        (!this.archive && PL.Cloud.enabled() ? ' · tap SHARED or LOCAL to swap boards' : '')
+      : '↑ ↓ pick a level · ENTER every run · ' +
+        (!this.archive && PL.Cloud.enabled() ? '← → board · ' : '') + 'ESC back',
+      W / 2, 322, {
       font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.5)'
     });
   };
@@ -387,9 +451,12 @@
       PL.gfx.rect(ctx, trackX, thumbY, 3, thumbH, C.lantern);
     }
 
-    PL.gfx.text(ctx, '↑ ↓ scroll · ' +
-      (!this.archive && PL.Cloud.enabled() ? '← → board · ' : '') +
-      'ESC back to the top five', W / 2, 332, {
+    PL.gfx.text(ctx, (PL.Touch && PL.Touch.on)
+      ? (!this.archive && PL.Cloud.enabled()
+          ? 'tap SHARED or LOCAL to swap boards' : '')
+      : '↑ ↓ scroll · ' +
+        (!this.archive && PL.Cloud.enabled() ? '← → board · ' : '') +
+        'ESC back to the top five', W / 2, 322, {
       font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.5)'
     });
   };

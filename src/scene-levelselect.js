@@ -85,6 +85,15 @@
     return false;
   };
 
+  /* WHAT A FINGER HAS INSTEAD OF C, V AND ESC. The rows were already tappable;
+   * these are the three things on this screen that never were a row. */
+  LevelSelectScene.prototype.touchKeys = function () {
+    var keys = [{ a: 'mark', label: 'PRACTICE' }];
+    if (PL.Replay && PL.Replay.enabled()) keys.push({ a: 'watch', label: 'TAS' });
+    keys.push({ a: 'back', label: 'TITLE' });
+    return PL.Touch.strip(keys, { y: 328 });
+  };
+
   LevelSelectScene.prototype.update = function (dt) {
     this.t += dt;
     if (this.msg > 0) this.msg -= dt;

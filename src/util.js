@@ -8,6 +8,18 @@
 
   var U = (PL.util = {});
 
+  /**
+   * Is this being played with a finger?
+   *
+   * Asked all over the drawing code, because a screen that names SPACE, ESC or
+   * C to somebody holding a phone is naming keys they have not got — which
+   * reads as a game that has not noticed where it is being played. It goes
+   * true the first time a touch pointer lands and stays true, so a tablet with
+   * a keyboard attached keeps whichever it started with rather than flickering
+   * between two sets of wording.
+   */
+  U.touch = function () { return !!(PL.Touch && PL.Touch.on); };
+
   U.clamp = function (v, a, b) { return v < a ? a : (v > b ? b : v); };
   U.lerp = function (a, b, t) { return a + (b - a) * t; };
   U.sign = function (v) { return v < 0 ? -1 : (v > 0 ? 1 : 0); };

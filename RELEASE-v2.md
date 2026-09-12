@@ -71,7 +71,7 @@ you would rather it went too; it is one line.
    first.)
 
 4. **Check the version corner.** Open the live page and read the number in the top-left of
-   the title screen. It should say `v2.2.3`. If it still says `v1.17.0`, the browser is
+   the title screen. It should say `v2.2.4`. If it still says `v1.17.0`, the browser is
    holding a cached copy of `index.html` — hard-refresh (Ctrl/Cmd-Shift-R). Every other file
    is cache-busted by the version, so once the index is fresh, everything is.
 
@@ -140,6 +140,48 @@ real cost, not a free reset:** the save lives in `localStorage` and a site wipe 
 bank balance, unlocks, skins and every local best. Times already posted to the sheet are
 safe, and so is anything sitting in the outbox only if it has actually gone up, so get back
 on wifi and let it flush before wiping anything.
+
+## Every action, on a screen with no keys (v2.2.4)
+
+v2.2.0 gave a phone a thumb pad, and v2.2.1 made the menu rows tappable. What neither did
+was the rest: half of what a menu does was never a row in the first place. Going back was
+ESC. Opening the full board was ENTER. Swapping shelves was LEFT and RIGHT. Practice was C,
+the TAS replay was V, a marker was C again, muting was M — and none of those keys exist on
+a phone, so on a phone those things did not exist either.
+
+A scene can now hand back a few small buttons of its own, and they go through the same
+machinery the thumb pad does: same hit-testing, same finger tracking, same writing into
+`Input.hits`. A scene names an action and a label, and every line that already listens for
+that action keeps working, untouched and unaware — which is why this is a few lines per
+screen rather than a second input path.
+
+| Screen | What a finger could not do before |
+|---|---|
+| **Title** | mute |
+| **Level select** | practice · watch the TAS · back to the title |
+| **The Beer Bank** | pick a shelf · pick and buy a row · scroll · leave |
+| **Leaderboard** | pick a level · open every run · scroll · swap SHARED/LOCAL · leave both pages |
+| **Speedrun picker** | leave |
+| **Speedrun results** | choose an option |
+| **The ending** | choose an option |
+| **Sign the book** | leave it without signing |
+| **Pause** | mute |
+| **Practice, in a level** | drop or lift a marker · enter and leave TAS mode |
+| **TAS mode** | step · run · rewind · autorun |
+| **TAS replay** | play, pause, step, speed, restart, close |
+
+Two things fell out of doing it: a button never also presses what it covers (the tap is
+taken back from the scene the moment a button claims it), and the TAS readout moves to the
+top left on a touch screen, because bottom right is where the JUMP button is and the two
+were sitting on top of each other.
+
+Every screen that names a key now says something else to a finger — "tap a level, tap it
+again for every run" rather than "↑ ↓ pick a level · ENTER every run". Naming a key to
+somebody holding a phone is worse than saying nothing.
+
+Checked by driving all of it with taps and nothing else (`taponly2.js`): 33 behaviours,
+including that the marker button is refused on exactly the frames the C key is refused on,
+and that none of these buttons exist on a desktop.
 
 ## What a returning player sees
 

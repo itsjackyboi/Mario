@@ -434,6 +434,12 @@
     }
   };
 
+  /* The two category cards already answer a tap. Leaving does not, and this
+   * screen is a dead end without it. */
+  SpeedrunPickScene.prototype.touchKeys = function () {
+    return PL.Touch.strip([{ a: 'back', label: 'BACK' }], { y: 330 });
+  };
+
   SpeedrunPickScene.prototype.draw = function (ctx) {
     var W = PL.VIEW_W, H = PL.VIEW_H;
     var g = ctx.createLinearGradient(0, 0, 0, H);
@@ -497,7 +503,9 @@
                      'five grog.', W / 2, 282, {
       font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.5)'
     });
-    PL.gfx.text(ctx, '← → choose · ENTER start · click either one · ESC back', W / 2, 320, {
+    PL.gfx.text(ctx, (PL.Touch && PL.Touch.on)
+      ? 'tap a category to start it'
+      : '← → choose · ENTER start · click either one · ESC back', W / 2, 320, {
       font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.45)'
     });
   };
@@ -521,9 +529,24 @@
 
   SpeedrunEndScene.prototype.enter = function () { PL.Theme.apply(null); };
 
+  /** Where an option button is, for the draw below and for a finger. */
+  SpeedrunEndScene.prototype.optBox = function (i) {
+    var ox = PL.VIEW_W / 2 - (this.options.length * 150) / 2;
+    return { x: ox + i * 150 + 8, y: 294, w: 134, h: 28 };
+  };
+
   SpeedrunEndScene.prototype.update = function (dt) {
     this.t += dt;
     var In = PL.Input;
+    var self = this;
+    var tap = In.tappedOption(this.options.length, this.sel, function (i) {
+      return self.optBox(i);
+    });
+    if (tap >= 0) {
+      if (tap !== this.sel) { this.sel = tap; PL.Audio.sfx('menu'); return; }
+      this.take();
+      return;
+    }
     if (In.pressed('left') || In.pressed('up')) {
       this.sel = (this.sel + this.options.length - 1) % this.options.length; PL.Audio.sfx('menu');
     }
@@ -531,13 +554,16 @@
       this.sel = (this.sel + 1) % this.options.length; PL.Audio.sfx('menu');
     }
     if (In.pressed('back')) { PL.Game.reset(new PL.TitleScene()); return; }
-    if (In.pressed('confirm') || In.pressed('jump')) {
-      PL.Audio.sfx('select');
-      var act = this.options[this.sel].act;
-      if (act === 'again') Speedrun.start(this.mode);
-      else if (act === 'select') PL.Game.reset(new PL.LevelSelectScene('shantytown'));
-      else PL.Game.reset(new PL.TitleScene());
-    }
+    if (In.pressed('confirm') || In.pressed('jump')) this.take();
+  };
+
+  /** Do whatever the highlighted option says, however it got highlighted. */
+  SpeedrunEndScene.prototype.take = function () {
+    PL.Audio.sfx('select');
+    var act = this.options[this.sel].act;
+    if (act === 'again') Speedrun.start(this.mode);
+    else if (act === 'select') PL.Game.reset(new PL.LevelSelectScene('shantytown'));
+    else PL.Game.reset(new PL.TitleScene());
   };
 
   SpeedrunEndScene.prototype.draw = function (ctx) {
@@ -613,20 +639,21 @@
     }
 
     // ---- options ---------------------------------------------------------
-    var ox = W / 2 - (this.options.length * 150) / 2;
     for (var o = 0; o < this.options.length; o++) {
-      var bx = ox + o * 150;
+      var b = this.optBox(o);
       var on = o === this.sel;
-      PL.gfx.panel(ctx, bx + 8, 294, 134, 28, {
+      PL.gfx.panel(ctx, b.x, b.y, b.w, b.h, {
         r: 5, fill: on ? 'rgba(255,179,71,0.22)' : 'rgba(22,15,20,0.9)',
         stroke: on ? C.lantern : C.rope
       });
-      PL.gfx.text(ctx, this.options[o].label, bx + 75, 313, {
+      PL.gfx.text(ctx, this.options[o].label, b.x + b.w / 2, b.y + 19, {
         font: PL.FONT.small, align: 'center',
         color: on ? C.lanternHi : 'rgba(242,227,196,0.7)'
       });
     }
-    PL.gfx.text(ctx, '← → choose · ENTER confirm', W / 2, 340, {
+    PL.gfx.text(ctx, (PL.Touch && PL.Touch.on)
+      ? 'tap one · tap it again to take it'
+      : '← → choose · ENTER confirm', W / 2, 340, {
       font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.4)'
     });
   };

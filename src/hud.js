@@ -530,7 +530,8 @@
         ctx.strokeRect(ar.x + 0.5, ar.y + 0.5, ar.w - 1, ar.h - 1);
         ctx.restore();
       }
-      PL.gfx.text(ctx, ';  AUTORUN  ' + (arOn ? 'ON' : 'OFF'),
+      PL.gfx.text(ctx, ((PL.Touch && PL.Touch.on) ? 'AUTORUN  ' : ';  AUTORUN  ') +
+                       (arOn ? 'ON' : 'OFF'),
                   ar.x + ar.w / 2, ar.y + 8, {
         font: PL.FONT.tiny, align: 'center',
         color: arOn ? C.parchment : 'rgba(242,227,196,0.45)'
@@ -561,8 +562,14 @@
      * Both live here rather than in the drawing code because the scene has to
      * hit-test the switch on the same rectangle the panel drew it on, and two
      * copies of a rectangle drift apart the first time either moves. */
+    /* Bottom right, except on a touch screen, where bottom right is the JUMP
+     * button and half of ITEM. The readout would sit straight on top of them,
+     * and the AUTORUN switch inside it would be fighting JUMP for the same
+     * finger. Top left instead: under the grog chip, clear of the d-pad, and
+     * over nothing but scenery. */
     tasPanelBox: function () {
       var w = 168, h = 92;
+      if (PL.Touch && PL.Touch.on) return { x: 6, y: 56, w: w, h: h };
       return { x: PL.VIEW_W - w - 6, y: PL.VIEW_H - h - 22, w: w, h: h };
     },
 

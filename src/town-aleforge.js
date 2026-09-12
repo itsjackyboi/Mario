@@ -610,7 +610,8 @@
       ctx.restore();
     }
     if (scene.state === 'play') {
-      PL.gfx.text(ctx, 'SPACE / ENTER the instant the lamp turns — not a breath before',
+      PL.gfx.text(ctx, (PL.util.touch() ? 'JUMP' : 'SPACE / ENTER') +
+        ' the instant the lamp turns — not a breath before',
         W / 2, H - 14, { font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.6)' });
     }
   };

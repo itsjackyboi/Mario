@@ -47,12 +47,65 @@
     PL.Audio.sfx(bad ? 'hurt' : 'select');
   };
 
+  /* WHERE THE SHELF TABS AND THE ROWS ARE. The draw below lays both out from
+   * these, so a tap target cannot drift off the thing it belongs to. */
+  BankScene.prototype.tabRect = function (s) {
+    return { x: 16 + s * 98, y: 56, w: 92, h: 18 };
+  };
+  BankScene.prototype.rowRect = function (i) {
+    return { x: LIST_X + 5, y: LIST_Y + 10 + (i - this.scroll) * ROW_H,
+             w: LIST_W - 10, h: ROW_H - 4 };
+  };
+
+  /* Scrolling and leaving, which were UP, DOWN and ESC and are now buttons.
+   * Picking a shelf is not here: the shelf tabs are already on the screen and
+   * a second way to press them would be one control too many. */
+  BankScene.prototype.touchKeys = function () {
+    return PL.Touch.strip([
+      { a: 'up', label: '▲' }, { a: 'down', label: '▼' }, { a: 'back', label: 'BACK' }
+    ], { y: 330 });
+  };
+
+  /**
+   * A tap on a shelf tab or an item.
+   *
+   * One tap picks the row, a second buys or wears it — the same two steps the
+   * arrow keys and ENTER have always taken, and for the reason this screen
+   * exists: a row says what a thing costs and whether you can afford it, so
+   * spending on first contact would mean never reading the row you touched.
+   */
+  BankScene.prototype.tapped = function () {
+    var In = PL.Input, i, r;
+    if (!In.mouse.clicked) return false;
+    for (i = 0; i < SHELVES.length; i++) {
+      r = this.tabRect(i);
+      if (In.clickedIn(r.x, r.y, r.w, r.h)) {
+        if (this.shelf !== i) { this.shelf = i; this.sel = 0; this.scroll = 0; }
+        PL.Audio.sfx('menu');
+        return true;
+      }
+    }
+    var items = this.items();
+    var last = Math.min(items.length, this.scroll + VISIBLE);
+    for (i = this.scroll; i < last; i++) {
+      r = this.rowRect(i);
+      if (In.clickedIn(r.x, r.y, r.w, r.h)) {
+        if (this.sel === i) { this.choose(); return true; }
+        this.sel = i;
+        PL.Audio.sfx('menu');
+        return true;
+      }
+    }
+    return false;
+  };
+
   BankScene.prototype.update = function (dt) {
     this.t += dt;
     if (this.noteT > 0) this.noteT -= dt;
     var In = PL.Input;
 
     if (In.pressed('back')) { PL.Game.pop(); return; }
+    this.tapped();
 
     if (In.pressed('left')) {
       this.shelf = (this.shelf + SHELVES.length - 1) % SHELVES.length;
@@ -148,9 +201,12 @@
     this.drawList(ctx, bank);
     this.drawDetail(ctx, W, H, bank);
 
-    var hint = (this.noteT > 0 && this.note)
-      ? this.note
-      : '↑ ↓ pick  ·  ← → shelf  ·  ENTER buy or wear  ·  ESC back';
+    /* On a phone the key list is four keys nobody has; the buttons in the
+     * corner say the same thing and the note is what is actually worth the
+     * line. */
+    var hint = (this.noteT > 0 && this.note) ? this.note
+             : (PL.Touch && PL.Touch.on) ? 'tap a shelf  ·  tap a row, tap it again to buy or wear'
+             : '↑ ↓ pick  ·  ← → shelf  ·  ENTER buy or wear  ·  ESC back';
     PL.gfx.text(ctx, hint, W / 2, H - 10, {
       font: PL.FONT.tiny, align: 'center',
       color: this.noteT > 0 ? (this.noteBad ? C.coral : C.lanternHi)
@@ -249,15 +305,17 @@
     var footY = LIST_Y + LIST_H - 16;
     if (!owned) {
       var short = it.price - bank.grog;
-      PL.gfx.text(ctx, short > 0 ? short + ' grog short' : 'ENTER to buy',
+      PL.gfx.text(ctx, short > 0 ? short + ' grog short'
+                                 : (U.touch() ? 'tap it again to buy' : 'ENTER to buy'),
         x + w / 2, footY, {
           font: PL.FONT.small, align: 'center',
           color: short > 0 ? C.coral : C.grogBand
         });
     } else {
       var wearing = bank[slot] === it.id || (it.price === 0 && !bank[slot]);
-      PL.gfx.text(ctx, wearing ? (slot === 'pet' ? 'ENTER to leave behind' : 'Worn')
-                               : 'ENTER to wear', x + w / 2, footY, {
+      var act = U.touch() ? 'tap it again to ' : 'ENTER to ';
+      PL.gfx.text(ctx, wearing ? (slot === 'pet' ? act + 'leave behind' : 'Worn')
+                               : act + 'wear', x + w / 2, footY, {
         font: PL.FONT.small, align: 'center',
         color: wearing ? C.teal : C.parchment
       });

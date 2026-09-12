@@ -28,9 +28,41 @@
 
   NameScene.prototype.exit = function () { PL.Input.endText(); };
 
+  /* THE TWO BUTTONS UNDER THE FIELD, and why they are not `touchKeys` like
+   * every other screen's.
+   *
+   * While a name is being typed the tap belongs to the keyboard — touch.js
+   * stands aside on purpose, so a finger can put the caret where it likes
+   * without the game grabbing it — which means these have to be the scene's
+   * own hit tests. They are also only drawn for a finger: a keyboard already
+   * has ENTER and ESC, and the line that says so is where these sit.
+   *
+   * A phone's own return key does sign the book, because the hidden field is
+   * a real text input and its Enter is a real Enter. There is no equivalent
+   * for ESC, though, and a dialog you cannot leave is the worse half.
+   */
+  NameScene.prototype.softOn = function () { return !!(PL.Touch && PL.Touch.on); };
+
+  NameScene.prototype.btnBox = function (i) {
+    var w = 340, h = 128;
+    var x = (PL.VIEW_W - w) / 2, y = (PL.VIEW_H - h) / 2;
+    var bw = 116;
+    return { x: i === 0 ? x + 24 : x + w - 24 - bw, y: y + 94, w: bw, h: 26 };
+  };
+
   NameScene.prototype.update = function (dt) {
     this.t += dt;
     var In = PL.Input;
+    if (this.softOn() && In.mouse.clicked) {
+      var cancel = this.btnBox(0), sign = this.btnBox(1);
+      if (In.clickedIn(cancel.x, cancel.y, cancel.w, cancel.h)) {
+        PL.Audio.sfx('menu'); PL.Game.pop(); return;
+      }
+      if (In.clickedIn(sign.x, sign.y, sign.w, sign.h)) {
+        PL.Store.setPlayerName(In.text);
+        PL.Audio.sfx('select'); PL.Game.pop(); return;
+      }
+    }
     if (In.textDone) {
       PL.Store.setPlayerName(In.text);
       PL.Audio.sfx('select');
@@ -93,9 +125,25 @@
       font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.35)'
     });
 
-    PL.gfx.text(ctx, 'ENTER to sign  ·  ESC to leave it', x + w / 2, y + h - 14, {
-      font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.5)'
-    });
+    if (this.softOn()) {
+      var labels = ['LEAVE IT', 'SIGN'];
+      for (var bi = 0; bi < 2; bi++) {
+        var b = this.btnBox(bi);
+        PL.gfx.panel(ctx, b.x, b.y, b.w, b.h, {
+          r: 5, alpha: 1,
+          fill: bi ? 'rgba(255,179,71,0.22)' : 'rgba(18,12,17,0.8)',
+          stroke: bi ? C.lantern : C.rope
+        });
+        PL.gfx.text(ctx, labels[bi], b.x + b.w / 2, b.y + 17, {
+          font: PL.FONT.small, align: 'center',
+          color: bi ? C.lanternHi : 'rgba(242,227,196,0.75)'
+        });
+      }
+    } else {
+      PL.gfx.text(ctx, 'ENTER to sign  ·  ESC to leave it', x + w / 2, y + h - 14, {
+        font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.5)'
+      });
+    }
     ctx.restore();
   };
 

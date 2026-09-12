@@ -44,9 +44,24 @@
     }
   };
 
+  /** Where an option button is, for the draw below and for a finger. */
+  EndingScene.prototype.optBox = function (i) {
+    var ox = PL.VIEW_W / 2 - (this.options.length * 150) / 2;
+    return { x: ox + i * 150 + 8, y: 310, w: 134, h: 26 };
+  };
+
   EndingScene.prototype.update = function (dt) {
     this.t += dt;
     var In = PL.Input;
+    var self = this;
+    var tap = In.tappedOption(this.options.length, this.sel, function (i) {
+      return self.optBox(i);
+    });
+    if (tap >= 0) {
+      if (tap !== this.sel) { this.sel = tap; PL.Audio.sfx('menu'); return; }
+      this.take();
+      return;
+    }
     if (In.pressed('up') || In.pressed('left')) {
       this.sel = (this.sel + this.options.length - 1) % this.options.length; PL.Audio.sfx('menu');
     }
@@ -54,13 +69,16 @@
       this.sel = (this.sel + 1) % this.options.length; PL.Audio.sfx('menu');
     }
     if (In.pressed('back')) { PL.Game.reset(new PL.LevelSelectScene(this.def.town)); return; }
-    if (In.pressed('confirm') || In.pressed('jump')) {
-      PL.Audio.sfx('select');
-      var act = this.options[this.sel].act;
-      if (act === 'retry') PL.Game.reset(new PL.PlayScene(this.def, this.meta));
-      else if (act === 'title') PL.Game.reset(new PL.TitleScene());
-      else PL.Game.reset(new PL.LevelSelectScene(this.def.town));
-    }
+    if (In.pressed('confirm') || In.pressed('jump')) this.take();
+  };
+
+  /** Do whatever the highlighted option says, however it got highlighted. */
+  EndingScene.prototype.take = function () {
+    PL.Audio.sfx('select');
+    var act = this.options[this.sel].act;
+    if (act === 'retry') PL.Game.reset(new PL.PlayScene(this.def, this.meta));
+    else if (act === 'title') PL.Game.reset(new PL.TitleScene());
+    else PL.Game.reset(new PL.LevelSelectScene(this.def.town));
   };
 
   EndingScene.prototype.draw = function (ctx) {
@@ -148,20 +166,21 @@
       '"Six kings. Six towns. And every one of them still owes me a pint."',
       W / 2, 296, { font: PL.FONT.body, align: 'center', color: 'rgba(242,227,196,0.8)' });
 
-    var ox = W / 2 - (this.options.length * 150) / 2;
     for (var i = 0; i < this.options.length; i++) {
-      var bx = ox + i * 150;
+      var b = this.optBox(i);
       var on = i === this.sel;
-      PL.gfx.panel(ctx, bx + 8, 310, 134, 26, {
+      PL.gfx.panel(ctx, b.x, b.y, b.w, b.h, {
         r: 5, fill: on ? 'rgba(255,179,71,0.22)' : 'rgba(22,15,20,0.9)',
         stroke: on ? C.lantern : C.rope
       });
-      PL.gfx.text(ctx, this.options[i].label, bx + 75, 328, {
+      PL.gfx.text(ctx, this.options[i].label, b.x + b.w / 2, b.y + 18, {
         font: PL.FONT.small, align: 'center',
         color: on ? C.lanternHi : 'rgba(242,227,196,0.7)'
       });
     }
-    PL.gfx.text(ctx, '← → choose · ENTER confirm', W / 2, 352, {
+    PL.gfx.text(ctx, (PL.Touch && PL.Touch.on)
+      ? 'tap one · tap it again to take it'
+      : '← → choose · ENTER confirm', W / 2, 352, {
       font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.4)'
     });
   };

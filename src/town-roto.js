@@ -418,7 +418,8 @@
       ctx.restore();
     }
     if (scene.state === 'play') {
-      PL.gfx.text(ctx, 'SPACE / ENTER when your offer meets his price',
+      PL.gfx.text(ctx, (PL.util.touch() ? 'JUMP' : 'SPACE / ENTER') +
+        ' when your offer meets his price',
         W / 2, H - 14, { font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.6)' });
     }
   };

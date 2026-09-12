@@ -159,6 +159,18 @@
     if (this.play.finished) this.done = true;
   };
 
+  /* Every control on this screen was a key, and a replay is the one thing here
+   * somebody is most likely to be watching on a phone. Along the top, clear of
+   * the frame counter and the speed readout along the bottom. */
+  ReplayScene.prototype.touchKeys = function () {
+    var keys = [{ a: 'left', label: '−' }, { a: 'right', label: '+' },
+                { a: 'pause', label: this.playing ? 'PAUSE' : 'PLAY' }];
+    if (!this.playing) keys.push({ a: 'step', label: 'STEP' });
+    keys.push({ a: 'restart', label: 'AGAIN' });
+    keys.push({ a: 'back', label: 'CLOSE' });
+    return PL.Touch.strip(keys, { y: 6, h: 22 });
+  };
+
   ReplayScene.prototype.update = function (dt) {
     if (!this.play) return;
     var In = PL.Input;
@@ -229,11 +241,15 @@
       { font: PL.FONT.tiny, color: 'rgba(242,227,196,0.55)' });
     this.keys(ctx, 108, H - 24);
 
-    var hint = this.playing
-      ? 'SPACE pause  ·  ← → speed  ·  R restart  ·  V or ESC back'
-      : 'SPACE play  ·  .  step one frame  ·  ← → speed  ·  R restart  ·  V back';
-    PL.gfx.text(ctx, hint, W - 8, H - 7,
-      { font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.5)' });
+    var hint = (PL.Touch && PL.Touch.on)
+      ? ''
+      : this.playing
+        ? 'SPACE pause  ·  ← → speed  ·  R restart  ·  V or ESC back'
+        : 'SPACE play  ·  .  step one frame  ·  ← → speed  ·  R restart  ·  V back';
+    if (hint) {
+      PL.gfx.text(ctx, hint, W - 8, H - 7,
+        { font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.5)' });
+    }
 
     if (this.hitTrial) {
       PL.gfx.panel(ctx, W / 2 - 150, H / 2 - 34, 300, 58, { r: 6 });
@@ -245,7 +261,8 @@
       PL.gfx.panel(ctx, W / 2 - 120, H / 2 - 30, 240, 50, { r: 6 });
       PL.gfx.text(ctx, this.play.finished ? 'THAT IS THE RUN' : 'END OF THE LOG',
         W / 2, H / 2 - 8, { font: PL.FONT.small, align: 'center', color: C.teal });
-      PL.gfx.text(ctx, 'R to watch it again', W / 2, H / 2 + 10,
+      PL.gfx.text(ctx, (PL.Touch && PL.Touch.on) ? 'AGAIN to watch it again'
+                                                 : 'R to watch it again', W / 2, H / 2 + 10,
         { font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.65)' });
     }
   };

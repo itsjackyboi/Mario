@@ -164,7 +164,8 @@
         color: on ? C.lanternHi : 'rgba(242,227,196,0.7)'
       });
     }
-    PL.gfx.text(ctx, '← → / ↑ ↓ to choose · ENTER to confirm', W / 2, 344, {
+    PL.gfx.text(ctx, PL.util.touch() ? 'tap one · tap it again to take it'
+                                     : '← → / ↑ ↓ to choose · ENTER to confirm', W / 2, 344, {
       font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.45)'
     });
   };

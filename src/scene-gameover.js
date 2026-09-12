@@ -128,7 +128,8 @@
         color: on ? C.parchment : 'rgba(242,227,196,0.7)'
       });
     }
-    PL.gfx.text(ctx, '← → choose · ENTER confirm', W / 2, 328, {
+    PL.gfx.text(ctx, PL.util.touch() ? 'tap one · tap it again to take it'
+                                     : '← → choose · ENTER confirm', W / 2, 328, {
       font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.4)'
     });
     ctx.restore();

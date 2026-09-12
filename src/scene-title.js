@@ -99,6 +99,21 @@
     if (In.pressed('confirm') || In.pressed('jump')) this.choose();
   };
 
+  /* MUTE, which was M and nothing else.
+   *
+   * Everything else on this screen already answers a finger — the rows, the
+   * switches, the letter, the bank, the book, the name — so this is the only
+   * button the title needs. It sits in the right quarter of the control strip,
+   * which is the space the key legend gives up on a touch screen, and one
+   * press is enough: muting is remembered, so it does not have to be reachable
+   * from anywhere else.
+   */
+  TitleScene.prototype.touchKeys = function () {
+    return PL.Touch.strip(
+      [{ a: 'mute', label: PL.Audio.muted ? 'UNMUTE' : 'MUTE' }],
+      { y: 318, h: 26, right: PL.VIEW_W - 28 });
+  };
+
   /** Where a menu row is, so drawing and hit-testing cannot drift apart. */
   TitleScene.prototype.rowBox = function (i) {
     return { x: PL.VIEW_W / 2 - 130, y: 222 + i * 22 - 14, w: 260, h: 21 };
@@ -280,16 +295,26 @@
     PL.BankIcon.draw(ctx, t, PL.BankIcon.hot());
     PL.SplitSwitches.draw(ctx, this.sel - 4);
 
-    // ---- controls --------------------------------------------------------
+    /* ---- controls -------------------------------------------------------
+     * A legend naming SPACE, SHIFT and ESC to somebody holding a phone is a
+     * list of four things they have not got. The same four actions have
+     * buttons down there instead, so the legend names those — and the right
+     * quarter of the strip is given up to the one action a phone had no way
+     * of reaching at all. */
+    var touch = !!(PL.Touch && PL.Touch.on);
     PL.gfx.panel(ctx, 20, 312, W - 40, 42, { r: 5, alpha: 0.9 });
-    var cols = [
-      ['MOVE', '← →  A D'],
-      ['JUMP', 'SPACE / Z'],
-      ['USE ITEM', 'E / SHIFT'],
-      ['PAUSE', 'ESC · M mute · H records']
-    ];
+    var cols = touch
+      ? [['MOVE', 'pad, left'],
+         ['JUMP · YES', 'JUMP'],
+         ['USE ITEM', 'ITEM'],
+         ['PAUSE', 'MENU']]
+      : [['MOVE', '← →  A D'],
+         ['JUMP', 'SPACE / Z'],
+         ['USE ITEM', 'E / SHIFT'],
+         ['PAUSE', 'ESC · M mute · H records']];
+    var span = (W - 64 - (touch ? 76 : 0)) / cols.length;
     for (var c = 0; c < cols.length; c++) {
-      var cx = 32 + c * ((W - 64) / cols.length);
+      var cx = 32 + c * span;
       PL.gfx.text(ctx, cols[c][0], cx, 329, { font: PL.FONT.tiny, color: C.lantern });
       PL.gfx.text(ctx, cols[c][1], cx, 345, { font: PL.FONT.small, color: 'rgba(242,227,196,0.8)' });
     }

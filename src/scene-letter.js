@@ -123,7 +123,9 @@
     // The hint lives on the paper: the sheet fills nearly the whole viewport,
     // so anything below it would land on the title's control legend.
     if (open >= 1) {
-      PL.gfx.text(ctx, 'click, ENTER or ESC to fold it up', 32, ph - 18, {
+      PL.gfx.text(ctx, (PL.Touch && PL.Touch.on)
+        ? 'tap anywhere to fold it up'
+        : 'click, ENTER or ESC to fold it up', 32, ph - 18, {
         font: PL.FONT.tiny, color: 'rgba(90,68,54,0.7)', shadow: false
       });
     }

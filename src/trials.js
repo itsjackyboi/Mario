@@ -313,7 +313,8 @@
     }
 
     if (scene.state === 'play') {
-      PL.gfx.text(ctx, 'SPACE / ENTER — swig when the tankard hits the foam', W / 2, barY - 36, {
+      PL.gfx.text(ctx, (PL.util.touch() ? 'JUMP' : 'SPACE / ENTER') +
+        ' — swig when the tankard hits the foam', W / 2, barY - 36, {
         font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.6)'
       });
     }
