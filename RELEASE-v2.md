@@ -71,7 +71,7 @@ you would rather it went too; it is one line.
    first.)
 
 4. **Check the version corner.** Open the live page and read the number in the top-left of
-   the title screen. It should say `v2.2.4`. If it still says `v1.17.0`, the browser is
+   the title screen. It should say `v2.2.5`. If it still says `v1.17.0`, the browser is
    holding a cached copy of `index.html` — hard-refresh (Ctrl/Cmd-Shift-R). Every other file
    is cache-busted by the version, so once the index is fresh, everything is.
 
@@ -182,6 +182,44 @@ somebody holding a phone is worse than saying nothing.
 Checked by driving all of it with taps and nothing else (`taponly2.js`): 33 behaviours,
 including that the marker button is refused on exactly the frames the C key is refused on,
 and that none of these buttons exist on a desktop.
+
+## The trials, on a phone (v2.2.5)
+
+The thumb pad was already up during a trial and every trial already read an action the pad
+has, so a trial could be *played* with a finger before this. What it could not be was
+**read**: every one of the five said "— SPACE to begin" on its card and named SPACE / ENTER
+or the arrow keys in its instruction line, and the two big round buttons said JUMP and ITEM,
+which are the names of things you do in a level. Arriving at the Plank Pour on a phone, there
+was no swig button on the screen — there were two buttons for a level you are not in.
+
+- **ITEM does the trial too.** It is the one place in the game where ITEM does nothing — the
+  level is paused underneath and there is no bottle to drink — so the second big button was
+  lit and idle next to the only one that mattered. Every trial is a timing test, where a
+  thumb landing an inch off costs a life; two buttons is twice the target and the wrong one
+  is no longer wrong.
+- **Both buttons take the trial's own word.** SWIG on the Plank Pour, DRINK on the Golden
+  Taps, DEAL on the Haggle, WAKE on the Lantern of Roots. The Order of Chimes is played on
+  the four arrows, so it leaves the pad's own labels alone.
+- **Every line of text follows.** "tap SWIG to begin" instead of "SPACE to begin"; "SWIG when
+  the tankard hits the foam"; "The four arrows on the pad — answer the bells in the order
+  they rang". And the intro card is two short lines in the middle third of the screen on a
+  phone, because one long one ran under the d-pad at one end and the SWIG button at the
+  other.
+
+One real bug came out of it, unrelated to trials but worst inside one. A finger whose
+`pointerup` never arrives — the system takes the gesture, the page is hidden mid-touch —
+stays in the pad's live list and gets reasserted as held on every scene change, and a trial
+starting is one. The next thumb to land was then pressing something the game already
+believed was down, and a press only counted when the action was up. It healed itself on the
+tap after, so this was never a dead button; it was **one swallowed press**, which in a
+five-swig timing test is a life. A landing finger now always counts as a press, and a
+pointer that turns up again is let go of first. A slide from LEFT to RIGHT still counts as
+one continuous hold, which is what it is.
+
+Checked by pushing all five trials for real and driving them with taps and nothing else
+(`trial.js`): the Plank Pour won on the JUMP button and won again on ITEM alone, the Order of
+Chimes echoed back twelve bells on the arrows, and the swallowed press is gone — verified by
+putting the old code back and watching the same check fail.
 
 ## What a returning player sees
 

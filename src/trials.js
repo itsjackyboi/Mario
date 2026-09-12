@@ -17,7 +17,41 @@
   var registry = {};
   PL.Trials = {
     register: function (id, def) { registry[id] = def; },
-    get: function (id) { return registry[id]; }
+    get: function (id) { return registry[id]; },
+
+    /* THE TRIAL BUTTON — one function, used by every trial that has one.
+     *
+     * It answers to ITEM as well as JUMP, which is not redundancy for its own
+     * sake. A trial is the one place in the game where ITEM does nothing:
+     * the level is paused underneath and there is no bottle to drink. So the
+     * second big round button on the pad was sitting there, lit, doing
+     * nothing, next to the only button that mattered — and every one of these
+     * is a timing test, where a thumb landing an inch off costs a life. Two
+     * buttons is twice the target and the wrong one is no longer wrong.
+     *
+     * ENTER stays in as well, for a keyboard that reaches for it.
+     */
+    go: function () {
+      var In = PL.Input;
+      return In.pressed('jump') || In.pressed('confirm') || In.pressed('item');
+    },
+
+    /** The same three, held rather than struck — for the intro card. */
+    holding: function () {
+      var In = PL.Input;
+      return In.down('jump') || In.down('confirm') || In.down('item');
+    },
+
+    /**
+     * What to call it on screen.
+     *
+     * On a phone that is the trial's own verb, because that is the word
+     * written on both of the buttons while the trial is up — see
+     * TrialScene.padLabels. On a keyboard it is the keys.
+     */
+    button: function (verb) {
+      return U.touch() ? (verb || 'JUMP') : 'SPACE / ENTER';
+    }
   };
 
   // --------------------------------------------------------------- the scene
@@ -34,6 +68,25 @@
     this.stateT = 0;
     this.fade = 0;
   }
+
+  /**
+   * WHAT THE TWO BIG BUTTONS SAY WHILE A TRIAL IS UP.
+   *
+   * The pad is already on screen — a trial is played, so it keeps it — but
+   * JUMP and ITEM are the names of things you do in a level, and in here you
+   * are not jumping and there is nothing to use. Somebody arriving at the
+   * Plank Pour on a phone is looking for the swig button, and there wasn't
+   * one: there were two buttons for a level they are not in.
+   *
+   * So both of them take the trial's own word for it. One label, two targets,
+   * and the line under the meter names the same word — which is the whole of
+   * the interface this screen was missing.
+   */
+  TrialScene.prototype.padLabels = function () {
+    var verb = this.def.verb;
+    if (!verb) return null;         // a trial the buttons play no part in
+    return { jump: verb, item: verb };
+  };
 
   TrialScene.prototype.update = function (dt) {
     this.t += dt;
@@ -64,8 +117,7 @@
        * flashing past, and the ceiling is two fifths of a second for someone
        * touching nothing at all. Before, it was a second and a half either
        * way. */
-      var asked = PL.Input.down('jump') || PL.Input.down('confirm') ||
-                  PL.Input.pressed('jump') || PL.Input.pressed('confirm');
+      var asked = PL.Trials.holding() || PL.Trials.go();
       if (this.stateT > 0.4 || (asked && this.stateT > 0.1)) {
         this.state = 'play';
         this.stateT = 0;
@@ -118,9 +170,28 @@
     });
 
     if (this.state === 'intro') {
-      PL.gfx.text(ctx, this.def.prompt, W / 2, 268, {
-        font: PL.FONT.body, align: 'center', color: C.parchment
-      });
+      /* The card used to end "— SPACE to begin" on every trial, which on a
+       * phone is the screen telling you to press a key you have not got. The
+       * sentence is the trial's; the way in is this scene's, because this
+       * scene is the one that knows whether it is being read by a thumb.
+       *
+       * And on a phone it is two lines in the middle third of the screen
+       * rather than one long one across it, because one long one runs under
+       * the d-pad at one end and the SWIG button at the other. */
+      var way = U.touch() ? 'tap ' + (this.def.verb || 'JUMP') + ' to begin'
+                          : 'SPACE to begin';
+      if (U.touch()) {
+        PL.gfx.text(ctx, this.def.prompt, 360, 252, {
+          font: PL.FONT.body, align: 'center', color: C.parchment
+        });
+        PL.gfx.text(ctx, way, 360, 270, {
+          font: PL.FONT.body, align: 'center', color: C.lanternHi
+        });
+      } else {
+        PL.gfx.text(ctx, this.def.prompt + '  —  ' + way, W / 2, 268, {
+          font: PL.FONT.body, align: 'center', color: C.parchment
+        });
+      }
     } else if (this.state === 'won' || this.state === 'lost') {
       // Sits below the pour meter so it never covers it.
       var won = this.state === 'won';
@@ -179,7 +250,7 @@
     this.tilt += this.tiltVel * dt;
     this.tilt += Math.sin(this.scene.t * 2.1) * 0.0006 * (4 - this.balance);
 
-    if (this.lockout <= 0 && (PL.Input.pressed('jump') || PL.Input.pressed('confirm'))) {
+    if (this.lockout <= 0 && PL.Trials.go()) {
       var d = Math.abs(this.pos - this.target);
       if (d <= this.half) {
         var perfect = d <= this.half * 0.34;
@@ -313,8 +384,8 @@
     }
 
     if (scene.state === 'play') {
-      PL.gfx.text(ctx, (PL.util.touch() ? 'JUMP' : 'SPACE / ENTER') +
-        ' — swig when the tankard hits the foam', W / 2, barY - 36, {
+      PL.gfx.text(ctx, PL.Trials.button('SWIG') +
+        ' when the tankard hits the foam', W / 2, barY - 36, {
         font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.6)'
       });
     }
@@ -343,7 +414,8 @@
   PL.Trials.register('plankPour', {
     title: 'THE PLANK POUR',
     subtitle: "Windsunk Council tradition — walk the board, take your five, stay dry.",
-    prompt: 'Five clean swigs. Three slips and the sea gets you. — SPACE to begin',
+    verb: 'SWIG',
+    prompt: 'Five clean swigs. Three slips and the sea gets you.',
     winLine: 'Old Salty spits. That is as close to applause as it gets.',
     loseLine: 'The water is cold and the laughter is colder.',
     create: function (scene) { return new PlankPour(scene); }

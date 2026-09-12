@@ -556,7 +556,8 @@
       ctx.restore();
     }
     if (scene.state === 'play') {
-      PL.gfx.text(ctx, 'Arrow keys — answer the bells in the order they rang',
+      PL.gfx.text(ctx, (PL.util.touch() ? 'The four arrows on the pad' : 'Arrow keys') +
+        ' — answer the bells in the order they rang',
         W / 2, H - 14, { font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.6)' });
     }
   };
@@ -564,7 +565,9 @@
   PL.Trials.register('orderOfChimes', {
     title: 'THE ORDER OF CHIMES',
     subtitle: 'Providence keeps time. You will keep it with them.',
-    prompt: 'Listen to the bells, then answer them in order. Three graces. — SPACE to begin',
+    /* No `verb`: this one is played on the four arrows, so the pad keeps its
+     * own labels and the big buttons stay out of it. */
+    prompt: 'Listen to the bells, then answer them in order. Three graces.',
     winLine: 'The Apostles record that you were, on this occasion, orderly.',
     loseLine: 'A whole town of clocks and you could not keep one beat.',
     create: function () { return new OrderOfChimes(); }

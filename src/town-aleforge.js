@@ -510,7 +510,7 @@
 
   GoldenTaps.prototype.update = function (dt) {
     this.flash = Math.max(0, this.flash - dt);
-    var pressed = PL.Input.pressed('jump') || PL.Input.pressed('confirm');
+    var pressed = PL.Trials.go();
 
     if (this.state === 'wait') {
       this.timer -= dt;
@@ -610,7 +610,7 @@
       ctx.restore();
     }
     if (scene.state === 'play') {
-      PL.gfx.text(ctx, (PL.util.touch() ? 'JUMP' : 'SPACE / ENTER') +
+      PL.gfx.text(ctx, PL.Trials.button('DRINK') +
         ' the instant the lamp turns — not a breath before',
         W / 2, H - 14, { font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.6)' });
     }
@@ -619,7 +619,8 @@
   PL.Trials.register('goldenTaps', {
     title: 'THE GOLDEN TAPS',
     subtitle: 'Aleforge house rules — five glasses, and never touch a tap early.',
-    prompt: 'Drink when the lamp goes green. Three faults and you are out. — SPACE to begin',
+    verb: 'DRINK',
+    prompt: 'Drink when the lamp goes green. Three faults and you are out.',
     winLine: 'Five clean. The barman writes your name down without being asked.',
     loseLine: 'Thrown out of a brewery. In Aleforge. Think about that.',
     create: function () { return new GoldenTaps(); }

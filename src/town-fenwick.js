@@ -444,7 +444,7 @@
     var In = PL.Input;
     if (In.pressed('left')) { this.sel = (this.sel + this.n - 1) % this.n; PL.Audio.sfx('menu'); }
     if (In.pressed('right')) { this.sel = (this.sel + 1) % this.n; PL.Audio.sfx('menu'); }
-    if (In.pressed('jump') || In.pressed('confirm') || In.pressed('up')) {
+    if (PL.Trials.go() || In.pressed('up')) {
       this.toggle(this.sel);
       this.flash = 0.3;
       this.hint = -1;
@@ -519,7 +519,9 @@
 
     if (scene.state === 'play') {
       PL.gfx.text(ctx, this.solvedT > 0 ? 'THE PATH OPENS' :
-        '← → choose a root · SPACE wakes it and both its neighbours',
+        (PL.util.touch()
+          ? '◀ ▶ choose a root · WAKE lights it and both its neighbours'
+          : '← → choose a root · SPACE wakes it and both its neighbours'),
         W / 2, y + 62, {
           font: this.solvedT > 0 ? PL.FONT.head : PL.FONT.tiny,
           align: 'center',
@@ -533,7 +535,8 @@
   PL.Trials.register('lanternOfRoots', {
     title: 'THE LANTERN OF ROOTS',
     subtitle: 'Fenwick asks nothing of your nerve. Only that you look.',
-    prompt: 'Wake all five roots. Each touch wakes its neighbours too. — SPACE to begin',
+    verb: 'WAKE',
+    prompt: 'Wake all five roots. Each touch wakes its neighbours too.',
     winLine: 'The brush parts. Nobody says anything. That is how they say well done.',
     loseLine: '',
     create: function () { return new LanternOfRoots(); }

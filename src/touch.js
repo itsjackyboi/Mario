@@ -96,6 +96,27 @@
       if (!this.on) return [];
       var top = this.scene();
       var out = this.padOn() ? PAD.slice() : [];
+      /* A scene may rename the pad's buttons without moving them. A trial
+       * does: JUMP and ITEM are the names of things you do in a LEVEL, and a
+       * trial is not one — so both of them say SWIG, or DRINK, or DEAL, and
+       * the screen finally has the button it was asking you to press.
+       *
+       * Copied rather than written into PAD, because PAD is the one shared
+       * layout and a label left behind by a scene that has ended would be a
+       * level with a SWIG button on it. */
+      if (top && top.padLabels && out.length) {
+        var names = top.padLabels();
+        if (names) {
+          for (var i = 0; i < out.length; i++) {
+            var name = names[out[i].a];
+            if (!name) continue;
+            var copy = {}, k;
+            for (k in out[i]) copy[k] = out[i][k];
+            copy.label = name;
+            out[i] = copy;
+          }
+        }
+      }
       if (top && top.touchKeys) {
         var mine = top.touchKeys();
         if (mine && mine.length) out = out.concat(mine);
@@ -147,14 +168,25 @@
       return out;
     },
 
-    press: function (b) {
+    /**
+     * Hold this button down, and normally count it as a fresh press.
+     *
+     * `fresh` is true for a finger LANDING on a button and false for one
+     * sliding onto it from the button next door. A landing is always a press:
+     * a second thumb arriving on JUMP in the middle of a trial is somebody
+     * pressing JUMP, whatever the first thumb is doing, and a timing test
+     * where the first of two taps is silently eaten is a timing test that
+     * cannot be passed. A slide keeps the old rule — rolling a thumb from
+     * LEFT to RIGHT is one continuous hold, not a tap.
+     */
+    press: function (b, fresh) {
       var In = PL.Input;
-      if (!In.state[b.a]) In.hits[b.a] = true;
+      if (fresh || !In.state[b.a]) In.hits[b.a] = true;
       In.state[b.a] = true;
       this.held[b.a] = true;
       var also = ALSO[b.a];
       if (also) {
-        if (!In.state[also]) In.hits[also] = true;
+        if (fresh || !In.state[also]) In.hits[also] = true;
         In.state[also] = true;
       }
     },
@@ -200,10 +232,22 @@
         if (PL.Input.typing) return;       // the keyboard is up; let it have the tap
         var pt = toLogical(e);
         if (!pt) return;
+        /* A finger going down on an id we still think is HELD means we never
+         * saw it come up — the system took the gesture, the page was hidden
+         * mid-touch, something ate the pointerup. Left in `live` it gets
+         * reasserted after every scene change, and the next thumb to land is
+         * then pressing something the game already believes is down.
+         *
+         * It healed itself on the tap after, because the release cleared the
+         * state — so this was never a dead button, and the fix below is not
+         * for one. It is for the ONE swallowed press, which in a five-swig
+         * timing trial is a life. Let go of the ghost. */
+        var ghost = self.live[e.pointerId];
+        if (ghost) { self.lift(ghost); delete self.live[e.pointerId]; }
         var b = self.at(pt.x, pt.y);
         if (!b) return;                    // not ours: the tap belongs to the scene
         self.live[e.pointerId] = b;
-        self.press(b);
+        self.press(b, true);
         /* And it is ONLY ours. Input's own pointer handler runs first — it is
          * installed first, in Game.init — so by now the tap has already been
          * latched as a click, and a scene testing its rows would find one

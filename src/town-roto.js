@@ -342,7 +342,7 @@
     if (this.bid > 1) { this.bid = 1; this.bidDir = -1; }
     if (this.bid < 0) { this.bid = 0; this.bidDir = 1; }
 
-    if (this.lockout <= 0 && (PL.Input.pressed('jump') || PL.Input.pressed('confirm'))) {
+    if (this.lockout <= 0 && PL.Trials.go()) {
       var gap = Math.abs(this.ask - this.bid);
       if (gap <= this.tolerance) {
         var clean = gap <= this.tolerance * 0.3;
@@ -418,7 +418,7 @@
       ctx.restore();
     }
     if (scene.state === 'play') {
-      PL.gfx.text(ctx, (PL.util.touch() ? 'JUMP' : 'SPACE / ENTER') +
+      PL.gfx.text(ctx, PL.Trials.button('DEAL') +
         ' when your offer meets his price',
         W / 2, H - 14, { font: PL.FONT.tiny, align: 'center', color: 'rgba(242,227,196,0.6)' });
     }
@@ -453,7 +453,8 @@
   PL.Trials.register('theHaggle', {
     title: 'THE HAGGLE',
     subtitle: 'Roto Kaiishi settles everything the same way: out loud, at speed.',
-    prompt: 'Close four deals. Three walkouts and the stall shuts. — SPACE to begin',
+    verb: 'DEAL',
+    prompt: 'Close four deals. Three walkouts and the stall shuts.',
     winLine: 'He shakes your hand and overcharges you anyway. That is respect.',
     loseLine: 'Barred from a market that sells literally anything. Impressive.',
     create: function () { return new TheHaggle(); }
