@@ -71,7 +71,7 @@ you would rather it went too; it is one line.
    first.)
 
 4. **Check the version corner.** Open the live page and read the number in the top-left of
-   the title screen. It should say `v2.2.0`. If it still says `v1.17.0`, the browser is
+   the title screen. It should say `v2.2.1`. If it still says `v1.17.0`, the browser is
    holding a cached copy of `index.html` — hard-refresh (Ctrl/Cmd-Shift-R). Every other file
    is cache-busted by the version, so once the index is fresh, everything is.
 

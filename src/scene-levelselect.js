@@ -37,12 +37,63 @@
 
   LevelSelectScene.prototype.town = function () { return this.towns[this.townIdx]; };
 
+  /* WHERE THE ROWS ARE, so a finger can be told which one it hit. The same two
+   * numbers the draw below lays them out with — kept here rather than written
+   * twice, because a tap target that has drifted from the thing it is under is
+   * worse than no tap target at all. */
+  LevelSelectScene.prototype.townRect = function (i) {
+    return { x: 20, y: 76 + i * 34 - 15, w: 184, h: 30 };
+  };
+  LevelSelectScene.prototype.levelRect = function (i) {
+    var px = 218, pw = PL.VIEW_W - 232;
+    var indent = this.town().levels[i] && this.town().levels[i].bonus ? 18 : 0;
+    return { x: px + 8 + indent, y: 100 + i * 38 - 15, w: pw - 20 - indent, h: 34 };
+  };
+
+  /**
+   * A tap on a row. Select it if it is not selected; open it if it is.
+   *
+   * Two taps rather than one, deliberately. A level select is a place people
+   * browse — times, shards, what is still locked — and opening a level on the
+   * first touch means never being able to read the row you are pointing at.
+   * The first tap says which one, the second says yes, and that is also how
+   * the arrow keys have always worked here.
+   */
+  LevelSelectScene.prototype.tapped = function () {
+    var In = PL.Input;
+    if (!In.mouse.clicked) return false;
+    var i;
+    for (i = 0; i < this.towns.length; i++) {
+      var r = this.townRect(i);
+      if (In.clickedIn(r.x, r.y, r.w, r.h)) {
+        if (this.townIdx !== i) { this.townIdx = i; this.levelIdx = 0; }
+        this.col = this.towns[i].levels.length ? 1 : 0;
+        PL.Audio.sfx('menu');
+        return true;
+      }
+    }
+    var levels = this.town().levels;
+    for (i = 0; i < levels.length; i++) {
+      var lr = this.levelRect(i);
+      if (In.clickedIn(lr.x, lr.y, lr.w, lr.h)) {
+        if (this.col === 1 && this.levelIdx === i) return 'open';
+        this.col = 1; this.levelIdx = i;
+        PL.Audio.sfx('menu');
+        return true;
+      }
+    }
+    return false;
+  };
+
   LevelSelectScene.prototype.update = function (dt) {
     this.t += dt;
     if (this.msg > 0) this.msg -= dt;
     var In = PL.Input;
     var town = this.town();
     var levels = town.levels;
+    var tap = this.tapped();
+    if (tap === true) return;
+    if (tap === 'open') { this.open(this.town().levels[this.levelIdx], false); return; }
     if (this.col === 1 && !levels.length) this.col = 0;
     if (this.levelIdx >= levels.length) this.levelIdx = 0;
 
@@ -94,18 +145,23 @@
     }
 
     if (In.pressed('confirm') || In.pressed('jump') || wantPractice) {
-      var def = levels[this.levelIdx];
-      if (!PL.Towns.isUnlocked(def)) {
-        this.msg = 2.6;
-        this.msgText = PL.Towns.unlockNote(def);
-        PL.Audio.sfx('trialMiss');
-        return;
-      }
-      PL.Audio.sfx('select');
-      var meta = PL.Towns.metaFor(town.id, def.id);
-      if (wantPractice) meta.practice = true;
-      PL.Game.replace(new PL.PlayScene(def, meta));
+      this.open(levels[this.levelIdx], wantPractice);
     }
+  };
+
+  /** Start a level, or say why it will not start. Shared by key and tap. */
+  LevelSelectScene.prototype.open = function (def, practice) {
+    if (!def) return;
+    if (!PL.Towns.isUnlocked(def)) {
+      this.msg = 2.6;
+      this.msgText = PL.Towns.unlockNote(def);
+      PL.Audio.sfx('trialMiss');
+      return;
+    }
+    PL.Audio.sfx('select');
+    var meta = PL.Towns.metaFor(this.town().id, def.id);
+    if (practice) meta.practice = true;
+    PL.Game.replace(new PL.PlayScene(def, meta));
   };
 
   LevelSelectScene.prototype.draw = function (ctx) {
@@ -285,8 +341,13 @@
     PL.gfx.text(ctx, 'Town purse: ' + PL.Store.townProgress(town.id).purse + ' grog', 18, 320, {
       font: PL.FONT.small, color: C.grogBand
     });
-    var keyHint = '↑ ↓ select · ← → column · ENTER play · C practice · ' +
-                  (PL.Replay && PL.Replay.enabled() ? 'V watch TAS · ' : '') + 'ESC title';
+    /* Naming keys to somebody holding a phone is worse than saying nothing:
+     * every one of them is a key they have not got, and it reads as a game
+     * that has not noticed where it is being played. */
+    var keyHint = (PL.Touch && PL.Touch.on)
+      ? 'tap a town · tap a level · tap it again to play'
+      : '↑ ↓ select · ← → column · ENTER play · C practice · ' +
+        (PL.Replay && PL.Replay.enabled() ? 'V watch TAS · ' : '') + 'ESC title';
     PL.gfx.text(ctx, keyHint, W - 18, 320, {
       font: PL.FONT.tiny, align: 'right', color: 'rgba(242,227,196,0.5)'
     });

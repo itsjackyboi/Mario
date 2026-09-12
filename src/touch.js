@@ -51,6 +51,21 @@
     live: {},                  // pointerId -> the button it is holding
     held: {},                  // action -> true, for drawing
 
+    /**
+     * Is the pad up right now?
+     *
+     * Only while something is being PLAYED. A menu is a list of things to tap,
+     * and a d-pad floating over it is both useless and in the way — it covers
+     * the first town on the level select and the bottom row of every board.
+     * Scenes say so themselves with `wantsPad`, rather than this file keeping
+     * a list of scene names that would go stale the moment one is added.
+     */
+    active: function () {
+      if (!this.on) return false;
+      var top = PL.Game && PL.Game.top && PL.Game.top();
+      return !!(top && top.wantsPad);
+    },
+
     /** Which button is under this logical point, if any. */
     at: function (x, y) {
       for (var i = 0; i < PAD.length; i++) {
@@ -111,6 +126,7 @@
         if (e.pointerType !== 'touch') return;
         self.on = true;
         if (PL.Input.typing) return;       // the keyboard is up; let it have the tap
+        if (!self.active()) return;        // a menu: the tap is the menu's
         var pt = toLogical(e);
         if (!pt) return;
         var b = self.at(pt.x, pt.y);
@@ -155,7 +171,7 @@
     // ------------------------------------------------------------------ paint
 
     draw: function (ctx) {
-      if (!this.on) return;
+      if (!this.active()) { this.clear(); return; }
       for (var i = 0; i < PAD.length; i++) {
         var b = PAD[i];
         var hot = !!this.held[b.a];

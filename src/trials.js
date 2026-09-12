@@ -23,6 +23,7 @@
   // --------------------------------------------------------------- the scene
 
   function TrialScene(play, gate) {
+    this.wantsPad = true;          // a trial is played, so it keeps the pad
     this.opaque = false;           // the level stays visible underneath
     this.play = play;
     this.gate = gate;

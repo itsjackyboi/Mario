@@ -41,6 +41,14 @@
   CompleteScene.prototype.update = function (dt) {
     this.t += dt;
     var In = PL.Input;
+    var tap = In.tappedOption(this.options.length, this.sel, function (i) {
+      var ox = PL.VIEW_W / 2 - (this.options.length * 150) / 2;
+      return { x: ox + i * 150 + 8, y: 296, w: 134, h: 30 };
+    }.bind(this));
+    if (tap >= 0) {
+      if (tap !== this.sel) { this.sel = tap; PL.Audio.sfx('menu'); return; }
+      In.hits.confirm = true;
+    }
     if (In.pressed('up') || In.pressed('left')) {
       this.sel = (this.sel + this.options.length - 1) % this.options.length; PL.Audio.sfx('menu');
     }

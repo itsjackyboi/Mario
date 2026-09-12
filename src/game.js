@@ -16,7 +16,7 @@
    * Not to be confused with the save-schema version in storage.js, which is
    * about the shape of the stored JSON and only moves when that shape does.
    */
-  PL.VERSION = '2.2.0';
+  PL.VERSION = '2.2.1';
 
   PL.VIEW_W = 640;
   PL.VIEW_H = 360;
@@ -88,17 +88,48 @@
       this.resize();
       var self = this;
       window.addEventListener('resize', function () { self.resize(); });
+      /* Rotating a phone is not one event with the right numbers in it. The
+       * resize arrives while the browser is still deciding how tall the screen
+       * is — chrome sliding away, safe areas changing — so the first answer is
+       * routinely the old orientation's. Ask again after it has settled.
+       * visualViewport is the one that notices a keyboard or a URL bar. */
+      window.addEventListener('orientationchange', function () {
+        self.resize();
+        setTimeout(function () { self.resize(); }, 120);
+        setTimeout(function () { self.resize(); }, 400);
+      });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', function () { self.resize(); });
+      }
       // Audio contexts need a user gesture before they will make noise.
       var wake = function () { PL.Audio.resume(); };
       window.addEventListener('keydown', wake);
       window.addEventListener('pointerdown', wake);
     },
 
-    /** Back the canvas at device resolution but keep a 640x360 logical space. */
+    /** Back the canvas at device resolution but keep a 640x360 logical space.
+     *
+     * THE SMALLEST HONEST ANSWER, not the first one. The stage is
+     * `position: fixed; inset: 0`, so its rect is the LAYOUT viewport — and on
+     * a phone added to the home screen and turned on its side, that is bigger
+     * than the glass: it runs under the notch and past the home indicator,
+     * because the page asked for `viewport-fit=cover`. Sizing the canvas to it
+     * puts the HUD, the clock and the thumb pad over the edges of the screen,
+     * which does not look like a canvas that is too big. It looks like the
+     * game zoomed in.
+     *
+     * window.innerHeight and visualViewport disagree with the layout viewport
+     * in different ways on different phones, and none of the three is right
+     * everywhere. The smallest of them is always on the glass.
+     */
     resize: function () {
       var dpr = Math.min(2, window.devicePixelRatio || 1);
+      var vv = window.visualViewport;
       var box = this.canvas.parentNode.getBoundingClientRect();
-      var s = Math.min(box.width / PL.VIEW_W, box.height / PL.VIEW_H);
+      var big = 1e9;
+      var w = Math.min(box.width || big, window.innerWidth || big, vv ? vv.width : big);
+      var h = Math.min(box.height || big, window.innerHeight || big, vv ? vv.height : big);
+      var s = Math.min(w / PL.VIEW_W, h / PL.VIEW_H);
       if (!isFinite(s) || s <= 0) s = 1;
       this.scale = s;
       this.canvas.style.width = Math.floor(PL.VIEW_W * s) + 'px';

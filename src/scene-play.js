@@ -26,6 +26,9 @@
   var C = PL.C, U = PL.util;
 
   function PlayScene(def, meta) {
+    /* A level is the one place a thumb pad belongs — see src/touch.js. Menus
+     * are lists of things to tap and say nothing, so the pad stays down. */
+    this.wantsPad = true;
     this.def = def;
     this.meta = meta || {};
     this.opaque = true;
@@ -811,6 +814,14 @@
   TasResultScene.prototype.update = function (dt) {
     this.t += dt;
     var In = PL.Input;
+    // Tappable, with this screen's own row geometry — see the draw below.
+    var tap = In.tappedOption(this.options.length, this.sel, function (i) {
+      return { x: PL.VIEW_W / 2 - 130, y: 196 + i * 26 - 14, w: 260, h: 21 };
+    });
+    if (tap >= 0) {
+      if (tap !== this.sel) { this.sel = tap; PL.Audio.sfx('menu'); return; }
+      In.hits.confirm = true;               // a second tap is the yes
+    }
     if (In.pressed('up')) { this.sel = (this.sel + this.options.length - 1) % this.options.length; PL.Audio.sfx('menu'); }
     if (In.pressed('down')) { this.sel = (this.sel + 1) % this.options.length; PL.Audio.sfx('menu'); }
     if (In.pressed('back')) { PL.Game.replace(new PL.LevelSelectScene(this.def.town)); return; }
@@ -895,6 +906,15 @@
 
   PauseScene.prototype.update = function () {
     var In = PL.Input;
+    /* Tapped, for a phone: the MENU button opens this and there is no
+     * keyboard behind it to close it again. Geometry matches the draw below. */
+    var tap = In.tappedOption(this.options.length, this.sel, function (i) {
+      return { x: PL.VIEW_W / 2 - 92, y: PL.VIEW_H / 2 - 20 + i * 24 - 13, w: 184, h: 20 };
+    });
+    if (tap >= 0) {
+      if (tap !== this.sel) { this.sel = tap; PL.Audio.sfx('menu'); return; }
+      In.hits.confirm = true;               // a second tap is the yes
+    }
     if (In.pressed('up')) { this.sel = (this.sel + this.options.length - 1) % this.options.length; PL.Audio.sfx('menu'); }
     if (In.pressed('down')) { this.sel = (this.sel + 1) % this.options.length; PL.Audio.sfx('menu'); }
     if (In.pressed('pause') || In.pressed('back')) { PL.Game.pop(); return; }

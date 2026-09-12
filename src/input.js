@@ -176,6 +176,30 @@
       return this.mouse.moved && this.hovering(x, y, w, h);
     },
 
+
+    /**
+     * A tap on one of a scene's options. Returns the index, or -1.
+     *
+     * ONE TAP SELECTS, A SECOND COMMITS, which is the same two-step the arrow
+     * keys have always used here and the reason this is not just "open what I
+     * touched". These screens are read as well as used — a level-complete card
+     * has your time on it, a pause menu has what you are about to throw away —
+     * and a list that acts on first contact cannot be pointed at while you
+     * think.
+     *
+     * `rect(i)` is the scene's own geometry, so the target is always under the
+     * thing it belongs to rather than a second copy of the layout kept here
+     * and left to drift.
+     */
+    tappedOption: function (count, sel, rect) {
+      if (!this.mouse.clicked) return -1;
+      for (var i = 0; i < count; i++) {
+        var r = rect(i);
+        if (this.clickedIn(r.x, r.y, r.w, r.h)) return i;
+      }
+      return -1;
+    },
+
     /** True on the frame a click lands inside this logical rect. */
     clickedIn: function (x, y, w, h) {
       return this.mouse.clicked && this.hovering(x, y, w, h);

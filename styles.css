@@ -30,6 +30,27 @@ html, body {
   padding: 8px;
 }
 
+/* ON A PHONE, THE FRAME IS GLASS YOU ARE NOT PLAYING ON.
+ *
+ * Eight pixels of padding, a two-pixel border and a rounded corner are worth
+ * having on a desktop, where the page is a page. Added to a home screen and
+ * turned on its side, they are twenty pixels off a screen that is 390 tall —
+ * and they sit exactly where the notch and the home indicator already want
+ * room. The insets are honoured rather than fought: the canvas is centred in
+ * what is left, so nothing is ever under the cutout.
+ */
+@media (pointer: coarse), (max-height: 460px) {
+  #stage {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+             env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  #game {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
 #game {
   display: block;
   image-rendering: pixelated;
