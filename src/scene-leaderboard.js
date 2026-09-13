@@ -206,7 +206,11 @@
 
     PL.gfx.text(ctx, this.archive ? 'PRE-RELEASE RECORDS' : 'THE BOOKS OF CAPTAINS',
       20, 32, { font: PL.FONT.head, color: this.archive ? C.teal : C.parchment });
-    PL.gfx.text(ctx, this.subtitle(), 20, 48, {
+    /* Fitted, because this line now carries a reason as well as a count and
+     * the two board tabs sit at the end of the row it is drawn on. Cut at the
+     * tabs when there are tabs, at the margin when there are not. */
+    var subW = (!this.archive && PL.Cloud.enabled()) ? this.tabRect(0).x - 28 : W - 40;
+    PL.gfx.text(ctx, U.fit(ctx, this.subtitle(), PL.FONT.tiny, subW), 20, 48, {
       font: PL.FONT.tiny,
       color: (!this.archive && this.shared && PL.Cloud.state === 'error')
         ? C.coral : 'rgba(242,227,196,0.5)'

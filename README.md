@@ -255,6 +255,33 @@ Point it at a Google Sheet and everyone's runs land on one board, readable in-ga
   work for a friend group and exactly why you should not point it at a sheet holding
   anything else.
 
+**What happens when the sheet does not answer properly**
+
+Google, not the script, is what usually goes wrong: a quota minute, a sign-in wall, or the
+script running past its execution limit. In all three cases the reply is an HTML page
+rather than the JSON the script would have sent, and the game says so in those words —
+*Shared board unreachable: Google answered instead of the sheet*. The board is unreadable
+for as long as that lasts and nothing else is affected.
+
+**A run is never lost to it.** Every run is written to the local board first and queued in
+`localStorage` second, and it leaves that queue only when the sheet confirms it has it. An
+HTML page, a 500, a timeout or no network at all leaves the run exactly where it was, to be
+sent on the next attempt — and the leaderboard header says how many are waiting. The queue
+is pushed when a run is set, when the browser says the network is back, after the board
+loads, and once a minute otherwise, so landing and opening the game is enough to post a
+flight's worth of times.
+
+A re-send after a reply went missing does not make a second row: a run is keyed by the
+timestamp it was queued with, which does not change on a retry, and the script skips a row
+it already has.
+
+**If you deployed the script before v2.2.6, redeploy it** (*Manage deployments → edit → New
+version*). That version rebuilt the derived board inside the same try/catch as the append,
+so a rebuild that threw reported the whole post as refused — and the game now takes a
+refusal at its word. It also took no lock, so two people finishing a level at the same
+instant could write a board with a run missing from it until the next post. The game works
+against either version; the new one is the one that cannot lose a race.
+
 **Two tabs, on purpose.**
 
 - **`runs`** — every run ever posted, append-only, never sorted or trimmed:

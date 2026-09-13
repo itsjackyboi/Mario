@@ -51,7 +51,91 @@
    * onto the board. */
   function currentEra() { return era(PL.VERSION); }
   var FRESH_MS = 45000;          // how long a fetched board is considered current
-  var MAX_QUEUE = 40;
+  /* Big enough for a flight. A row is about two hundred bytes, so even full
+   * this is a few tens of kilobytes of localStorage — and the alternative is
+   * that the forty-first level of a long journey silently pushes the first
+   * one out of the outbox. */
+  var MAX_QUEUE = 120;
+  var TIMEOUT_MS = 15000;        // a request that has not answered by now will not
+  var RETRY_MS = 60000;          // how often a stuck outbox tries again by itself
+
+  /**
+   * WHY THIS IS NOT `r.json()`.
+   *
+   * `r.json()` on a body that is not JSON throws the browser's own parser
+   * message, and that message went straight onto the leaderboard header:
+   *
+   *     Shared board unreachable: JSON.parse: unexpected character at line 1
+   *     column 1 of the JSON data
+   *
+   * which tells a player nothing except that something inside the game broke.
+   * Nothing inside the game had broken. A body starting with `<` is an HTML
+   * page, and from this endpoint an HTML page means Google answered instead of
+   * the script — a sign-in wall, a quota page, or the script running past its
+   * execution limit. That is worth saying in those words.
+   *
+   * It matters more than the wording, though. `r.json()` was the ONLY thing
+   * looking at the reply: the POST that files a run ignored the response
+   * entirely and treated any answer at all as success, so a run could be
+   * dropped from the outbox on the strength of Google's error page. Reading
+   * the body properly is what makes it possible to tell a filed run from a
+   * refused one — see flush().
+   */
+  function parseBody(text) {
+    // A byte-order mark ahead of the JSON is legal for the sender and fatal
+    // for JSON.parse, and it is invisible in every log you would look at.
+    var t = String(text == null ? '' : text).replace(/^\uFEFF/, '');
+    t = t.replace(/^\s+|\s+$/g, '');
+    if (!t) return { bad: 'the reply was empty' };
+    if (t.charAt(0) === '<') return { bad: 'Google answered instead of the sheet' };
+    try { return { data: JSON.parse(t) }; }
+    catch (e) { return { bad: 'the reply was not a board' }; }
+  }
+
+  /**
+   * One request, with a deadline, answering in this game's words.
+   *
+   * `done(data, bad)` — exactly one of them. `bad` is a short phrase that
+   * reads correctly after "Shared board unreachable: ".
+   *
+   * THE DEADLINE IS NOT DECORATION. `load()` refuses to start while one is in
+   * flight and `flush()` refuses to send while one is sending, so a request
+   * that never settles — a captive portal answering nothing at all, which is
+   * every hotel and half the airports — would wedge both for the rest of the
+   * session: no board, and an outbox that never empties. AbortController is
+   * used where it exists and the timer is the backstop where it does not, so
+   * the worst case is one abandoned request rather than a dead feature.
+   */
+  function send(url, opts, done) {
+    if (!window.fetch) { done(null, 'this browser cannot reach it'); return; }
+    var settled = false, ctl = null;
+    try { if (window.AbortController) ctl = new window.AbortController(); } catch (e) {}
+    if (ctl) opts.signal = ctl.signal;
+    var timer = window.setTimeout(function () {
+      if (settled) return;
+      settled = true;
+      if (ctl) { try { ctl.abort(); } catch (e2) {} }
+      done(null, 'no answer in time');
+    }, TIMEOUT_MS);
+    function finish(data, bad) {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      done(data, bad);
+    }
+    window.fetch(url, opts).then(function (r) {
+      return r.text().then(function (text) {
+        if (!r.ok) { finish(null, 'it answered ' + r.status); return; }
+        var out = parseBody(text);
+        if (out.bad) finish(null, out.bad);
+        else finish(out.data, '');
+      });
+    })['catch'](function () {
+      // A rejected fetch is the network, an abort, or CORS. None of those is
+      // something a player can act on beyond "you are not online".
+      finish(null, 'no route to it');
+    });
+  }
 
   function readQueue() {
     try {
@@ -59,6 +143,22 @@
       var q = raw ? JSON.parse(raw) : [];
       return q instanceof Array ? q : [];
     } catch (e) { return []; }
+  }
+
+  /* How many times a row may be refused before it is given up on. */
+  var REFUSE_LIMIT = 5;
+
+  /**
+   * The row as the sheet should see it.
+   *
+   * `refused` is the outbox's own bookkeeping — how many times this row has
+   * been turned away — and it has no business being written into a column of
+   * somebody's spreadsheet.
+   */
+  function payload(row) {
+    var out = {}, k;
+    for (k in row) if (k !== 'refused') out[k] = row[k];
+    return out;
   }
 
   function writeQueue(q) {
@@ -82,6 +182,13 @@
     eraRows: 0,
     fetchedAt: 0,
     sending: 0,
+    /* The outbox's own state, kept apart from the board's. Fetching the board
+     * and filing a run fail for different reasons and at different times, and
+     * a player whose runs are stacking up needs to be told that whether or not
+     * the board itself happens to be readable. */
+    tries: 0,
+    retryAt: 0,
+    sendError: '',
 
     enabled: function () { return !!this.endpoint; },
 
@@ -103,7 +210,24 @@
        * A false alarm costs one request that fails and changes nothing. */
       var self = this;
       if (this.enabled()) {
-        window.addEventListener('online', function () { self.flush(); });
+        window.addEventListener('online', function () {
+          /* Coming back is the one moment worth forgetting a backoff for: the
+           * wait was for a network that has just arrived. The board is marked
+           * stale too, so whatever screen is opened next fetches rather than
+           * showing what was true before the flight. */
+          self.tries = 0;
+          self.retryAt = 0;
+          self.fetchedAt = 0;
+          self.flush();
+        });
+        /* AND A HEARTBEAT, because `online` is not enough on its own. It fires
+         * on a transition, and the interesting case has no transition in it:
+         * the game was already open and "online" when a post failed, which is
+         * every sheet hiccup and every quota minute. Without this the run sat
+         * in the outbox until the player happened to finish another level.
+         * One call a minute that returns immediately when the queue is empty.
+         */
+        window.setInterval(function () { self.flush(); }, RETRY_MS);
         this.flush();
       }
     },
@@ -147,9 +271,50 @@
       this.flush();
     },
 
-    /** Post everything in the outbox, oldest first, dropping what lands. */
+    /**
+     * Post the outbox, oldest first, dropping each row ONLY once the sheet has
+     * said it has it.
+     *
+     * THIS USED TO DROP A RUN ON ANY ANSWER AT ALL. The old version ignored
+     * the response — `.then(function () { left.shift(); })` — so a 500, a
+     * quota page, a sign-in wall, anything that was not an outright network
+     * failure, deleted the run from the outbox as if it had been filed. The
+     * run was gone: not on the sheet, not in the queue, and nothing anywhere
+     * said so. That is the whole reason this function is now twenty lines
+     * instead of eight.
+     *
+     * There are three answers and they are not the same:
+     *
+     *   FILED — valid JSON that is not a refusal. The row goes.
+     *
+     *   REFUSED — valid JSON saying `ok: false`. The sheet read the row and
+     *     said no. It goes to the BACK of the queue rather than being deleted,
+     *     and is only given up on after five refusals.
+     *
+     *     Both halves of that matter. It cannot stay at the head, or one row
+     *     the sheet will never accept blocks every run behind it for ever. It
+     *     must not be deleted on the first no either, because `ok: false` is
+     *     not always permanent: an older deployment answers every internal
+     *     error that way, including ones that had nothing to do with the row,
+     *     and the sheet says it exactly once when two people finish a level at
+     *     the same instant and one of them loses the lock. Five tries is the
+     *     difference between "this row is malformed" and "ask again later",
+     *     and costs four requests to find out. A deployment that knows the
+     *     difference says `retry: true`, and then it is not counted at all.
+     *
+     *   NOT ANSWERED — no network, a timeout, an HTML page, a 5xx. Nothing is
+     *     known about whether the sheet has it. The row stays and the next
+     *     attempt backs off, because hammering a service that is failing is
+     *     how a temporary failure becomes a quota ban.
+     *
+     * A row re-sent after an answer went missing is not a duplicate on the
+     * board: a run is keyed by its own timestamp, which is generated once when
+     * it is queued and does not change on a retry, and the sheet collapses
+     * repeats of that key when it reads the log back.
+     */
     flush: function () {
       if (!this.enabled() || this.sending) return;
+      if (Date.now() < this.retryAt) return;
       var q = readQueue();
       if (!q.length) return;
       var self = this;
@@ -157,19 +322,40 @@
       this.sending = 1;
       // text/plain keeps this a "simple" request, so the browser does not send
       // a CORS preflight — Apps Script does not answer OPTIONS.
-      window.fetch(this.endpoint, {
+      send(this.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(row)
-      }).then(function () {
-        var left = readQueue();
-        left.shift();
-        writeQueue(left);
+        body: JSON.stringify(payload(row))
+      }, function (data, bad) {
         self.sending = 0;
+        if (bad) {
+          self.tries++;
+          self.sendError = bad;
+          // 15s, 30s, 60s, 60s… far enough apart to be polite, close enough
+          // that landing and opening the game posts the flight.
+          self.retryAt = Date.now() + Math.min(RETRY_MS, 15000 * self.tries);
+          return;
+        }
+        self.tries = 0;
+        self.retryAt = 0;
+        var left = readQueue();
+        var head = left.shift();
+        var refusal = data && data.ok === false;
+        if (refusal && data.retry !== true) {
+          var n = ((head && head.refused) || 0) + 1;
+          self.sendError = 'a run was refused: ' + (data.error || 'no reason given');
+          if (n < REFUSE_LIMIT && head) { head.refused = n; left.push(head); }
+        } else if (refusal) {
+          // The sheet said "not now" rather than "no". Straight back in line.
+          self.sendError = String(data.error || 'the sheet was busy');
+          if (head) left.unshift(head);
+          self.retryAt = Date.now() + 15000;
+        } else {
+          self.sendError = '';
+        }
+        writeQueue(left);
         self.fetchedAt = 0;          // the board has moved on
-        if (left.length) self.flush();
-      })['catch'](function () {
-        self.sending = 0;            // stays in the outbox for next time
+        if (left.length && !refusal) self.flush();
       });
     },
 
@@ -180,25 +366,37 @@
       if (!force && this.state === 'ready' && Date.now() - this.fetchedAt < FRESH_MS) return;
       var self = this;
       this.state = 'loading';
-      window.fetch(this.endpoint + '?board=1', { method: 'GET' })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          self.rows = (data && data.rows) || [];
-          self.index();
-          // The split board may have been comparing against a stale copy of
-          // this, or against nothing at all.
-          if (PL.Speedrun) PL.Speedrun.invalidate();
-          // Keep the pre-release archive's safety copy current until the day it
-          // is frozen. No-op after that.
-          if (PL.Archive) PL.Archive.remember(self.rows);
-          self.state = 'ready';
-          self.error = '';
-          self.fetchedAt = Date.now();
-          self.flush();
-        })['catch'](function (e) {
+      send(this.endpoint + '?board=1', { method: 'GET' }, function (data, bad) {
+        if (bad) { self.state = 'error'; self.error = bad; return; }
+        /* The script answers its own failures in JSON rather than falling over
+         * — `{ rows: [], error: '...' }` — and an empty board that came with a
+         * reason attached is not an empty board. Taking it as one would put
+         * "No runs on the board yet" over a sheet that is simply broken. */
+        var rows = data && data.rows;
+        if (!(rows instanceof Array)) {
           self.state = 'error';
-          self.error = (e && e.message) || 'could not reach the board';
-        });
+          self.error = (data && data.error) ? String(data.error).slice(0, 80)
+                                            : 'the reply had no board in it';
+          return;
+        }
+        if (data.error && !rows.length) {
+          self.state = 'error';
+          self.error = String(data.error).slice(0, 80);
+          return;
+        }
+        self.rows = rows;
+        self.index();
+        // The split board may have been comparing against a stale copy of
+        // this, or against nothing at all.
+        if (PL.Speedrun) PL.Speedrun.invalidate();
+        // Keep the pre-release archive's safety copy current until the day it
+        // is frozen. No-op after that.
+        if (PL.Archive) PL.Archive.remember(self.rows);
+        self.state = 'ready';
+        self.error = '';
+        self.fetchedAt = Date.now();
+        self.flush();
+      });
     },
 
     /**
@@ -277,24 +475,42 @@
     /** How many runs are waiting to be posted. */
     pending: function () { return readQueue().length; },
 
-    /** One line describing where the board stands, for the leaderboard header. */
+    /**
+     * One line describing where the board stands, for the leaderboard header.
+     *
+     * THE OUTBOX IS ON EVERY LINE, not only the happy one. Runs waiting to be
+     * sent used to be mentioned only when the board had loaded — so the state
+     * where it matters most, the board being unreachable, was exactly the
+     * state that hid it. Somebody with four times stuck on their machine could
+     * read this line and have no idea they were there.
+     */
     status: function () {
       if (!this.enabled()) return 'Shared board not configured — see the README.';
-      if (this.state === 'loading') return 'Fetching the shared board…';
-      if (this.state === 'error') return 'Shared board unreachable: ' + this.error;
+      /* Short, because this line is drawn beside the board tabs and a long one
+       * runs under them — and because the fact is the whole message. Nothing
+       * is lost while it says this: a waiting run is on the machine and stays
+       * there until the sheet takes it. */
+      var n = this.pending();
+      var mine = n ? '  ·  ' + n + (n === 1 ? ' run' : ' runs') + ' waiting to send' : '';
+      if (this.state === 'loading') return 'Fetching the shared board…' + mine;
+      if (this.state === 'error') return 'Shared board unreachable: ' + this.error + mine;
       if (this.state === 'ready') {
-        var n = this.pending();
-        var mine = n ? '  ·  ' + n + ' of yours still to send' : '';
         /* This era's runs, not every row in the sheet. v2 changed the levels,
          * so a v1 time is a time on a different game: it is kept in the log
          * and shown on the pre-release board, and it is not something anyone
          * is still racing. Counting all 601 of them under a board showing
          * none of them was the headline disagreeing with the table under it. */
-        if (!this.eraRows) return 'No runs on the board yet — v2 starts clean.' + mine;
-        return this.eraRows + (this.eraRows === 1 ? ' run' : ' runs') +
-               ' on the shared board' + mine;
+        var head = this.eraRows
+          ? this.eraRows + (this.eraRows === 1 ? ' run' : ' runs') + ' on the shared board'
+          : 'No runs on the board yet — v2 starts clean.';
+        // A refusal is the one thing worth saying over the count: it means a
+        // run is gone rather than waiting.
+        if (this.sendError && this.sendError.indexOf('refused') === 0) {
+          return head + '  ·  ' + this.sendError;
+        }
+        return head + mine;
       }
-      return 'Shared board ready to load.';
+      return 'Shared board ready to load.' + mine;
     }
   });
 

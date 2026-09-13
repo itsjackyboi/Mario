@@ -289,32 +289,100 @@ function doGet(e) {
   }
 }
 
-/** POST one run as JSON. */
+/**
+ * Has this exact run already been written? Checks the tail of the log only.
+ *
+ * A run is keyed by date, player, level and time — the same key the reader
+ * uses to collapse a run that appears in two tabs. The key is generated on the
+ * player's machine when the run is queued and does not change when the game
+ * re-sends it, which is what makes this work: the game re-sends when an answer
+ * went missing, never knowing whether the row landed, and this is the half
+ * that decides.
+ *
+ * The tail, not the whole log, because a re-send happens seconds or minutes
+ * after the original and reading thousands of rows on every post is how a
+ * cheap endpoint becomes one that times out — and a timeout is precisely the
+ * thing that causes the re-send. Fifty rows is minutes of a busy evening.
+ */
+function alreadyLogged_(sh, key) {
+  var last = sh.getLastRow();
+  if (last < 2) return false;
+  var from = Math.max(2, last - 49);
+  var wide = Math.min(5, sh.getLastColumn());      // date..timeMs
+  if (wide < 5) return false;
+  var values = sh.getRange(from, 1, last - from + 1, 5).getValues();
+  for (var i = 0; i < values.length; i++) {
+    var v = values[i];
+    if (String(v[0]) + '|' + String(v[1]) + '|' + String(v[3]) + '|' +
+        (Number(v[4]) || 0) === key) return true;
+  }
+  return false;
+}
+
+/**
+ * POST one run as JSON.
+ *
+ * TWO THINGS IN HERE EXIST BECAUSE OF WHAT THE GAME DOES WITH THE ANSWER.
+ *
+ * The game now keeps a run in its outbox until this says it has it, and drops
+ * it on `ok: false` — because `ok: false` means "read and refused", and a row
+ * this will never accept must not sit at the head of a queue blocking every
+ * run behind it. So `ok: false` has to mean exactly that. Rebuilding the
+ * derived tabs is a separate, fallible, entirely cosmetic job that happens
+ * after the row is safely appended, and it gets its own try/catch: a rebuild
+ * that throws used to take the whole response down with it, which told the
+ * game a run it had just filed had been refused. The row would have been
+ * dropped and the board would have been rebuilt on the next post anyway.
+ *
+ * And the lock, because two people finishing a level at the same moment ran
+ * append-then-rebuild interleaved, and a rebuild reading the log halfway
+ * through someone else's append writes a board that is missing a run until the
+ * next post fixes it.
+ */
 function doPost(e) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(25000); }
+  catch (err) {
+    /* `retry: true` is the difference between "no" and "not now", and the game
+     * reads it: a plain `ok: false` sends the run to the back of its outbox
+     * and gives up on it after five of them, while this one keeps its place in
+     * the queue. Losing the lock is the busiest evening, not a bad row. */
+    return json_({ ok: false, retry: true, error: 'the sheet was busy' });
+  }
   try {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (!body.level) return json_({ ok: false, error: 'no level' });
 
     // Trim the two free-text fields; everything else is coerced to a number or
     // a boolean, so a malformed submission cannot put junk in a typed column.
-    sheet_().appendRow([
-      String(body.date || new Date().toISOString()).slice(0, 40),
-      String(body.player || 'anonymous').slice(0, 24),
-      String(body.town || '').slice(0, 40),
-      String(body.level || '').slice(0, 40),
-      Number(body.timeMs) || 0,
-      Number(body.grog) || 0,
-      Number(body.deaths) || 0,
-      Number(body.shards) || 0,
-      body.speedrun === true,
-      String(body.version || '').slice(0, 16),
-      String(body.time || '').slice(0, 16),
-      body.tas === true
-    ]);
-    rebuildLeaderboard_();
+    var date = String(body.date || new Date().toISOString()).slice(0, 40);
+    var player = String(body.player || 'anonymous').slice(0, 24);
+    var level = String(body.level || '').slice(0, 40);
+    var timeMs = Number(body.timeMs) || 0;
+    var sh = sheet_();
+    var key = date + '|' + player + '|' + level + '|' + timeMs;
+
+    if (!alreadyLogged_(sh, key)) {
+      sh.appendRow([
+        date, player,
+        String(body.town || '').slice(0, 40),
+        level, timeMs,
+        Number(body.grog) || 0,
+        Number(body.deaths) || 0,
+        Number(body.shards) || 0,
+        body.speedrun === true,
+        String(body.version || '').slice(0, 16),
+        String(body.time || '').slice(0, 16),
+        body.tas === true
+      ]);
+    }
+    // Cosmetic, and never allowed to fail the filing of a run.
+    try { rebuildLeaderboard_(); } catch (err2) { /* the next post redraws it */ }
     return json_({ ok: true });
   } catch (err) {
     return json_({ ok: false, error: String(err) });
+  } finally {
+    try { lock.releaseLock(); } catch (err3) {}
   }
 }
 

@@ -71,7 +71,7 @@ you would rather it went too; it is one line.
    first.)
 
 4. **Check the version corner.** Open the live page and read the number in the top-left of
-   the title screen. It should say `v2.2.5`. If it still says `v1.17.0`, the browser is
+   the title screen. It should say `v2.2.6`. If it still says `v1.17.0`, the browser is
    holding a cached copy of `index.html` — hard-refresh (Ctrl/Cmd-Shift-R). Every other file
    is cache-busted by the version, so once the index is fresh, everything is.
 
@@ -220,6 +220,62 @@ Checked by pushing all five trials for real and driving them with taps and nothi
 (`trial.js`): the Plank Pour won on the JUMP button and won again on ITEM alone, the Order of
 Chimes echoed back twelve bells on the arrows, and the swallowed press is gone — verified by
 putting the old code back and watching the same check fail.
+
+## Uploads: a run now leaves the outbox only when the sheet has it (v2.2.6)
+
+A player on Firefox saw this under the board:
+
+> Shared board unreachable: JSON.parse: unexpected character at line 1 column 1 of the JSON data
+
+That is Firefox's wording for "that body was not JSON", and from this endpoint a body that
+is not JSON is an HTML page — Google answering instead of the script, which is what a quota
+minute, a sign-in wall or a script running past its execution limit looks like from the
+outside. Nothing inside the game had broken, but the message said it had.
+
+**The message was the visible half. The other half was worse.** `r.json()` was the only
+thing in the file looking at a reply. The POST that files a run ignored its response
+completely — `.then(function () { left.shift(); })` — so *any* answer that was not an
+outright network failure deleted the run from the outbox as though it had been filed. A 500,
+a quota page, a sign-in wall: the run was gone. Not on the sheet, not in the queue, and
+nothing anywhere said so.
+
+What changed:
+
+- **A run leaves the outbox only when the sheet says it has it.** Bodies are read as text
+  and parsed here, so the three cases are finally distinguishable: *filed* (JSON, not a
+  refusal) drops the row; *not answered* (no network, a timeout, an HTML page, a 5xx) keeps
+  it and backs off 15s, 30s, 60s; *refused* (`ok: false`) sends it to the back of the queue
+  and gives up after five, so one row the sheet will never take cannot block every run
+  behind it.
+- **Every request has a deadline.** `load()` would not start while one was in flight and
+  `flush()` would not send while one was sending, so a request that never settled — a
+  captive portal answering nothing, which is every hotel — wedged both for the rest of the
+  session. Fifteen seconds, `AbortController` where it exists and a timer where it does not.
+- **The outbox retries by itself.** `online` only fires on a transition, and the common case
+  has no transition in it: the game was already online when a post failed. A minute's
+  heartbeat covers it; it returns immediately when the queue is empty.
+- **The header says what is waiting, always.** Runs still to send used to be mentioned only
+  once the board had loaded — so the state where it matters most, the board being
+  unreachable, was the state that hid it.
+- **Errors read like English.** "Google answered instead of the sheet", "it answered 500",
+  "the reply was empty", "no answer in time", "no route to it". A byte-order mark in front of
+  the JSON no longer breaks the parse either.
+- **The queue holds 120 runs, not 40** — a long flight should not push its own first level
+  out of the outbox.
+
+`tools/leaderboard.gs` changed too, and **an existing deployment should be updated** (*Manage
+deployments → edit → New version*): the derived-board rebuild is now in its own try/catch, so
+a rebuild that throws no longer reports a successfully filed run as refused; `doPost` takes a
+script lock, so two people finishing at the same instant cannot interleave an append with
+somebody else's rebuild; and a row already in the last fifty is not appended twice. The game
+works against the old deployment as well — five refusals instead of one is exactly the margin
+that makes that safe.
+
+Checked against a mock sheet told to answer with HTML, a 500, an empty body, a byte-order
+mark, silence, "busy", a flat refusal, or the truth — 27 assertions, on a desktop and a
+phone (`board.js`). Including: two runs set with the radio off both survive and both post on
+reconnect, in order; a re-sent run is one row and not two; and the offline copy never caches
+the board.
 
 ## What a returning player sees
 
