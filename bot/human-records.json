@@ -1,93 +1,98 @@
 {
- "_source": "Google Sheet 1yLsyGVCuzcGocURdTUdp_C_kMSFAGrSp_IL3V1uYqt0, 'runs' log, read 2026-09-09",
+ "_source": "Google Sheet 1yLsyGVCuzcGocURdTUdp_C_kMSFAGrSp_IL3V1uYqt0, live v2 board (era-2 rows only), read 2026-09-19",
  "_note": "Best non-TAS time per level, in ms. Both 'single' and 'SPEEDRUN' rows count as human; TAS rows are excluded. The game posts timeMs = frames * 1000/60, so frames = round(ms * 60 / 1000).",
  "_existingTasRecords": {
-  "shantytown-1": {
-   "timeMs": 25917,
+  "roto-2": {
+   "timeMs": 28833,
    "player": "Jack_Anqoak",
-   "build": "1.18.0"
+   "build": "2.1.0"
   }
  },
  "levels": {
   "shantytown-1": {
-   "timeMs": 25933,
-   "player": "Buke",
-   "build": "1.10.0"
+   "timeMs": 25917,
+   "player": "Guinniewinny",
+   "build": "v2"
   },
   "shantytown-2": {
-   "timeMs": 28017,
-   "player": "Buke",
-   "build": "1.8"
+   "timeMs": 28867,
+   "player": "Guinniewinny",
+   "build": "v2"
   },
   "shantytown-3": {
-   "timeMs": 63383,
-   "player": "Buke",
-   "build": "1.8"
+   "timeMs": 68217,
+   "player": "Guinniewinny",
+   "build": "v2"
   },
   "aleforge-1": {
-   "timeMs": 22750,
-   "player": "Buke",
-   "build": "1.17.0"
+   "timeMs": 22733,
+   "player": "jack_anqoak",
+   "build": "v2"
   },
   "aleforge-2": {
-   "timeMs": 20467,
-   "player": "Buke",
-   "build": "1.10.0"
+   "timeMs": 29067,
+   "player": "seamus",
+   "build": "v2"
   },
   "aleforge-3": {
-   "timeMs": 39333,
-   "player": "Buke",
-   "build": "1.8"
+   "timeMs": 46733,
+   "player": "Jack_Anqoak",
+   "build": "v2"
   },
   "providence-1": {
-   "timeMs": 28433,
-   "player": "Buke",
-   "build": "1.9.2"
+   "timeMs": 28250,
+   "player": "seamus",
+   "build": "v2"
   },
   "providence-2": {
-   "timeMs": 25533,
-   "player": "Buke",
-   "build": "1.10.0"
+   "timeMs": 28967,
+   "player": "seamus",
+   "build": "v2"
   },
   "providence-3": {
-   "timeMs": 35967,
+   "timeMs": 48167,
    "player": "Buke",
-   "build": "1.10.0"
+   "build": "v2"
   },
   "providence-oweblock": {
-   "timeMs": 35800,
-   "player": "Buke",
-   "build": "1.9.2"
+   "timeMs": 35683,
+   "player": "seamus",
+   "build": "v2"
   },
   "fenwick-1": {
-   "timeMs": 24567,
-   "player": "Buke",
-   "build": "1.10.0"
+   "timeMs": 24533,
+   "player": "seamus",
+   "build": "v2"
   },
   "fenwick-2": {
-   "timeMs": 32083,
-   "player": "Buke",
-   "build": "1.10.0"
+   "timeMs": 28750,
+   "player": "seamus",
+   "build": "v2"
+  },
+  "fenwick-3": {
+   "timeMs": 35467,
+   "player": "Jack_Anqoak",
+   "build": "v2"
   },
   "roto-1": {
    "timeMs": 26150,
    "player": "Buke",
-   "build": "1.17.0"
+   "build": "v2"
   },
   "roto-2": {
-   "timeMs": 28267,
-   "player": "Buke",
-   "build": "1.10.0"
+   "timeMs": 28800,
+   "player": "seamus",
+   "build": "v2"
   },
   "roto-3": {
-   "timeMs": 31183,
+   "timeMs": 36150,
    "player": "Buke",
-   "build": "1.9.2"
+   "build": "v2"
   },
   "tavern-1": {
-   "timeMs": 35367,
-   "player": "Buke",
-   "build": "1.8"
+   "timeMs": 34800,
+   "player": "Guinniewinny",
+   "build": "v2"
   }
  },
  "_rebuiltInV2": {
@@ -102,5 +107,24 @@
   "newLevels": [
    "fenwick-3"
   ]
+ },
+ "_eraNote": "v2 rebuilt seven levels, so a v1 time is a time on a different game. These are era-2 records only. The v1 bests are kept under _preRelease because the gap between them is itself a finding: several v1 records are still far faster than anything posted on v2.",
+ "_preRelease": {
+  "shantytown-1": 25933,
+  "shantytown-2": 28017,
+  "shantytown-3": 63383,
+  "aleforge-1": 22750,
+  "aleforge-2": 20467,
+  "aleforge-3": 39333,
+  "providence-1": 28433,
+  "providence-2": 25533,
+  "providence-3": 35967,
+  "providence-oweblock": 35800,
+  "fenwick-1": 24567,
+  "fenwick-2": 32083,
+  "roto-1": 26150,
+  "roto-2": 28267,
+  "roto-3": 31183,
+  "tavern-1": 35367
  }
 }
